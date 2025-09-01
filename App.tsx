@@ -398,8 +398,8 @@ function App() {
                              />
                         </label>
                         <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                        <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-xs text-lg">
-                            Nhấn vào ảnh polaroid để tải ảnh của bạn và bắt đầu hành trình sáng tạo.
+                        <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-lg text-lg">
+                            Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo
                         </p>
                     </div>
                 )}
