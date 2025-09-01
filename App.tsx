@@ -373,186 +373,189 @@ function App() {
     };
 
     return (
-        <main className="text-neutral-200 min-h-screen w-full flex flex-col items-center justify-center p-4 pb-24 overflow-x-hidden relative">
-            <div className="z-10 flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
-                <AnimatePresence>
-                {appState !== 'generating' && appState !== 'results-shown' && (
-                <motion.div 
-                    className="text-center mb-8 pt-12"
-                    initial={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                >
-                    <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{settings.mainTitle}</h1>
-                    <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
-                </motion.div>
-                )}
-                </AnimatePresence>
-
-                {appState === 'idle' && (
-                    <div className="flex flex-col items-center justify-center w-full">
-                        <label htmlFor="file-upload" className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-                             <PolaroidCard 
-                                 caption="Tải ảnh của bạn"
-                                 status="done"
-                             />
-                        </label>
-                        <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                        <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-lg text-lg">
-                            Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo
-                        </p>
-                    </div>
-                )}
-
-                {appState === 'image-uploaded' && uploadedImage && (
+        <main className="text-neutral-200 min-h-screen w-full overflow-x-hidden relative">
+            <div className="absolute inset-0 bg-black/30 backdrop-blur z-0" aria-hidden="true"></div>
+            <div className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center p-4 pb-24">
+                <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
+                    <AnimatePresence>
+                    {appState !== 'generating' && appState !== 'results-shown' && (
                     <motion.div 
-                        className="flex flex-col items-center gap-6 w-full"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
+                        className="text-center mb-8 pt-12"
+                        initial={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
                     >
-                         <PolaroidCard 
-                            imageUrl={uploadedImage} 
-                            caption="Ảnh của bạn" 
-                            status="done"
-                         />
-
-                        <div className="w-full max-w-4xl mx-auto text-center mt-4">
-                            <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
-                            <p className="text-neutral-400 mb-4">Đã chọn: {selectedIdeas.length}/{settings.maxIdeas}</p>
-                            <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg space-y-6">
-                                {IDEAS_BY_CATEGORY.map(categoryObj => (
-                                    <div key={categoryObj.category}>
-                                        <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 backdrop-blur-sm py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                            {categoryObj.ideas.map(p => {
-                                                const isSelected = selectedIdeas.includes(p);
-                                                return (
-                                                    <button 
-                                                        key={p}
-                                                        onClick={() => handleIdeaSelect(p)}
-                                                        className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
-                                                            isSelected 
-                                                            ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
-                                                            : 'bg-white/10 text-neutral-300 hover:bg-white/20'
-                                                        } ${!isSelected && selectedIdeas.length === settings.maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                        disabled={!isSelected && selectedIdeas.length === settings.maxIdeas}
-                                                    >
-                                                        {p}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                         <div className="flex items-center gap-4 mt-4">
-                            <button onClick={handleReset} className={secondaryButtonClasses}>
-                                Đổi ảnh khác
-                            </button>
-                            <button 
-                                onClick={handleGenerateClick} 
-                                className={primaryButtonClasses}
-                                disabled={selectedIdeas.length < settings.minIdeas || selectedIdeas.length > settings.maxIdeas || isLoading}
-                            >
-                                {getButtonText()}
-                            </button>
-                         </div>
+                        <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{settings.mainTitle}</h1>
+                        <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
                     </motion.div>
-                )}
+                    )}
+                    </AnimatePresence>
 
-                {(appState === 'generating' || appState === 'results-shown') && (
-                    <div className="w-full flex-1 flex flex-col items-center justify-center pt-12">
-                        <AnimatePresence>
-                            {appState === 'results-shown' && (
-                                <motion.div
-                                    className="text-center"
-                                    initial={{ opacity: 0, y: -20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ duration: 0.4 }}
+                    {appState === 'idle' && (
+                        <div className="flex flex-col items-center justify-center w-full">
+                            <label htmlFor="file-upload" className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
+                                <PolaroidCard 
+                                    caption="Tải ảnh của bạn"
+                                    status="done"
+                                />
+                            </label>
+                            <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
+                            <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-lg text-lg">
+                                Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo
+                            </p>
+                        </div>
+                    )}
+
+                    {appState === 'image-uploaded' && uploadedImage && (
+                        <motion.div 
+                            className="flex flex-col items-center gap-6 w-full"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                        >
+                            <PolaroidCard 
+                                imageUrl={uploadedImage} 
+                                caption="Ảnh của bạn" 
+                                status="done"
+                            />
+
+                            <div className="w-full max-w-4xl mx-auto text-center mt-4">
+                                <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
+                                <p className="text-neutral-400 mb-4">Đã chọn: {selectedIdeas.length}/{settings.maxIdeas}</p>
+                                <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg space-y-6">
+                                    {IDEAS_BY_CATEGORY.map(categoryObj => (
+                                        <div key={categoryObj.category}>
+                                            <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 backdrop-blur-sm py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                {categoryObj.ideas.map(p => {
+                                                    const isSelected = selectedIdeas.includes(p);
+                                                    return (
+                                                        <button 
+                                                            key={p}
+                                                            onClick={() => handleIdeaSelect(p)}
+                                                            className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
+                                                                isSelected 
+                                                                ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
+                                                                : 'bg-white/10 text-neutral-300 hover:bg-white/20'
+                                                            } ${!isSelected && selectedIdeas.length === settings.maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={!isSelected && selectedIdeas.length === settings.maxIdeas}
+                                                        >
+                                                            {p}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 mt-4">
+                                <button onClick={handleReset} className={secondaryButtonClasses}>
+                                    Đổi ảnh khác
+                                </button>
+                                <button 
+                                    onClick={handleGenerateClick} 
+                                    className={primaryButtonClasses}
+                                    disabled={selectedIdeas.length < settings.minIdeas || selectedIdeas.length > settings.maxIdeas || isLoading}
                                 >
-                                    <h2 className="base-font font-bold text-3xl text-neutral-100">Đây là kết quả của bạn!</h2>
-                                    <p className="text-neutral-300 mt-1">Bạn có thể tạo lại từng ảnh hoặc tải về máy.</p>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                    {getButtonText()}
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
 
-                        <div className="w-full flex-1 flex items-center overflow-x-auto py-4">
-                            <motion.div
-                                layout
-                                className="flex flex-row flex-nowrap items-center justify-start gap-8 px-8 w-max mx-auto py-4"
-                            >
-                                {uploadedImage && (
+                    {(appState === 'generating' || appState === 'results-shown') && (
+                        <div className="w-full flex-1 flex flex-col items-center justify-center pt-12">
+                            <AnimatePresence>
+                                {appState === 'results-shown' && (
                                     <motion.div
-                                        key="original-image"
-                                        initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-                                        transition={{ type: 'spring', stiffness: 80, damping: 15, delay: -0.15 }}
-                                        whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
+                                        className="text-center"
+                                        initial={{ opacity: 0, y: -20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -20 }}
+                                        transition={{ duration: 0.4 }}
                                     >
-                                        <PolaroidCard
-                                            caption="Ảnh gốc"
-                                            status="done"
-                                            imageUrl={uploadedImage}
-                                            onDownload={() => handleDownloadOriginalImage()}
-                                            isMobile={isMobile}
-                                        />
+                                        <h2 className="base-font font-bold text-3xl text-neutral-100">Đây là kết quả của bạn!</h2>
+                                        <p className="text-neutral-300 mt-1">Bạn có thể tạo lại từng ảnh hoặc tải về máy.</p>
                                     </motion.div>
                                 )}
-                                {selectedIdeas.map((idea, index) => {
-                                    return (
+                            </AnimatePresence>
+
+                            <div className="w-full flex-1 flex items-center overflow-x-auto py-4">
+                                <motion.div
+                                    layout
+                                    className="flex flex-row flex-nowrap items-center justify-start gap-8 px-8 w-max mx-auto py-4"
+                                >
+                                    {uploadedImage && (
                                         <motion.div
-                                            key={idea}
+                                            key="original-image"
                                             initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                                            animate={{
-                                                opacity: 1,
-                                                scale: 1,
-                                                y: 0,
-                                                rotate: 0,
-                                            }}
-                                            transition={{ type: 'spring', stiffness: 80, damping: 15, delay: index * 0.15 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+                                            transition={{ type: 'spring', stiffness: 80, damping: 15, delay: -0.15 }}
                                             whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
                                         >
                                             <PolaroidCard
-                                                caption={idea}
-                                                status={generatedImages[idea]?.status || 'pending'}
-                                                imageUrl={generatedImages[idea]?.url}
-                                                error={generatedImages[idea]?.error}
-                                                onShake={handleRegenerateIdea}
-                                                onDownload={handleDownloadIndividualImage}
+                                                caption="Ảnh gốc"
+                                                status="done"
+                                                imageUrl={uploadedImage}
+                                                onDownload={() => handleDownloadOriginalImage()}
                                                 isMobile={isMobile}
                                             />
                                         </motion.div>
-                                    );
-                                })}
-                            </motion.div>
-                        </div>
-
-                        <div className="h-28 flex items-center justify-center">
-                            {appState === 'results-shown' && (
-                                <motion.div
-                                    className="flex flex-col sm:flex-row items-center gap-4"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.5, duration: 0.5 }}
-                                >
-                                    <button onClick={handleDownloadAll} className={primaryButtonClasses}>
-                                        Tải về tất cả
-                                    </button>
-                                    <button onClick={handleChooseOtherIdeas} className={secondaryButtonClasses}>
-                                        Chọn ý tưởng khác
-                                    </button>
-                                     <button onClick={handleReset} className={secondaryButtonClasses + ' !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white'}>
-                                        Bắt đầu lại
-                                    </button>
+                                    )}
+                                    {selectedIdeas.map((idea, index) => {
+                                        return (
+                                            <motion.div
+                                                key={idea}
+                                                initial={{ opacity: 0, scale: 0.5, y: 100 }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    scale: 1,
+                                                    y: 0,
+                                                    rotate: 0,
+                                                }}
+                                                transition={{ type: 'spring', stiffness: 80, damping: 15, delay: index * 0.15 }}
+                                                whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
+                                            >
+                                                <PolaroidCard
+                                                    caption={idea}
+                                                    status={generatedImages[idea]?.status || 'pending'}
+                                                    imageUrl={generatedImages[idea]?.url}
+                                                    error={generatedImages[idea]?.error}
+                                                    onShake={handleRegenerateIdea}
+                                                    onDownload={handleDownloadIndividualImage}
+                                                    isMobile={isMobile}
+                                                />
+                                            </motion.div>
+                                        );
+                                    })}
                                 </motion.div>
-                            )}
+                            </div>
+
+                            <div className="h-28 flex items-center justify-center">
+                                {appState === 'results-shown' && (
+                                    <motion.div
+                                        className="flex flex-col sm:flex-row items-center gap-4"
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5, duration: 0.5 }}
+                                    >
+                                        <button onClick={handleDownloadAll} className={primaryButtonClasses}>
+                                            Tải về tất cả
+                                        </button>
+                                        <button onClick={handleChooseOtherIdeas} className={secondaryButtonClasses}>
+                                            Chọn ý tưởng khác
+                                        </button>
+                                        <button onClick={handleReset} className={secondaryButtonClasses + ' !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white'}>
+                                            Bắt đầu lại
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             <AnimatePresence>
