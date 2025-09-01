@@ -376,6 +376,25 @@ function App() {
         return `Tạo ảnh`;
     };
 
+    // Logic to handle title wrapping for better responsive behavior
+    const titleWords = settings.mainTitle.split(' ');
+    let titleElement: React.ReactNode;
+    // If the title has more than 2 words, wrap the last two in a no-wrap span
+    // to encourage breaking before them, fulfilling the user's request.
+    if (titleWords.length > 2) {
+        const partToKeepTogether = titleWords.splice(-2).join(' ');
+        const firstPart = titleWords.join(' ');
+        titleElement = (
+            <>
+                {firstPart}{' '}
+                <span className="whitespace-nowrap">{partToKeepTogether}</span>
+            </>
+        );
+    } else {
+        titleElement = settings.mainTitle;
+    }
+
+
     return (
         <main className="text-neutral-200 min-h-screen w-full overflow-x-hidden relative">
             <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
@@ -389,7 +408,7 @@ function App() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{settings.mainTitle}</h1>
+                        <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{titleElement}</h1>
                         <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
                     </motion.div>
                     )}
