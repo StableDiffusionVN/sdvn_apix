@@ -374,7 +374,7 @@ function App() {
 
     return (
         <main className="text-neutral-200 min-h-screen w-full overflow-x-hidden relative">
-            <div className="absolute inset-0 bg-black/30 backdrop-blur z-0" aria-hidden="true"></div>
+            <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
             <div className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center p-4 pb-24">
                 <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
                     <AnimatePresence>
@@ -422,10 +422,10 @@ function App() {
                             <div className="w-full max-w-4xl mx-auto text-center mt-4">
                                 <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
                                 <p className="text-neutral-400 mb-4">Đã chọn: {selectedIdeas.length}/{settings.maxIdeas}</p>
-                                <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg space-y-6">
+                                <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
                                     {IDEAS_BY_CATEGORY.map(categoryObj => (
                                         <div key={categoryObj.category}>
-                                            <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 backdrop-blur-sm py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
+                                            <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
                                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                                 {categoryObj.ideas.map(p => {
                                                     const isSelected = selectedIdeas.includes(p);
@@ -565,7 +565,7 @@ function App() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={handleCancelRegeneration}
-                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
                         aria-modal="true"
                         role="dialog"
                     >
