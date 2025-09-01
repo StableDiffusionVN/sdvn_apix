@@ -1,0 +1,19 @@
+body {
+  background-color: #8C1B17;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M50,5 L61.8,38.2 L98.2,38.2 L68.2,59.8 L79.6,92.7 L50,71.5 L20.4,92.7 L31.8,59.8 L1.8,38.2 L38.2,38.2 Z' fill='%23FFFF00' fill-opacity='0.15'/%3e%3c/svg%3e");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 80vmin;
+  background-attachment: fixed;
+  font-family: 'Mali', cursive;
+}
+
+.font-asimovian {
+  font-family: 'Asimovian', sans-serif;
+}
+.font-playwrite-ca {
+  font-family: 'Playwrite CA', cursive;
+}
+.font-mali {
+  font-family: "Be Vietnam Pro", sans-serif;
+}
