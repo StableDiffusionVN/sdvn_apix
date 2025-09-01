@@ -378,7 +378,7 @@ function App() {
                 <AnimatePresence>
                 {appState !== 'generating' && appState !== 'results-shown' && (
                 <motion.div 
-                    className="text-center mb-8"
+                    className="text-center mb-8 pt-12"
                     initial={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
@@ -464,7 +464,7 @@ function App() {
                 )}
 
                 {(appState === 'generating' || appState === 'results-shown') && (
-                    <div className="w-full flex-1 flex flex-col items-center justify-center pt-4">
+                    <div className="w-full flex-1 flex flex-col items-center justify-center pt-12">
                         <AnimatePresence>
                             {appState === 'results-shown' && (
                                 <motion.div
