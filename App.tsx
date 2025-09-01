@@ -408,7 +408,7 @@ function App() {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{titleElement}</h1>
+                        <h1 className="text-6xl/[1.3] md:text-8xl/[1.3] title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{titleElement}</h1>
                         <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
                     </motion.div>
                     )}
