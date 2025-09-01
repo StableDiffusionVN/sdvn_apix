@@ -118,7 +118,9 @@ function App() {
     const [appState, setAppState] = useState<'idle' | 'image-uploaded' | 'generating' | 'results-shown'>('idle');
     const [selectedIdeas, setSelectedIdeas] = useState<string[]>([]);
     const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
-    const [customPrompt, setCustomPrompt] = useState<string>('');
+    const [customPrompt, setCustomPrompt] = useState<string>(''); // For regeneration modal
+    const [additionalPrompt, setAdditionalPrompt] = useState<string>(''); // For initial generation
+    const [aspectRatio, setAspectRatio] = useState<string>('1:1');
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [settings, setSettings] = useState({
         mainTitle: "Tự hào Việt Nam",
@@ -205,7 +207,7 @@ function App() {
 
         const processIdea = async (idea: string) => {
             try {
-                const resultUrl = await generatePatrioticImage(uploadedImage, idea);
+                const resultUrl = await generatePatrioticImage(uploadedImage, idea, additionalPrompt, aspectRatio);
                 setGeneratedImages(prev => ({
                     ...prev,
                     [idea]: { status: 'done', url: resultUrl },
@@ -254,8 +256,10 @@ function App() {
 
         setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'pending' } }));
 
+        const combinedPrompt = `${additionalPrompt} ${prompt}`.trim();
+
         try {
-            const resultUrl = await generatePatrioticImage(uploadedImage, idea, prompt);
+            const resultUrl = await generatePatrioticImage(uploadedImage, idea, combinedPrompt, aspectRatio);
             setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'done', url: resultUrl } }));
             setHistoricalImages(prev => [...prev, { idea, url: resultUrl }]);
         } catch (err) {
@@ -279,6 +283,8 @@ function App() {
         setGeneratedImages({});
         setSelectedIdeas([]);
         setHistoricalImages([]);
+        setAdditionalPrompt('');
+        setAspectRatio('1:1');
         setAppState('idle');
     };
     
@@ -447,6 +453,38 @@ function App() {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                            
+                            <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
+                                <div>
+                                    <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung (tùy chọn)</label>
+                                    <textarea
+                                        id="additional-prompt"
+                                        value={additionalPrompt}
+                                        onChange={(e) => setAdditionalPrompt(e.target.value)}
+                                        placeholder="Ví dụ: tông màu ấm, phong cách phim xưa, thêm hoa sen..."
+                                        className="w-full h-20 p-3 bg-black/20 border border-white/10 rounded-lg text-neutral-200 placeholder-neutral-400 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
+                                        rows={2}
+                                        aria-label="Ghi chú bổ sung cho ảnh"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ ảnh</label>
+                                    <select
+                                        id="aspect-ratio"
+                                        value={aspectRatio}
+                                        onChange={(e) => setAspectRatio(e.target.value)}
+                                        className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-neutral-200 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all appearance-none"
+                                        aria-label="Chọn tỉ lệ ảnh"
+                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                                    >
+                                        <option value="1:1">Vuông (1:1)</option>
+                                        <option value="3:4">Chân dung (3:4)</option>
+                                        <option value="4:3">Ngang (4:3)</option>
+                                        <option value="9:16">Dọc - Story (9:16)</option>
+                                        <option value="16:9">Ngang - Rộng (16:9)</option>
+                                    </select>
                                 </div>
                             </div>
 
