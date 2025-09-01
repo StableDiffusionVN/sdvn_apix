@@ -76,8 +76,8 @@ interface HistoricalImage {
     url: string;
 }
 
-const primaryButtonClasses = "font-mali font-bold text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:bg-yellow-400";
-const secondaryButtonClasses = "font-mali font-bold text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
+const primaryButtonClasses = "base-font font-bold text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:bg-yellow-400";
+const secondaryButtonClasses = "base-font font-bold text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
 
 const useMediaQuery = (query: string) => {
     const [matches, setMatches] = useState(false);
@@ -383,8 +383,8 @@ function App() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
                 >
-                    <h1 className="text-6xl md:text-8xl font-asimovian font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{settings.mainTitle}</h1>
-                    <p className="font-playwrite-ca font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
+                    <h1 className="text-6xl md:text-8xl title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{settings.mainTitle}</h1>
+                    <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
                 </motion.div>
                 )}
                 </AnimatePresence>
@@ -398,7 +398,7 @@ function App() {
                              />
                         </label>
                         <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                        <p className="mt-8 font-mali font-bold text-neutral-300 text-center max-w-xs text-lg">
+                        <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-xs text-lg">
                             Nhấn vào ảnh polaroid để tải ảnh của bạn và bắt đầu hành trình sáng tạo.
                         </p>
                     </div>
@@ -418,12 +418,12 @@ function App() {
                          />
 
                         <div className="w-full max-w-4xl mx-auto text-center mt-4">
-                            <h2 className="font-mali font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
+                            <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
                             <p className="text-neutral-400 mb-4">Đã chọn: {selectedIdeas.length}/{settings.maxIdeas}</p>
                             <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 backdrop-blur-sm border border-white/10 rounded-lg space-y-6">
                                 {IDEAS_BY_CATEGORY.map(categoryObj => (
                                     <div key={categoryObj.category}>
-                                        <h3 className="text-xl font-mali font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 backdrop-blur-sm py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
+                                        <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 backdrop-blur-sm py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                             {categoryObj.ideas.map(p => {
                                                 const isSelected = selectedIdeas.includes(p);
@@ -431,7 +431,7 @@ function App() {
                                                     <button 
                                                         key={p}
                                                         onClick={() => handleIdeaSelect(p)}
-                                                        className={`font-mali font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
+                                                        className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
                                                             isSelected 
                                                             ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
                                                             : 'bg-white/10 text-neutral-300 hover:bg-white/20'
@@ -474,7 +474,7 @@ function App() {
                                     exit={{ opacity: 0, y: -20 }}
                                     transition={{ duration: 0.4 }}
                                 >
-                                    <h2 className="font-mali font-bold text-3xl text-neutral-100">Đây là kết quả của bạn!</h2>
+                                    <h2 className="base-font font-bold text-3xl text-neutral-100">Đây là kết quả của bạn!</h2>
                                     <p className="text-neutral-300 mt-1">Bạn có thể tạo lại từng ảnh hoặc tải về máy.</p>
                                 </motion.div>
                             )}
@@ -573,7 +573,7 @@ function App() {
                             onClick={(e) => e.stopPropagation()}
                             className="bg-neutral-800 border border-white/20 rounded-lg shadow-2xl p-6 w-full max-w-lg mx-auto flex flex-col gap-4"
                         >
-                            <h3 className="font-mali font-bold text-2xl text-yellow-400">Chỉnh sửa ảnh</h3>
+                            <h3 className="base-font font-bold text-2xl text-yellow-400">Chỉnh sửa ảnh</h3>
                             <p className="text-neutral-300">
                                 Thêm yêu cầu để tinh chỉnh ảnh <span className="font-bold text-white">"{modifyingIdea}"</span>.
                             </p>
