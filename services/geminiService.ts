@@ -11,13 +11,11 @@ import type { GenerateContentResponse } from "@google/genai";
  * Creates the primary prompt for the patriotic theme.
  * @param idea The creative idea (e.g., "Áo dài đỏ sao vàng").
  * @param customPrompt Optional additional instructions for modification.
- * @param aspectRatio Optional aspect ratio for the output image.
  * @returns The main prompt string.
  */
-function getPrimaryPrompt(idea: string, customPrompt?: string, aspectRatio?: string): string {
-    const ratioText = aspectRatio && aspectRatio !== '1:1' ? ` Tạo ảnh với tỉ lệ khung hình là ${aspectRatio}.` : '';
+function getPrimaryPrompt(idea: string, customPrompt?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu chỉnh sửa bổ sung: "${customPrompt}".` : '';
-    return `Tạo một bức ảnh chụp chân thật và tự nhiên của người trong ảnh gốc, trong bối cảnh "${idea}".${modificationText}${ratioText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải thể hiện được niềm tự hào dân tộc Việt Nam một cách sâu sắc. Ảnh phải có chất lượng cao, sắc nét, với tông màu đỏ của quốc kỳ làm chủ đạo nhưng vẫn giữ được sự hài hòa, tự nhiên. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
+    return `Tạo một bức ảnh chụp chân thật và tự nhiên của người trong ảnh gốc, trong bối cảnh "${idea}".${modificationText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải thể hiện được niềm tự hào dân tộc Việt Nam một cách sâu sắc. Ảnh phải có chất lượng cao, sắc nét, với tông màu đỏ của quốc kỳ làm chủ đạo nhưng vẫn giữ được sự hài hòa, tự nhiên. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
 }
 
 
@@ -25,13 +23,11 @@ function getPrimaryPrompt(idea: string, customPrompt?: string, aspectRatio?: str
  * Creates a fallback prompt to use when the primary one is blocked.
  * @param idea The creative idea (e.g., "Áo dài đỏ sao vàng").
  * @param customPrompt Optional additional instructions for modification.
- * @param aspectRatio Optional aspect ratio for the output image.
  * @returns The fallback prompt string.
  */
-function getFallbackPrompt(idea: string, customPrompt?: string, aspectRatio?: string): string {
-    const ratioText = aspectRatio && aspectRatio !== '1:1' ? ` Tỉ lệ khung hình của ảnh là ${aspectRatio}.` : '';
+function getFallbackPrompt(idea: string, customPrompt?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu bổ sung: "${customPrompt}".` : '';
-    return `Tạo một bức ảnh chụp chân dung của người trong ảnh này với chủ đề "${idea}".${modificationText}${ratioText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
+    return `Tạo một bức ảnh chụp chân dung của người trong ảnh này với chủ đề "${idea}".${modificationText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
 }
 
 /**
@@ -102,10 +98,9 @@ async function callGeminiWithRetry(imagePart: object, textPart: object): Promise
  * @param imageDataUrl A data URL string of the source image (e.g., 'data:image/png;base64,...').
  * @param idea The creative idea string (e.g., "Áo dài đỏ sao vàng").
  * @param customPrompt Optional additional instructions for modification.
- * @param aspectRatio Optional aspect ratio for the output image.
  * @returns A promise that resolves to a base64-encoded image data URL of the generated image.
  */
-export async function generatePatrioticImage(imageDataUrl: string, idea: string, customPrompt?: string, aspectRatio?: string): Promise<string> {
+export async function generatePatrioticImage(imageDataUrl: string, idea: string, customPrompt?: string): Promise<string> {
   const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.*)$/);
   if (!match) {
     throw new Error("Invalid image data URL format. Expected 'data:image/...;base64,...'");
@@ -119,7 +114,7 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
     // --- First attempt with the original prompt ---
     try {
         console.log("Attempting generation with original prompt...");
-        const prompt = getPrimaryPrompt(idea, customPrompt, aspectRatio);
+        const prompt = getPrimaryPrompt(idea, customPrompt);
         const textPart = { text: prompt };
         const response = await callGeminiWithRetry(imagePart, textPart);
         return processGeminiResponse(response);
@@ -137,7 +132,7 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
             
             // --- Second attempt with the fallback prompt ---
             try {
-                const fallbackPrompt = getFallbackPrompt(idea, customPrompt, aspectRatio);
+                const fallbackPrompt = getFallbackPrompt(idea, customPrompt);
                 console.log(`Attempting generation with fallback prompt for ${idea}...`);
                 const fallbackTextPart = { text: fallbackPrompt };
                 const fallbackResponse = await callGeminiWithRetry(imagePart, fallbackTextPart);

@@ -120,7 +120,6 @@ function App() {
     const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
     const [customPrompt, setCustomPrompt] = useState<string>(''); // For regeneration modal
     const [additionalPrompt, setAdditionalPrompt] = useState<string>(''); // For initial generation
-    const [aspectRatio, setAspectRatio] = useState<string>('1:1');
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [settings, setSettings] = useState({
         mainTitle: "Tự hào Việt Nam",
@@ -207,7 +206,7 @@ function App() {
 
         const processIdea = async (idea: string) => {
             try {
-                const resultUrl = await generatePatrioticImage(uploadedImage, idea, additionalPrompt, aspectRatio);
+                const resultUrl = await generatePatrioticImage(uploadedImage, idea, additionalPrompt);
                 setGeneratedImages(prev => ({
                     ...prev,
                     [idea]: { status: 'done', url: resultUrl },
@@ -259,7 +258,7 @@ function App() {
         const combinedPrompt = `${additionalPrompt} ${prompt}`.trim();
 
         try {
-            const resultUrl = await generatePatrioticImage(uploadedImage, idea, combinedPrompt, aspectRatio);
+            const resultUrl = await generatePatrioticImage(uploadedImage, idea, combinedPrompt);
             setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'done', url: resultUrl } }));
             setHistoricalImages(prev => [...prev, { idea, url: resultUrl }]);
         } catch (err) {
@@ -284,7 +283,6 @@ function App() {
         setSelectedIdeas([]);
         setHistoricalImages([]);
         setAdditionalPrompt('');
-        setAspectRatio('1:1');
         setAppState('idle');
     };
     
@@ -468,23 +466,6 @@ function App() {
                                         rows={2}
                                         aria-label="Ghi chú bổ sung cho ảnh"
                                     />
-                                </div>
-                                <div>
-                                    <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ ảnh</label>
-                                    <select
-                                        id="aspect-ratio"
-                                        value={aspectRatio}
-                                        onChange={(e) => setAspectRatio(e.target.value)}
-                                        className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-neutral-200 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all appearance-none"
-                                        aria-label="Chọn tỉ lệ ảnh"
-                                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a3a3a3' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                                    >
-                                        <option value="1:1">Vuông (1:1)</option>
-                                        <option value="3:4">Chân dung (3:4)</option>
-                                        <option value="4:3">Ngang (4:3)</option>
-                                        <option value="9:16">Dọc - Story (9:16)</option>
-                                        <option value="16:9">Ngang - Rộng (16:9)</option>
-                                    </select>
                                 </div>
                             </div>
 
