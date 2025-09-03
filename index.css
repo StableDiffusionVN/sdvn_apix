@@ -1,12 +1,62 @@
 body {
+  font-family: 'Be Vietnam Pro', cursive;
+  transition: background-color 0.5s ease;
+  /* NEW: Add Polaroid theme variables */
+  --polaroid-bg-color: #450A0A;
+  --polaroid-placeholder-color: #b45309;
+  --footer-bg-color: rgba(0, 0, 0, 0.8);
+}
+
+.theme-sdvn {
+  background-color: #151523;
+  background-image: linear-gradient(to bottom, #5858e6, #151523);
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #1e1b4b; /* A deep indigo/purple */
+  --polaroid-placeholder-color: #a5b4fc; /* A soft, light indigo */
+  --footer-bg-color: rgba(30, 27, 75, 0.8);
+}
+
+.theme-vietnam {
   background-color: #8C1B17;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M50,5 L61.8,38.2 L98.2,38.2 L68.2,59.8 L79.6,92.7 L50,71.5 L20.4,92.7 L31.8,59.8 L1.8,38.2 L38.2,38.2 Z' fill='%23FFFF00' fill-opacity='0.15'/%3e%3c/svg%3e");
   background-position: center;
   background-repeat: no-repeat;
   background-size: 80vmin;
   background-attachment: fixed;
-  font-family: 'Mali', cursive;
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #450A0A; /* bg-red-950 */
+  --polaroid-placeholder-color: #b45309; /* text-yellow-700 */
+  --footer-bg-color: rgba(69, 10, 10, 0.8);
 }
+
+.theme-dark {
+  background-color: #111111;
+  background-image: none;
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #262626; /* neutral-800 */
+  --polaroid-placeholder-color: #a3a3a3; /* neutral-400 */
+  --footer-bg-color: rgba(20, 20, 20, 0.8);
+}
+
+.theme-dark-green {
+  background-color: #0c3b2e;
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.03) 75%, transparent 75%, transparent);
+  background-size: 20px 20px;
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #062f23; /* A very dark, deep green */
+  --polaroid-placeholder-color: #6ee7b7; /* A contrasting minty green */
+  --footer-bg-color: rgba(6, 47, 35, 0.8);
+}
+
+.theme-dark-blue {
+  background-color: #192A4C;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cg fill='%23ffffff' fill-opacity='0.1'%3e%3ccircle cx='10' cy='10' r='1'/%3e%3ccircle cx='30' cy='40' r='1'/%3e%3ccircle cx='50' cy='80' r='1'/%3e%3ccircle cx='70' cy='20' r='1'/%3e%3ccircle cx='90' cy='60' r='1'/%3e%3c/g%3e%3c/svg%3e");
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #172554; /* A deep navy blue */
+  --polaroid-placeholder-color: #93c5fd; /* A soft, light blue */
+  --footer-bg-color: rgba(23, 37, 84, 0.8);
+}
+
 
 .title-font {
   font-family: 'Asimovian', sans-serif;
@@ -16,4 +66,545 @@ body {
 }
 .base-font {
   font-family: "Be Vietnam Pro", sans-serif;
+}
+
+/* === NEW: Centralized Component Styles === */
+
+/* --- Footer Theming --- */
+.footer-themed-bg {
+  background-color: var(--footer-bg-color);
+  transition: background-color 0.5s ease;
+}
+
+/* --- Buttons --- */
+.btn {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem; /* text-xl */
+  text-align: center;
+  padding: 0.75rem 2rem; /* py-3 px-8 */
+  border-radius: 0.125rem; /* rounded-sm */
+  transition-property: transform;
+  transition-duration: 200ms;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  color: black;
+  background-color: #FBBF24; /* bg-yellow-400 */
+  box-shadow: 2px 2px 0px 2px rgba(0,0,0,0.2);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: scale(1.05) rotate(-2deg);
+  background-color: #FCD34D; /* hover:bg-yellow-300 */
+}
+.btn-primary:disabled:hover {
+  background-color: #FBBF24;
+}
+
+.btn-secondary {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(4px); /* backdrop-blur-sm */
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+.btn-secondary:hover:not(:disabled) {
+  transform: scale(1.05) rotate(2deg);
+  background-color: white;
+  color: black;
+}
+
+.btn-back {
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(4px); /* backdrop-blur-sm */
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem; /* py-2 px-4 */
+  border-radius: 9999px; /* rounded-full */
+  font-size: 0.875rem; /* text-sm */
+  transition-property: background-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.btn-back:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-search {
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 2.25rem; /* h-9, w-9 */
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 9999px; /* rounded-full */
+  transition: background-color 150ms;
+}
+
+.btn-search:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-gallery {
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 2.25rem; /* h-9, w-9 */
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 9999px; /* rounded-full */
+  transition: background-color 150ms, opacity 150ms, transform 150ms;
+}
+.btn-gallery:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.btn-gallery:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-sm {
+  padding: 0.5rem 1.5rem; /* !py-2 !px-6 */
+  font-size: 1rem; /* !text-base */
+}
+
+/* --- Home Screen App Card --- */
+.app-card {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(4px); /* backdrop-blur-sm */
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2rem; /* rounded-lg */
+  padding: 1.5rem; /* p-6 */
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: all 300ms;
+}
+
+@media (min-width: 640px) {
+  .app-card {
+    flex: 1 1 24rem;
+  }
+}
+
+.app-card:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+  border-color: rgba(251, 191, 36, 0.5); /* hover:border-yellow-400/50 */
+  transform: translateY(-0.5rem); /* hover:-translate-y-2 */
+}
+
+/* --- Forms (Selects, Textareas) --- */
+.form-input {
+  width: 100%;
+  padding: 0.75rem; /* p-3 */
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem; /* rounded-lg */
+  color: #E5E5E5; /* text-neutral-200 */
+  transition: all 150ms;
+}
+
+.form-input:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #FBBF24; /* focus:ring-2 focus:ring-yellow-400 */
+}
+
+.form-input::placeholder {
+  color: #A3A3A3; /* placeholder-neutral-400 */
+}
+
+/* --- Polaroid Card --- */
+.polaroid-card {
+  background-color: #F5F5F5; /* bg-neutral-100 */
+  padding: 1rem; /* !p-4 */
+  padding-bottom: 4rem; /* !pb-16 */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  max-width: 100%;
+  border-radius: 0.375rem; /* rounded-md */
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-lg */
+  position: relative;
+}
+
+.polaroid-image-container {
+  width: 100%;
+  background-color: var(--polaroid-bg-color); /* MODIFIED */
+  box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05); /* shadow-inner */
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 768px) { /* md */
+    .polaroid-image-container {
+        height: 18rem;
+        width: auto;
+    }
+    .polaroid-image-container.has-image {
+        height: 27rem; /* 18rem * 1.5 */
+    }
+}
+
+/* Placeholder styles using CSS variables */
+.placeholder-icon-wrapper {
+  color: var(--polaroid-placeholder-color);
+  opacity: 0.4;
+  transition: opacity 0.3s ease, color 0.5s ease;
+}
+
+.polaroid-image-container.group:hover .placeholder-icon-wrapper {
+  opacity: 0.6;
+}
+
+.polaroid-caption {
+  font-family: 'Playwrite CA', cursive;
+  font-weight: 700;
+  font-size: 1.125rem; /* text-lg */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-bottom: 0.25rem; /* pb-1 */
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: rgba(38, 38, 38, 0.75); /* bg-neutral-800 @ 75% */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1); /* shadow-2xl */
+  padding: 1.5rem; /* p-6 */
+  width: 100%;
+  max-width: 32rem; /* max-w-lg */
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* gap-4 */
+}
+
+.modal-textarea {
+  width: 100%;
+  height: 7rem; /* h-28 */
+  padding: 0.75rem; /* p-3 */
+  background-color: #171717; /* bg-neutral-900 */
+  border: 1px solid #404040; /* border-neutral-700 */
+  border-radius: 0.375rem; /* rounded-md */
+  color: #E5E5E5; /* text-neutral-200 */
+  transition: box-shadow 150ms;
+}
+.modal-textarea:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #FBBF24; /* focus:ring-2 focus:ring-yellow-400 */
+}
+.modal-textarea::placeholder {
+  color: #737373; /* placeholder-neutral-500 */
+}
+
+/* --- NEW: Results View Actions --- */
+.results-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+.results-actions > * { /* Target buttons, etc. */
+  width: 100%;
+}
+
+@media(min-width: 640px) { /* sm breakpoint */
+  .results-actions {
+    flex-direction: row;
+    width: auto;
+    padding: 0;
+  }
+  .results-actions > * {
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* --- Pagination Controls --- */
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* gap-4 */
+  color: #D4D4D4; /* text-neutral-300 */
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 600;
+}
+
+/* MODIFIED: Target only text buttons to avoid style conflicts with icon buttons */
+.pagination-nav button:not(.btn-search):not(.btn-gallery) {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem; /* py-2 px-4 */
+  border-radius: 9999px; /* rounded-full */
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600;
+  transition: background-color 150ms;
+}
+
+.pagination-nav button:not(.btn-search):not(.btn-gallery):hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.pagination-nav button:not(.btn-search):not(.btn-gallery):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- NEW: Searchable Dropdown --- */
+.searchable-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: #1f1f1f; /* Slightly lighter than pure black */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem; /* rounded-b-lg */
+  max-height: 15rem; /* max-h-60 */
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin-top: -0.5rem; /* Pull up to connect with input */
+  padding-top: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.searchable-dropdown-item {
+  padding: 0.5rem 0.75rem; /* py-2 px-3 */
+  cursor: pointer;
+  color: #E5E5E5; /* text-neutral-200 */
+  transition: background-color 150ms;
+}
+
+.searchable-dropdown-item:hover, .searchable-dropdown-item.is-highlighted {
+  background-color: rgba(251, 191, 36, 0.2); /* bg-yellow-400/20 */
+}
+
+/* --- NEW: Slider --- */
+.slider-container {
+  position: relative;
+  padding: 0.75rem 0; /* py-3 */
+}
+
+.slider-track {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 0.5rem; /* h-2 */
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 9999px; /* rounded-full */
+  outline: none;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+
+.slider-track::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.5rem; /* w-6 */
+  height: 1.5rem; /* h-6 */
+  background-color: #FBBF24; /* bg-yellow-400 */
+  border-radius: 9999px; /* rounded-full */
+  border: 3px solid #171717; /* border-neutral-900 */
+  box-shadow: 0 0 0 2px #FBBF24; /* ring-2 ring-yellow-400 */
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+}
+.slider-track::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.slider-track::-moz-range-thumb {
+  width: 1.5rem; /* w-6 */
+  height: 1.5rem; /* h-6 */
+  background-color: #FBBF24; /* bg-yellow-400 */
+  border-radius: 9999px; /* rounded-full */
+  border: 3px solid #171717; /* border-neutral-900 */
+  box-shadow: 0 0 0 2px #FBBF24; /* ring-2 ring-yellow-400 */
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+}
+.slider-track::-moz-range-thumb:hover {
+    transform: scale(1.1);
+}
+
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.75rem; /* mt-3 */
+  padding: 0 0.5rem; /* px-2 to align with thumb edges */
+}
+
+.slider-label {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-size: 0.75rem; /* text-xs */
+  color: #a3a3a3; /* text-neutral-400 */
+  text-align: center;
+  flex: 1;
+  font-weight: 500;
+  transition: color 0.2s, font-weight 0.2s;
+}
+
+.slider-label-active {
+  color: #FBBF24; /* text-yellow-400 */
+  font-weight: 700;
+}
+
+/* --- NEW: Gallery Modal (Pinterest Layout) --- */
+.gallery-grid {
+  flex-grow: 1;
+  overflow-y: auto;
+  column-count: 2; /* Default for mobile */
+  column-gap: 0.75rem; /* gap-3 */
+  padding: 0.25rem;
+}
+@media(min-width: 640px) { .gallery-grid { column-count: 3; } }
+@media(min-width: 1024px) { .gallery-grid { column-count: 4; } }
+@media(min-width: 1280px) { .gallery-grid { column-count: 5; } }
+
+.gallery-grid-item {
+  break-inside: avoid;
+  margin-bottom: 0.75rem; /* Vertical gap */
+  border-radius: 0.25rem; /* rounded-sm */
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.gallery-grid-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5); /* shadow-lg shadow-yellow-400/50 */
+}
+.gallery-grid-item img {
+  width: 100%;
+  height: auto; /* Allow natural aspect ratio */
+  display: block; /* Remove any bottom space */
+}
+
+/* --- NEW: Gallery Lightbox --- */
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gallery-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0,0,0,0.85);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.gallery-lightbox-img {
+  position: relative;
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5); /* shadow-2xl */
+}
+.gallery-nav-btn {
+  position: absolute;
+  z-index: 110;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 3rem; /* w-12 */
+  height: 3rem; /* h-12 */
+  border-radius: 9999px; /* rounded-full */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+.gallery-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.gallery-nav-btn.prev {
+  left: 1rem;
+}
+.gallery-nav-btn.next {
+  right: 1rem;
+}
+.gallery-nav-btn.close {
+  top: 1rem;
+  right: 1rem;
+  transform: none;
+}
+.gallery-lightbox-actions {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
 }

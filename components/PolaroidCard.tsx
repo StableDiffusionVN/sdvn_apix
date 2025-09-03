@@ -15,6 +15,7 @@ interface PolaroidCardProps {
     onShake?: (caption: string) => void;
     onDownload?: (caption: string) => void;
     isMobile?: boolean;
+    placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
 }
 
 const LoadingSpinner = () => (
@@ -26,30 +27,65 @@ const LoadingSpinner = () => (
     </div>
 );
 
-const ErrorDisplay = () => (
-    <div className="flex items-center justify-center h-full">
-         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+const ErrorDisplay = ({ message }: { message?: string }) => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-400 mb-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
+        {message && <p className="text-sm text-red-300 max-w-full break-words base-font">{message}</p>}
     </div>
 );
 
-const Placeholder = () => (
-    <div className="flex items-center justify-center h-full text-yellow-700 opacity-40 group-hover:opacity-60 transition-opacity duration-300 p-8">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-    </div>
-);
+const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style' }) => {
+    const icons = {
+        person: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+        ),
+        architecture: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+            </svg>
+        ),
+        clothing: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+            </svg>
+        ),
+        magic: (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+            </svg>
+        ),
+        style: (
+             <svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h5.25m5.25-.75L17.25 9m0 0L21 12.75M17.25 9v12" />
+            </svg>
+        ),
+    };
 
-
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, isMobile }) => {
     return (
-        <div className="bg-neutral-100 dark:bg-neutral-100 !p-4 !pb-16 flex flex-col items-center justify-start aspect-[3/4] w-80 max-w-full rounded-md shadow-lg relative">
-            <div className="w-full bg-red-950 shadow-inner flex-grow relative overflow-hidden group">
+        <div className="flex items-center justify-center h-full p-8 placeholder-icon-wrapper">
+            {icons[type]}
+        </div>
+    );
+};
+
+
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, isMobile, placeholderType = 'person' }) => {
+    const hasImage = status === 'done' && imageUrl;
+
+    return (
+        <div className="polaroid-card">
+            <div className={cn(
+                "polaroid-image-container group",
+                !hasImage && 'aspect-square',
+                hasImage && 'has-image'
+            )}>
                 {status === 'pending' && <LoadingSpinner />}
-                {status === 'error' && <ErrorDisplay />}
-                {status === 'done' && imageUrl && (
+                {status === 'error' && <ErrorDisplay message={error} />}
+                {hasImage && (
                     <>
                         <div className={cn(
                             "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
@@ -89,15 +125,15 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                             key={imageUrl}
                             src={imageUrl}
                             alt={caption}
-                            className="w-full h-full object-cover"
+                            className="w-full h-auto md:w-auto md:h-full block"
                         />
                     </>
                 )}
-                {status === 'done' && !imageUrl && <Placeholder />}
+                {status === 'done' && !imageUrl && <Placeholder type={placeholderType} />}
             </div>
             <div className="absolute bottom-4 left-4 right-4 text-center px-2">
                 <p className={cn(
-                    "sub-title-font font-bold text-lg truncate pb-1",
+                    "polaroid-caption",
                     status === 'done' && imageUrl ? 'text-black' : 'text-neutral-800'
                 )}>
                     {caption}

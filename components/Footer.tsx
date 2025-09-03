@@ -4,24 +4,62 @@
 */
 import React from 'react';
 
-const Footer = () => {
+type Theme = 'sdvn' | 'vietnam' | 'dark' | 'dark-green' | 'dark-blue';
+
+interface FooterProps {
+    theme: Theme;
+    onThemeChange: (theme: Theme) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ theme, onThemeChange }) => {
     return (
-        <footer className="base-font fixed bottom-0 left-0 right-0 bg-black/50 p-3 z-50 text-neutral-300 text-xs sm:text-sm border-t border-white/10">
-            <div className="max-w-screen-xl mx-auto flex justify-center items-center gap-4 px-4">
-                <div className="flex items-center gap-4 text-neutral-500 whitespace-nowrap">
-                    <p>Trang web được phát triển bởi Gemini</p>
-                    <span className="text-neutral-700 hidden md:inline" aria-hidden="true">|</span>
-                    <p className="hidden md:inline">
-                        Tạo bởi{' '}
-                        <a
-                            href="https://www.facebook.com/phamhungd"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-400 hover:text-yellow-400 transition-colors duration-200"
+        <footer className="base-font fixed bottom-0 left-0 right-0 footer-themed-bg p-3 z-50 text-neutral-300 text-xs sm:text-sm border-t border-white/10">
+            <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-2 sm:gap-4 px-4">
+                <div className="text-neutral-400 whitespace-nowrap"> 
+                    <a
+                        href="http://sdvn.vn/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-yellow-400 transition-colors duration-200"
+                    >
+                        Cộng đồng AI Art Việt Nam | ©sdvn.vn
+                    </a>
+                </div>
+                <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="theme-select" className="text-neutral-400 whitespace-nowrap">Giao diện:</label>
+                        <select
+                            id="theme-select"
+                            value={theme}
+                            onChange={(e) => onThemeChange(e.target.value as Theme)}
+                            className="bg-black/40 border border-white/20 rounded-md px-2 py-1 text-neutral-200 focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                            aria-label="Chọn giao diện nền"
                         >
-                            @phamhungd
-                        </a>
-                    </p>
+                            <option value="sdvn">SDVN</option>
+                            <option value="vietnam">Việt Nam</option>
+                            <option value="dark">Đen Huyền Bí</option>
+                            <option value="dark-green">Xanh Lục Đậm</option>
+                            <option value="dark-blue">Xanh Dương Đậm</option>
+                        </select>
+                    </div>
+                     <a
+                        href="https://stablediffusion.vn/gop-y/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-black/40 border border-white/20 rounded-md px-3 py-1 text-neutral-200 focus:ring-2 focus:ring-yellow-400 focus:outline-none hover:bg-black/60 transition-colors"
+                        aria-label="Gửi góp ý"
+                    >
+                        Góp ý
+                    </a>
+                     <a
+                        href="https://stablediffusion.vn/donate/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-black/40 border border-white/20 rounded-md px-3 py-1 text-neutral-200 focus:ring-2 focus:ring-yellow-400 focus:outline-none hover:bg-black/60 transition-colors"
+                        aria-label="Donate"
+                    >
+                        Donate
+                    </a>
                 </div>
             </div>
         </footer>

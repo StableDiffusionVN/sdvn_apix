@@ -1,6 +1,144 @@
 {
-  "mainTitle": "Tự hào Việt Nam",
-  "subtitle": "Tạo avatar yêu nước chỉ với vài bước đơn giản",
-  "minIdeas": 1,
-  "maxIdeas": 6
+  "home": {
+    "mainTitle": "aPix",
+    "subtitle": "Hãy chọn ứng dụng và bắt đầu sáng tạo",
+    "useSmartTitleWrapping": false,
+    "smartTitleWrapWords": 2
+  },
+  "apps": [
+    {
+      "id": "free-generation",
+      "title": "Tạo ảnh tự do",
+      "description": "Tạo ảnh mới từ văn bản hoặc chỉnh sửa ảnh tải lên bằng prompt của riêng bạn.",
+      "icon": "🚀"
+    },
+    {
+      "id": "toy-model-creator",
+      "title": "Tạo mô hình đồ chơi",
+      "description": "Biến đối tượng trong ảnh của bạn thành một mô hình đồ chơi đặt trên bàn làm việc.",
+      "icon": "🤖"
+    },
+    {
+      "id": "avatar-creator",
+      "title": "Tạo avatar yêu nước",
+      "description": "Biến ảnh chân dung của bạn thành một tác phẩm nghệ thuật thể hiện niềm tự hào dân tộc.",
+      "icon": "🇻🇳"
+    },
+    {
+      "id": "architecture-ideator",
+      "title": "Lên ý tưởng kiến trúc",
+      "description": "Biến các ảnh phác thảo kiến trúc (vẽ tay, sketch, 3D) thành ảnh thật, sống động.",
+      "icon": "🏛️"
+    },
+    {
+      "id": "dress-the-model",
+      "title": "Mặc trang phục cho mẫu",
+      "description": "Thử trang phục mới cho người mẫu từ ảnh của bạn, giữ nguyên khuôn mặt và vóc dáng.",
+      "icon": "👗"
+    },
+    {
+      "id": "photo-restoration",
+      "title": "Phục chế ảnh cũ",
+      "description": "Phục hồi màu sắc và chi tiết cho những bức ảnh cũ, bị hư hỏng, mang ký ức trở lại.",
+      "icon": "🖼️"
+    },
+    {
+      "id": "image-to-real",
+      "title": "Chuyển đổi sang ảnh thật",
+      "description": "Biến ảnh vẽ, hoạt hình, hoặc bất kỳ phong cách nào thành một bức ảnh chân thực.",
+      "icon": "✨"
+    },
+    {
+      "id": "swap-style",
+      "title": "Thay đổi phong cách ảnh",
+      "description": "Biến đổi ảnh của bạn theo hàng trăm phong cách nghệ thuật độc đáo khác nhau.",
+      "icon": "🎨"
+    },
+    {
+      "id": "mix-style",
+      "title": "Trộn phong cách ảnh",
+      "description": "Kết hợp nội dung của một ảnh với phong cách nghệ thuật của một ảnh khác.",
+      "icon": "🎭"
+    }
+  ],
+  "avatarCreator": {
+    "mainTitle": "Tạo Avatar Yêu Nước",
+    "subtitle": "Chọn ảnh và ý tưởng để bắt đầu",
+    "minIdeas": 1,
+    "maxIdeas": 6,
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaption": "Tải ảnh của bạn",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo"
+  },
+  "architectureIdeator": {
+    "mainTitle": "Lên ý tưởng kiến trúc",
+    "subtitle": "Biến phác thảo của bạn thành hiện thực",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaption": "Tải ảnh phác thảo",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải lên bản vẽ, hoặc ảnh 3D"
+  },
+  "dressTheModel": {
+    "mainTitle": "Mặc Trang Phục Cho Mẫu",
+    "subtitle": "Tải ảnh người mẫu và trang phục để bắt đầu",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaptionModel": "Tải ảnh người mẫu",
+    "uploaderDescriptionModel": "Ảnh chân dung hoặc toàn thân, rõ mặt",
+    "uploaderCaptionClothing": "Tải ảnh trang phục",
+    "uploaderDescriptionClothing": "Ảnh sản phẩm rõ ràng, chính diện"
+  },
+  "photoRestoration": {
+    "mainTitle": "Phục Chế Ảnh Cũ",
+    "subtitle": "Tải lên bức ảnh cần phục chế để bắt đầu",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaption": "Tải ảnh cũ",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh cần phục chế, sửa chữa"
+  },
+  "imageToReal": {
+    "mainTitle": "Chuyển Đổi Sang Ảnh Thật",
+    "subtitle": "Tải lên bất kỳ ảnh nào để biến nó thành ảnh thật",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 3,
+    "uploaderCaption": "Tải ảnh gốc",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh vẽ, 3D, hoạt hình..."
+  },
+  "swapStyle": {
+    "mainTitle": "Thay Đổi Phong Cách Ảnh",
+    "subtitle": "Tải ảnh và chọn một phong cách để biến đổi",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 3,
+    "uploaderCaption": "Tải ảnh gốc",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh cần thay đổi phong cách"
+  },
+  "mixStyle": {
+    "mainTitle": "Trộn Phong Cách Ảnh",
+    "subtitle": "Tải ảnh nội dung và ảnh phong cách để bắt đầu",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 3,
+    "uploaderCaptionContent": "Ảnh nội dung",
+    "uploaderDescriptionContent": "Ảnh chứa chủ thể và bố cục chính",
+    "uploaderCaptionStyle": "Ảnh phong cách",
+    "uploaderDescriptionStyle": "Ảnh chứa màu sắc, kết cấu để tham khảo"
+  },
+  "freeGeneration": {
+    "mainTitle": "Tạo Ảnh Tự Do",
+    "subtitle": "Giải phóng sức sáng tạo của bạn với prompt",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaption1": "Tải ảnh 1 (tùy chọn)",
+    "uploaderDescription1": "Ảnh để chỉnh sửa hoặc làm nguồn cảm hứng",
+    "uploaderCaption2": "Tải ảnh 2 (tùy chọn)",
+    "uploaderDescription2": "Ảnh thứ hai để kết hợp hoặc tham chiếu"
+  },
+  "toyModelCreator": {
+    "mainTitle": "Tạo Mô Hình Đồ Chơi",
+    "subtitle": "Tải lên ảnh một nhân vật hoặc vật thể để bắt đầu",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaption": "Tải ảnh gốc",
+    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh nhân vật, vật thể..."
+  }
 }

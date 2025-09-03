@@ -2,133 +2,202 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generatePatrioticImage } from './services/geminiService';
-import PolaroidCard from './components/PolaroidCard';
+
 import Footer from './components/Footer';
-
-// Declare JSZip for creating zip files
-declare const JSZip: any;
-
-
-const IDEAS_BY_CATEGORY = [
-    {
-        category: "Khoảnh Khắc Tự Hào",
-        ideas: [
-            'Tung bay tà áo dài và lá cờ đỏ',
-            'Nụ cười rạng rỡ bên lá cờ Tổ quốc',
-            'Chào cờ trang nghiêm ở Quảng trường Ba Đình',
-            'Ánh mắt tự hào hướng về lá cờ',
-            'Dạo bước trên con đường cờ hoa rực rỡ',
-            'Tự tin check-in tại Cột cờ Lũng Cú',
-            'Tay trong tay cùng người lính hải quân',
-            'Vẻ đẹp kiêu hãnh trước Lăng Bác',
-            'Giọt lệ hạnh phúc khi quốc ca vang lên',
-            'Gửi gắm tình yêu nơi cột mốc Trường Sa',
-            'Thiếu nữ với bó hoa sen và cờ đỏ',
-            'Vẫy cao lá cờ chiến thắng',
-            'Gia đình nhỏ bên lá cờ Tổ quốc',
-            'Khoảnh khắc đời thường dưới bóng cờ',
-            'Áo dài đỏ tung bay trên phố cổ'
-        ],
-    },
-    {
-        category: "Biểu tượng & Văn hóa",
-        ideas: ['Áo dài đỏ sao vàng', 'Bên cạnh hoa sen hồng', 'Họa tiết trống đồng Đông Sơn', 'Đội nón lá truyền thống', 'Vẽ mặt hình cờ đỏ sao vàng', 'Cầm cành đào ngày Tết', 'Bên cạnh cây mai vàng', 'Áo dài trắng nữ sinh', 'Múa lân sư rồng', 'Chơi đàn T\'rưng', 'Thả đèn hoa đăng', 'Nghệ nhân gốm Bát Tràng', 'Vẻ đẹp thiếu nữ bên khung cửi', 'Cầm lồng đèn Trung Thu', 'Nghệ thuật múa rối nước'],
-    },
-    {
-        category: "Lịch sử & Anh hùng",
-        ideas: ['Chiến sĩ Điện Biên Phủ', 'Nữ tướng Hai Bà Trưng', 'Vua Hùng dựng nước', 'Thanh niên xung phong', 'Chiến sĩ hải quân Trường Sa', 'Anh bộ đội Cụ Hồ', 'Du kích trong rừng', 'Cô gái mở đường', 'Tinh thần bất khuất thời Trần', 'Hình tượng Thánh Gióng', 'Nữ anh hùng Võ Thị Sáu', 'Chân dung thời bao cấp', 'Chiến sĩ giải phóng quân', 'Dân công hỏa tuyến', 'Người lính biên phòng'],
-    },
-    {
-        category: "Phong cảnh & Địa danh",
-        ideas: ['Giữa ruộng bậc thang Sapa', 'Trên thuyền ở Vịnh Hạ Long', 'Đứng trước Hồ Gươm, cầu Thê Húc', 'Khám phá hang Sơn Đoòng', 'Cánh đồng lúa chín vàng', 'Vẻ đẹp cao nguyên đá Hà Giang', 'Hoàng hôn trên phá Tam Giang', 'Biển xanh Phú Quốc', 'Chèo thuyền ở Tràng An, Ninh Bình', 'Đi giữa phố cổ Hội An', 'Cột cờ Lũng Cú', 'Dinh Độc Lập lịch sử', 'Nhà thờ Đức Bà Sài Gòn', 'Bên dòng sông Mekong', 'Vẻ đẹp Đà Lạt mộng mơ'],
-    },
-    {
-        category: "Ẩm thực & Đời sống",
-        ideas: ['Thưởng thức Phở Hà Nội', 'Uống cà phê sữa đá Sài Gòn', 'Gói bánh chưng ngày Tết', 'Gánh hàng rong phố cổ', 'Ăn bánh mì vỉa hè', 'Không khí chợ nổi Cái Răng', 'Làm nón lá', 'Người nông dân trên đồng', 'Ngư dân kéo lưới', 'Gia đình sum vầy', 'Bên xe máy Dream huyền thoại', 'Uống trà đá vỉa hè', 'Bữa cơm gia đình Việt', 'Làm muối ở Hòn Khói', 'Trồng cây cà phê Tây Nguyên'],
-    },
-    {
-        category: "Nghệ thuật & Sáng tạo",
-        ideas: ['Phong cách tranh cổ động', 'Phong cách tranh sơn mài', 'Họa tiết gốm Chu Đậu', 'Nét vẽ tranh Đông Hồ', 'Ánh sáng từ đèn lồng Hội An', 'Nghệ thuật thư pháp', 'Họa tiết thổ cẩm Tây Bắc', 'Phong cách ảnh phim xưa', 'Nghệ thuật điêu khắc Chăm Pa', 'Vẻ đẹp tranh lụa', 'Phong cách Cyberpunk Sài Gòn', 'Hòa mình vào dải ngân hà', 'Họa tiết rồng thời Lý', 'Ánh sáng neon hiện đại', 'Phong cách Low-poly'],
-    },
-    {
-        category: "Thể thao & Tự hào",
-        ideas: ['Cổ động viên bóng đá cuồng nhiệt', 'Khoảnh khắc nâng cúp vàng', 'Vận động viên SEA Games', 'Tay đua xe đạp', 'Võ sĩ Vovinam', 'Cầu thủ bóng đá chuyên nghiệp', 'Niềm vui chiến thắng', 'Đi bão sau trận thắng', 'Vận động viên điền kinh', 'Tinh thần thể thao Olympic', 'Tay vợt cầu lông', 'Nữ vận động viên wushu', 'Cờ đỏ trên khán đài', 'Vận động viên bơi lội', 'Huy chương vàng tự hào'],
-    },
-    {
-        category: "Tương lai & Khoa học",
-        ideas: ['Phi hành gia cắm cờ Việt Nam', 'Nhà khoa học trong phòng thí nghiệm', 'Kỹ sư công nghệ tương lai', 'Thành phố thông minh', 'Nông nghiệp công nghệ cao', 'Bác sĩ robot y tế', 'Năng lượng mặt trời Việt Nam', 'Khám phá đại dương', 'Chuyên gia trí tuệ nhân tạo', 'Kiến trúc sư công trình xanh'],
-    },
-];
+import Home from './components/Home';
+import ArchitectureIdeator from './components/ArchitectureIdeator';
+import AvatarCreator from './components/AvatarCreator';
+import DressTheModel from './components/DressTheModel';
+import PhotoRestoration from './components/PhotoRestoration';
+import ImageToReal from './components/ImageToReal';
+import SwapStyle from './components/SwapStyle';
+import MixStyle from './components/MixStyle';
+import FreeGeneration from './components/FreeGeneration';
+import ToyModelCreator from './components/ToyModelCreator';
+import SearchModal from './components/SearchModal';
+import GalleryModal from './components/GalleryModal';
+import {
+    renderSmartlyWrappedTitle,
+    type AnyAppState,
+    type HomeState,
+    type ArchitectureIdeatorState,
+    type AvatarCreatorState,
+    type DressTheModelState,
+    type PhotoRestorationState,
+    type ImageToRealState,
+    type SwapStyleState,
+    type MixStyleState,
+    type FreeGenerationState,
+    type ToyModelCreatorState,
+    getInitialStateForApp,
+} from './components/uiUtils';
 
 
-type ImageStatus = 'pending' | 'done' | 'error';
-interface GeneratedImage {
-    status: ImageStatus;
-    url?: string;
-    error?: string;
+interface AppConfig {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
 }
 
-interface HistoricalImage {
-    idea: string;
-    url: string;
-}
+type HomeView = { viewId: 'home'; state: HomeState };
+type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
+type AvatarCreatorView = { viewId: 'avatar-creator'; state: AvatarCreatorState };
+type DressTheModelView = { viewId: 'dress-the-model'; state: DressTheModelState };
+type PhotoRestorationView = { viewId: 'photo-restoration'; state: PhotoRestorationState };
+type ImageToRealView = { viewId: 'image-to-real'; state: ImageToRealState };
+type SwapStyleView = { viewId: 'swap-style'; state: SwapStyleState };
+type MixStyleView = { viewId: 'mix-style'; state: MixStyleState };
+type FreeGenerationView = { viewId: 'free-generation'; state: FreeGenerationState };
+type ToyModelCreatorView = { viewId: 'toy-model-creator'; state: ToyModelCreatorState };
 
-const primaryButtonClasses = "base-font font-bold text-xl text-center text-black bg-yellow-400 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:-rotate-2 hover:bg-yellow-300 shadow-[2px_2px_0px_2px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:bg-yellow-400";
-const secondaryButtonClasses = "base-font font-bold text-xl text-center text-white bg-white/10 backdrop-blur-sm border-2 border-white/80 py-3 px-8 rounded-sm transform transition-transform duration-200 hover:scale-105 hover:rotate-2 hover:bg-white hover:text-black";
+type ViewState =
+  | HomeView
+  | ArchitectureIdeatorView
+  | AvatarCreatorView
+  | DressTheModelView
+  | PhotoRestorationView
+  | ImageToRealView
+  | SwapStyleView
+  | MixStyleView
+  | FreeGenerationView
+  | ToyModelCreatorView;
 
-const useMediaQuery = (query: string) => {
-    const [matches, setMatches] = useState(false);
-    useEffect(() => {
-        const media = window.matchMedia(query);
-        if (media.matches !== matches) {
-            setMatches(media.matches);
-        }
-        const listener = () => setMatches(media.matches);
-        window.addEventListener('resize', listener);
-        return () => window.removeEventListener('resize', listener);
-    }, [matches, query]);
-    return matches;
-};
 
-// Helper function to convert a data URL to a Blob
-const dataURLtoBlob = (dataurl: string) => {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) {
-        throw new Error('Invalid data URL');
-    }
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-};
+type Theme = 'sdvn' | 'vietnam' | 'dark' | 'dark-green' | 'dark-blue';
 
 function App() {
-    const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-    const [generatedImages, setGeneratedImages] = useState<Record<string, GeneratedImage>>({});
-    const [historicalImages, setHistoricalImages] = useState<HistoricalImage[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [appState, setAppState] = useState<'idle' | 'image-uploaded' | 'generating' | 'results-shown'>('idle');
-    const [selectedIdeas, setSelectedIdeas] = useState<string[]>([]);
-    const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
-    const [customPrompt, setCustomPrompt] = useState<string>(''); // For regeneration modal
-    const [additionalPrompt, setAdditionalPrompt] = useState<string>(''); // For initial generation
-    const isMobile = useMediaQuery('(max-width: 768px)');
+    const [viewHistory, setViewHistory] = useState<ViewState[]>([{ viewId: 'home', state: { stage: 'home' } }]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const currentView = viewHistory[historyIndex];
+    const [theme, setTheme] = useState<Theme>('vietnam');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
     const [settings, setSettings] = useState({
-        mainTitle: "Tự hào Việt Nam",
-        subtitle: "Tạo avatar thể hiện tình yêu đất nước.",
-        minIdeas: 1,
-        maxIdeas: 6
+        home: {
+            mainTitle: "Tự hào Việt Nam",
+            subtitle: "Hãy chọn ứng dụng và bắt đầu sáng tạo",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 2,
+        },
+        apps: [
+            {
+              id: 'avatar-creator',
+              title: 'Tạo avatar yêu nước',
+              description: 'Biến ảnh chân dung của bạn thành một tác phẩm nghệ thuật thể hiện niềm tự hào dân tộc.',
+              icon: '🇻🇳',
+            },
+            {
+              id: 'architecture-ideator',
+              title: 'Lên ý tưởng kiến trúc',
+              description: 'Biến các ảnh phác thảo kiến trúc (vẽ tay, sketch, 3D) thành ảnh thật, sống động.',
+              icon: '🏛️',
+            },
+            {
+              id: 'dress-the-model',
+              title: 'Mặc trang phục cho mẫu',
+              description: 'Thử trang phục mới cho người mẫu từ ảnh của bạn, giữ nguyên khuôn mặt và vóc dáng.',
+              icon: '👗',
+            }
+        ] as AppConfig[],
+        avatarCreator: {
+            mainTitle: "Tạo Avatar Yêu Nước",
+            subtitle: "Chọn ảnh và ý tưởng để bắt đầu",
+            minIdeas: 1,
+            maxIdeas: 6,
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 3,
+            uploaderCaption: "Tải ảnh của bạn",
+            uploaderDescription: "Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo",
+        },
+        architectureIdeator: {
+            mainTitle: "Lên ý tưởng kiến trúc",
+            subtitle: "Biến phác thảo của bạn thành hiện thực",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 2,
+            uploaderCaption: "Tải ảnh phác thảo",
+            uploaderDescription: "Nhấn vào khung ảnh để tải lên bản vẽ, sketch, hoặc ảnh 3D",
+        },
+        dressTheModel: {
+            mainTitle: "Mặc Trang Phục Cho Mẫu",
+            subtitle: "Tải ảnh người mẫu và trang phục để bắt đầu",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 4,
+            uploaderCaptionModel: "Tải ảnh người mẫu",
+            uploaderDescriptionModel: "Ảnh chân dung hoặc toàn thân, rõ mặt",
+            uploaderCaptionClothing: "Tải ảnh trang phục",
+            uploaderDescriptionClothing: "Ảnh sản phẩm rõ ràng, chính diện",
+        },
+        photoRestoration: {
+            mainTitle: "Phục Chế Ảnh Cũ",
+            subtitle: "Tải lên bức ảnh cần phục chế để bắt đầu",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 3,
+            uploaderCaption: "Tải ảnh cũ",
+            uploaderDescription: "Nhấn vào khung ảnh để tải lên ảnh cần phục chế, sửa chữa",
+        },
+        imageToReal: {
+            mainTitle: "Chuyển Đổi Sang Ảnh Thật",
+            subtitle: "Tải lên bất kỳ ảnh nào để biến nó thành ảnh thật",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 4,
+            uploaderCaption: "Tải ảnh gốc",
+            uploaderDescription: "Nhấn vào khung ảnh để tải lên ảnh vẽ, 3D, hoạt hình...",
+        },
+        swapStyle: {
+            mainTitle: "Thay Đổi Phong Cách Ảnh",
+            subtitle: "Tải ảnh và chọn một phong cách để biến đổi",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 4,
+            uploaderCaption: "Tải ảnh gốc",
+            uploaderDescription: "Nhấn vào khung ảnh để tải lên ảnh cần thay đổi phong cách"
+        },
+        mixStyle: {
+            mainTitle: "Trộn Phong Cách Ảnh",
+            subtitle: "Tải ảnh nội dung và ảnh phong cách để bắt đầu",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 3,
+            uploaderCaptionContent: "Ảnh nội dung",
+            uploaderDescriptionContent: "Ảnh chứa chủ thể và bố cục chính",
+            uploaderCaptionStyle: "Ảnh phong cách",
+            uploaderDescriptionStyle: "Ảnh chứa màu sắc, kết cấu để tham khảo"
+        },
+        freeGeneration: {
+            mainTitle: "Tạo Ảnh Tự Do",
+            subtitle: "Giải phóng sức sáng tạo của bạn với prompt",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 3,
+            uploaderCaption1: "Tải ảnh 1 (tùy chọn)",
+            uploaderDescription1: "Ảnh để chỉnh sửa hoặc làm nguồn cảm hứng",
+            uploaderCaption2: "Tải ảnh 2 (tùy chọn)",
+            uploaderDescription2: "Ảnh thứ hai để kết hợp hoặc tham chiếu"
+        },
+        toyModelCreator: {
+            mainTitle: "Tạo Mô Hình Đồ Chơi",
+            subtitle: "Tải lên ảnh một nhân vật hoặc vật thể để bắt đầu",
+            useSmartTitleWrapping: true,
+            smartTitleWrapWords: 4,
+            uploaderCaption: "Tải ảnh gốc",
+            uploaderDescription: "Nhấn vào khung ảnh để tải lên ảnh nhân vật, vật thể...",
+        }
     });
 
+    const addImagesToGallery = (newImages: string[]) => {
+        setSessionGalleryImages(prev => {
+            const uniqueNewImages = newImages.filter(img => !prev.includes(img));
+            return [...prev, ...uniqueNewImages];
+        });
+    };
+
     useEffect(() => {
+        const savedTheme = localStorage.getItem('app-theme') as Theme;
+        if (savedTheme && ['sdvn', 'vietnam', 'dark', 'dark-green', 'dark-blue'].includes(savedTheme)) {
+            setTheme(savedTheme);
+        }
+
         const fetchSettings = async () => {
             try {
                 const response = await fetch('/setting.json');
@@ -137,7 +206,19 @@ function App() {
                     return;
                 }
                 const data = await response.json();
-                setSettings(prevSettings => ({ ...prevSettings, ...data }));
+                setSettings(prevSettings => ({
+                    home: { ...prevSettings.home, ...data.home },
+                    apps: data.apps || prevSettings.apps,
+                    avatarCreator: { ...prevSettings.avatarCreator, ...data.avatarCreator },
+                    architectureIdeator: { ...prevSettings.architectureIdeator, ...data.architectureIdeator },
+                    dressTheModel: { ...prevSettings.dressTheModel, ...data.dressTheModel },
+                    photoRestoration: { ...prevSettings.photoRestoration, ...data.photoRestoration },
+                    imageToReal: { ...prevSettings.imageToReal, ...data.imageToReal },
+                    swapStyle: { ...prevSettings.swapStyle, ...data.swapStyle },
+                    mixStyle: { ...prevSettings.mixStyle, ...data.mixStyle },
+                    freeGeneration: { ...prevSettings.freeGeneration, ...data.freeGeneration },
+                    toyModelCreator: { ...prevSettings.toyModelCreator, ...data.toyModelCreator },
+                }));
             } catch (error) {
                 console.error("Failed to fetch or parse setting.json:", error);
             }
@@ -145,500 +226,285 @@ function App() {
         fetchSettings();
     }, []);
 
-    const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setUploadedImage(reader.result as string);
-                setAppState('image-uploaded');
-                setGeneratedImages({}); // Clear previous results
-                setSelectedIdeas([]); // Clear selected ideas
-                setHistoricalImages([]); // Clear history for new image
-            };
-            reader.readAsDataURL(file);
-        }
+    useEffect(() => {
+        document.body.classList.remove('theme-sdvn', 'theme-vietnam', 'theme-dark', 'theme-dark-green', 'theme-dark-blue');
+        document.body.classList.add(`theme-${theme}`);
+        localStorage.setItem('app-theme', theme);
+    }, [theme]);
+
+    const handleThemeChange = (newTheme: Theme) => {
+        setTheme(newTheme);
     };
 
-    const handleIdeaSelect = (idea: string) => {
-        setSelectedIdeas(prev => {
-            if (prev.includes(idea)) {
-                return prev.filter(p => p !== idea);
-            }
-            if (prev.length < settings.maxIdeas) {
-                return [...prev, idea];
-            }
-            return prev; // Do nothing if already max selected
-        });
-    };
-
-    const handleGenerateClick = async () => {
-        if (!uploadedImage || selectedIdeas.length < settings.minIdeas || selectedIdeas.length > settings.maxIdeas) return;
-        
-        setIsLoading(true);
-        setAppState('generating');
-        
-        const ideasToGenerate = selectedIdeas.filter(p => 
-            !generatedImages[p] || generatedImages[p].status !== 'done'
-        );
-
-        const finalImages = Object.keys(generatedImages)
-            .filter(p => selectedIdeas.includes(p))
-            .reduce((acc, key) => {
-                acc[key] = generatedImages[key];
-                return acc;
-            }, {} as Record<string, GeneratedImage>);
-
-        if (ideasToGenerate.length === 0) {
-            setGeneratedImages(finalImages);
-            setIsLoading(false);
-            setAppState('results-shown');
+    const navigateTo = (viewId: string) => {
+        const current = viewHistory[historyIndex];
+        const initialState = getInitialStateForApp(viewId);
+    
+        if (current.viewId === viewId && JSON.stringify(current.state) === JSON.stringify(initialState)) {
             return;
         }
+    
+        const newHistory = viewHistory.slice(0, historyIndex + 1);
+        newHistory.push({ viewId, state: initialState } as ViewState);
         
-        ideasToGenerate.forEach(idea => {
-            finalImages[idea] = { status: 'pending' };
-        });
-        setGeneratedImages(finalImages);
+        setViewHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    };
+    
+    const handleStateChange = (newAppState: AnyAppState) => {
+        const current = viewHistory[historyIndex];
+        if (JSON.stringify(current.state) === JSON.stringify(newAppState)) {
+            return; // No change
+        }
+    
+        const newHistory = viewHistory.slice(0, historyIndex + 1);
+        newHistory.push({ viewId: current.viewId, state: newAppState } as ViewState);
+    
+        setViewHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    };
 
-        const concurrencyLimit = 2;
-        const ideasQueue = [...ideasToGenerate];
+    const handleSelectApp = (appId: string) => {
+        const validAppIds = settings.apps.map(app => app.id);
+        if (validAppIds.includes(appId)) {
+            navigateTo(appId);
+        } else {
+            navigateTo('home');
+        }
+    };
 
-        const processIdea = async (idea: string) => {
-            try {
-                const resultUrl = await generatePatrioticImage(uploadedImage, idea, additionalPrompt);
-                setGeneratedImages(prev => ({
-                    ...prev,
-                    [idea]: { status: 'done', url: resultUrl },
-                }));
-                setHistoricalImages(prev => [...prev, { idea, url: resultUrl }]);
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-                if (errorMessage.includes("API key not valid")) {
-                    setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'error', error: "API Key không hợp lệ." } }));
-                } else {
-                    setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'error', error: errorMessage } }));
-                    console.error(`Failed to generate image for ${idea}:`, err);
-                }
-            }
+    const handleGoHome = () => {
+        navigateTo('home');
+    };
+
+    const handleGoBack = () => {
+        if (historyIndex > 0) {
+            setHistoryIndex(prev => prev - 1);
+        }
+    };
+    
+    const handleGoForward = () => {
+        if (historyIndex < viewHistory.length - 1) {
+            setHistoryIndex(prev => prev + 1);
+        }
+    };
+
+    const handleResetApp = () => {
+        const currentViewId = viewHistory[historyIndex].viewId;
+        if (currentViewId !== 'home') {
+            navigateTo(currentViewId);
+        }
+    };
+    
+    const handleOpenSearch = () => setIsSearchOpen(true);
+    const handleCloseSearch = () => setIsSearchOpen(false);
+    const handleOpenGallery = () => setIsGalleryOpen(true);
+    const handleCloseGallery = () => setIsGalleryOpen(false);
+
+
+    const renderContent = () => {
+        const motionProps = {
+            className: "w-full h-full flex-1 min-h-0",
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: -20 },
+            transition: { duration: 0.4 },
+        };
+        const commonProps = { 
+            addImagesToGallery,
+            onStateChange: handleStateChange,
+            onReset: handleResetApp,
+            onGoBack: handleGoBack,
         };
 
-        const workers = Array(concurrencyLimit).fill(null).map(async () => {
-            while (ideasQueue.length > 0) {
-                const idea = ideasQueue.shift();
-                if (idea) {
-                    await processIdea(idea);
-                }
-            }
-        });
-
-        await Promise.all(workers);
-
-        setIsLoading(false);
-        setAppState('results-shown');
-    };
-
-    const handleRegenerateIdea = (idea: string) => {
-        if (generatedImages[idea]?.status === 'pending') return;
-        setModifyingIdea(idea);
-        setCustomPrompt('');
-    };
-
-    const handleConfirmRegeneration = async () => {
-        if (!uploadedImage || !modifyingIdea) return;
-        
-        const idea = modifyingIdea;
-        const prompt = customPrompt;
-
-        setModifyingIdea(null);
-        setCustomPrompt('');
-
-        setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'pending' } }));
-
-        const combinedPrompt = `${additionalPrompt} ${prompt}`.trim();
-
-        try {
-            const resultUrl = await generatePatrioticImage(uploadedImage, idea, combinedPrompt);
-            setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'done', url: resultUrl } }));
-            setHistoricalImages(prev => [...prev, { idea, url: resultUrl }]);
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            if (errorMessage.includes("API key not valid")) {
-                setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'error', error: "API Key không hợp lệ." } }));
-            } else {
-                setGeneratedImages(prev => ({ ...prev, [idea]: { status: 'error', error: errorMessage } }));
-                console.error(`Failed to regenerate image for ${idea}:`, err);
-            }
+        switch (currentView.viewId) {
+            case 'home':
+                return (
+                    <Home 
+                        key="home"
+                        onSelectApp={handleSelectApp} 
+                        title={renderSmartlyWrappedTitle(settings.home.mainTitle, settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
+                        subtitle={settings.home.subtitle}
+                        apps={settings.apps}
+                    />
+                );
+            case 'free-generation':
+                 return (
+                    <motion.div key="free-generation" {...motionProps}>
+                        <FreeGeneration 
+                            {...settings.freeGeneration} 
+                            {...commonProps} 
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'architecture-ideator':
+                 return (
+                    <motion.div key="architecture-ideator" {...motionProps}>
+                        <ArchitectureIdeator 
+                            {...settings.architectureIdeator} 
+                            {...commonProps} 
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'dress-the-model':
+                return (
+                    <motion.div key="dress-the-model" {...motionProps}>
+                        <DressTheModel 
+                            {...settings.dressTheModel} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'photo-restoration':
+                return (
+                    <motion.div key="photo-restoration" {...motionProps}>
+                        <PhotoRestoration 
+                            {...settings.photoRestoration} 
+                            {...commonProps} 
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'image-to-real':
+                return (
+                    <motion.div key="image-to-real" {...motionProps}>
+                        <ImageToReal 
+                            {...settings.imageToReal} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'swap-style':
+                return (
+                    <motion.div key="swap-style" {...motionProps}>
+                        <SwapStyle 
+                            {...settings.swapStyle} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'mix-style':
+                return (
+                    <motion.div key="mix-style" {...motionProps}>
+                        <MixStyle 
+                            {...settings.mixStyle} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'toy-model-creator':
+                 return (
+                    <motion.div key="toy-model-creator" {...motionProps}>
+                        <ToyModelCreator 
+                            {...settings.toyModelCreator} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                );
+            case 'avatar-creator':
+                 return (
+                    <motion.div key="avatar-creator" {...motionProps}>
+                        <AvatarCreator 
+                            {...settings.avatarCreator} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                 );
+            default: // Fallback for any invalid view id in history
+                 return (
+                    <Home 
+                        key="home-fallback"
+                        onSelectApp={handleSelectApp} 
+                        title={renderSmartlyWrappedTitle(settings.home.mainTitle, settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
+                        subtitle={settings.home.subtitle}
+                        apps={settings.apps}
+                    />
+                 );
         }
     };
-    
-    const handleCancelRegeneration = () => {
-        setModifyingIdea(null);
-        setCustomPrompt('');
-    };
-    
-    const handleReset = () => {
-        setUploadedImage(null);
-        setGeneratedImages({});
-        setSelectedIdeas([]);
-        setHistoricalImages([]);
-        setAdditionalPrompt('');
-        setAppState('idle');
-    };
-    
-    const handleChooseOtherIdeas = () => {
-        setAppState('image-uploaded');
-    };
-
-    const handleDownloadIndividualImage = (idea: string) => {
-        const image = generatedImages[idea];
-        if (image?.status === 'done' && image.url) {
-            const link = document.createElement('a');
-            link.href = image.url;
-            link.download = `vietnamtrongtoi-${idea.replace(/\s+/g, '-').toLowerCase()}.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
-    const handleDownloadOriginalImage = () => {
-        if (uploadedImage) {
-            const link = document.createElement('a');
-            link.href = uploadedImage;
-            link.download = 'anh-goc.jpg';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
-    const handleDownloadAll = async () => {
-        if (!uploadedImage && historicalImages.length === 0) {
-            alert('Không có ảnh nào để tải về.');
-            return;
-        }
-
-        try {
-            const zip = new JSZip();
-            const inputFolder = zip.folder('input');
-            const outputFolder = zip.folder('output');
-            
-            if (uploadedImage && inputFolder) {
-                const blob = dataURLtoBlob(uploadedImage);
-                const fileExtension = blob.type.split('/')[1] || 'jpg';
-                inputFolder.file(`anh-goc.${fileExtension}`, blob);
-            }
-            
-            if (outputFolder && historicalImages.length > 0) {
-                const imageCounts: Record<string, number> = {};
-                for (const img of historicalImages) {
-                    const { idea, url } = img;
-                    const blob = dataURLtoBlob(url);
-                    const fileExtension = blob.type.split('/')[1] || 'jpg';
-                    const baseFileName = `vietnamtrongtoi-${idea.replace(/\s+/g, '-').toLowerCase()}`;
-                    
-                    imageCounts[idea] = (imageCounts[idea] || 0) + 1;
-                    
-                    const fileName = `${baseFileName}-${imageCounts[idea]}.${fileExtension}`;
-                    outputFolder.file(fileName, blob);
-                }
-            }
-
-            const content = await zip.generateAsync({ type: 'blob' });
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(content);
-            link.download = 'vietnamtrongtoi-results.zip';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-
-        } catch (error) {
-            console.error('Lỗi khi tạo file zip:', error);
-            alert('Đã xảy ra lỗi khi tạo file zip. Vui lòng thử lại.');
-        }
-    };
-
-    const getButtonText = () => {
-        if (isLoading) return 'Đang tạo...';
-        if (selectedIdeas.length < settings.minIdeas) return `Chọn ít nhất ${settings.minIdeas} ý tưởng`;
-        
-        const ideasToGenerateCount = selectedIdeas.filter(p => 
-            !generatedImages[p] || generatedImages[p].status !== 'done'
-        ).length;
-
-        if (ideasToGenerateCount === 0 && selectedIdeas.length > 0) {
-            return "Xem kết quả";
-        }
-
-        return `Tạo ảnh`;
-    };
-
-    // Logic to handle title wrapping for better responsive behavior
-    const titleWords = settings.mainTitle.split(' ');
-    let titleElement: React.ReactNode;
-    // If the title has more than 2 words, wrap the last two in a no-wrap span
-    // to encourage breaking before them, fulfilling the user's request.
-    if (titleWords.length > 2) {
-        const partToKeepTogether = titleWords.splice(-2).join(' ');
-        const firstPart = titleWords.join(' ');
-        titleElement = (
-            <>
-                {firstPart}{' '}
-                <span className="whitespace-nowrap">{partToKeepTogether}</span>
-            </>
-        );
-    } else {
-        titleElement = settings.mainTitle;
-    }
-
 
     return (
-        <main className="text-neutral-200 min-h-screen w-full overflow-x-hidden relative">
+        <main className="text-neutral-200 min-h-screen w-full relative">
             <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
-            <div className="relative z-10 w-full min-h-screen flex flex-col items-center justify-center p-4 pb-24">
-                <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
-                    <AnimatePresence>
-                    {appState !== 'generating' && appState !== 'results-shown' && (
-                    <motion.div 
-                        className="text-center mb-8 pt-12"
-                        initial={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <h1 className="text-6xl/[1.3] md:text-8xl/[1.3] title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{titleElement}</h1>
-                        <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{settings.subtitle}</p>
-                    </motion.div>
-                    )}
-                    </AnimatePresence>
-
-                    {appState === 'idle' && (
-                        <div className="flex flex-col items-center justify-center w-full">
-                            <label htmlFor="file-upload" className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-                                <PolaroidCard 
-                                    caption="Tải ảnh của bạn"
-                                    status="done"
-                                />
-                            </label>
-                            <input id="file-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                            <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-lg text-lg">
-                                Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo
-                            </p>
-                        </div>
-                    )}
-
-                    {appState === 'image-uploaded' && uploadedImage && (
-                        <motion.div 
-                            className="flex flex-col items-center gap-6 w-full"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5 }}
-                        >
-                            <PolaroidCard 
-                                imageUrl={uploadedImage} 
-                                caption="Ảnh của bạn" 
-                                status="done"
-                            />
-
-                            <div className="w-full max-w-4xl mx-auto text-center mt-4">
-                                <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {settings.minIdeas} đến {settings.maxIdeas} ý tưởng bạn muốn thử</h2>
-                                <p className="text-neutral-400 mb-4">Đã chọn: {selectedIdeas.length}/{settings.maxIdeas}</p>
-                                <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
-                                    {IDEAS_BY_CATEGORY.map(categoryObj => (
-                                        <div key={categoryObj.category}>
-                                            <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                                {categoryObj.ideas.map(p => {
-                                                    const isSelected = selectedIdeas.includes(p);
-                                                    return (
-                                                        <button 
-                                                            key={p}
-                                                            onClick={() => handleIdeaSelect(p)}
-                                                            className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
-                                                                isSelected 
-                                                                ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
-                                                                : 'bg-white/10 text-neutral-300 hover:bg-white/20'
-                                                            } ${!isSelected && selectedIdeas.length === settings.maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                            disabled={!isSelected && selectedIdeas.length === settings.maxIdeas}
-                                                        >
-                                                            {p}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
-                                <div>
-                                    <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung (tùy chọn)</label>
-                                    <textarea
-                                        id="additional-prompt"
-                                        value={additionalPrompt}
-                                        onChange={(e) => setAdditionalPrompt(e.target.value)}
-                                        placeholder="Ví dụ: tông màu ấm, phong cách phim xưa, thêm hoa sen..."
-                                        className="w-full h-20 p-3 bg-black/20 border border-white/10 rounded-lg text-neutral-200 placeholder-neutral-400 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-all"
-                                        rows={2}
-                                        aria-label="Ghi chú bổ sung cho ảnh"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 mt-4">
-                                <button onClick={handleReset} className={secondaryButtonClasses}>
-                                    Đổi ảnh khác
-                                </button>
-                                <button 
-                                    onClick={handleGenerateClick} 
-                                    className={primaryButtonClasses}
-                                    disabled={selectedIdeas.length < settings.minIdeas || selectedIdeas.length > settings.maxIdeas || isLoading}
-                                >
-                                    {getButtonText()}
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {(appState === 'generating' || appState === 'results-shown') && (
-                        <div className="w-full flex-1 flex flex-col items-center justify-center pt-12">
-                            <AnimatePresence>
-                                {appState === 'results-shown' && (
-                                    <motion.div
-                                        className="text-center"
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -20 }}
-                                        transition={{ duration: 0.4 }}
-                                    >
-                                        <h2 className="base-font font-bold text-3xl text-neutral-100">Đây là kết quả của bạn!</h2>
-                                        <p className="text-neutral-300 mt-1">Bạn có thể tạo lại từng ảnh hoặc tải về máy.</p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            <div className="w-full flex-1 flex items-center overflow-x-auto py-4">
-                                <motion.div
-                                    layout
-                                    className="flex flex-row flex-nowrap items-center justify-start gap-8 px-8 w-max mx-auto py-4"
-                                >
-                                    {uploadedImage && (
-                                        <motion.div
-                                            key="original-image"
-                                            initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                                            animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-                                            transition={{ type: 'spring', stiffness: 80, damping: 15, delay: -0.15 }}
-                                            whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
-                                        >
-                                            <PolaroidCard
-                                                caption="Ảnh gốc"
-                                                status="done"
-                                                imageUrl={uploadedImage}
-                                                onDownload={() => handleDownloadOriginalImage()}
-                                                isMobile={isMobile}
-                                            />
-                                        </motion.div>
-                                    )}
-                                    {selectedIdeas.map((idea, index) => {
-                                        return (
-                                            <motion.div
-                                                key={idea}
-                                                initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                                                animate={{
-                                                    opacity: 1,
-                                                    scale: 1,
-                                                    y: 0,
-                                                    rotate: 0,
-                                                }}
-                                                transition={{ type: 'spring', stiffness: 80, damping: 15, delay: index * 0.15 }}
-                                                whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
-                                            >
-                                                <PolaroidCard
-                                                    caption={idea}
-                                                    status={generatedImages[idea]?.status || 'pending'}
-                                                    imageUrl={generatedImages[idea]?.url}
-                                                    error={generatedImages[idea]?.error}
-                                                    onShake={handleRegenerateIdea}
-                                                    onDownload={handleDownloadIndividualImage}
-                                                    isMobile={isMobile}
-                                                />
-                                            </motion.div>
-                                        );
-                                    })}
-                                </motion.div>
-                            </div>
-
-                            <div className="h-28 flex items-center justify-center">
-                                {appState === 'results-shown' && (
-                                    <motion.div
-                                        className="flex flex-col sm:flex-row items-center gap-4"
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.5, duration: 0.5 }}
-                                    >
-                                        <button onClick={handleDownloadAll} className={primaryButtonClasses}>
-                                            Tải về tất cả
-                                        </button>
-                                        <button onClick={handleChooseOtherIdeas} className={secondaryButtonClasses}>
-                                            Chọn ý tưởng khác
-                                        </button>
-                                        <button onClick={handleReset} className={secondaryButtonClasses + ' !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white'}>
-                                            Bắt đầu lại
-                                        </button>
-                                    </motion.div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                <button
+                    onClick={handleGoHome}
+                    className="btn-search"
+                    aria-label="Trở về trang chủ"
+                    disabled={currentView.viewId === 'home'}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleGoBack}
+                    className="btn-search"
+                    aria-label="Quay lại"
+                    disabled={historyIndex <= 0}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15l-6-6m0 0l6-6m-6 6h13.5a5.5 5.5 0 010 11H10" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleGoForward}
+                    className="btn-search"
+                    aria-label="Tiến lên"
+                    disabled={historyIndex >= viewHistory.length - 1}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H6.5a5.5 5.5 0 000 11H10" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleOpenGallery}
+                    className="btn-gallery"
+                    aria-label="Mở thư viện ảnh"
+                    disabled={sessionGalleryImages.length === 0}
+                >
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleOpenSearch}
+                    className="btn-search"
+                    aria-label="Tìm kiếm ứng dụng"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
             </div>
-
-            <AnimatePresence>
-                {modifyingIdea && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={handleCancelRegeneration}
-                        className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-                        aria-modal="true"
-                        role="dialog"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-neutral-800 border border-white/20 rounded-lg shadow-2xl p-6 w-full max-w-lg mx-auto flex flex-col gap-4"
-                        >
-                            <h3 className="base-font font-bold text-2xl text-yellow-400">Chỉnh sửa ảnh</h3>
-                            <p className="text-neutral-300">
-                                Thêm yêu cầu để tinh chỉnh ảnh <span className="font-bold text-white">"{modifyingIdea}"</span>.
-                            </p>
-                            <textarea
-                                value={customPrompt}
-                                onChange={(e) => setCustomPrompt(e.target.value)}
-                                placeholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh, tóc búi cao..."
-                                className="w-full h-28 p-3 bg-neutral-900 border border-neutral-700 rounded-md text-neutral-200 placeholder-neutral-500 focus:ring-2 focus:ring-yellow-400 focus:outline-none transition-shadow"
-                                rows={3}
-                                aria-label="Yêu cầu chỉnh sửa bổ sung"
-                            />
-                            <div className="flex justify-end items-center gap-4 mt-2">
-                                <button onClick={handleCancelRegeneration} className={secondaryButtonClasses + " !py-2 !px-6 !text-base"}>
-                                    Hủy
-                                </button>
-                                <button onClick={handleConfirmRegeneration} className={primaryButtonClasses + " !py-2 !px-6 !text-base"}>
-                                    Tạo lại
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            <Footer />
+            <div className="relative z-10 w-full min-h-screen flex flex-row items-center justify-center px-4 pt-16 pb-24">
+                <AnimatePresence mode="wait">
+                   {renderContent()}
+                </AnimatePresence>
+            </div>
+            <SearchModal
+                isOpen={isSearchOpen}
+                onClose={handleCloseSearch}
+                onSelectApp={(appId) => {
+                    handleSelectApp(appId);
+                    handleCloseSearch();
+                }}
+                apps={settings.apps}
+            />
+            <GalleryModal
+                isOpen={isGalleryOpen}
+                onClose={handleCloseGallery}
+                images={sessionGalleryImages}
+            />
+            <Footer theme={theme} onThemeChange={handleThemeChange} />
         </main>
     );
 }
