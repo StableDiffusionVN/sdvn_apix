@@ -6,6 +6,7 @@ import React, { useState, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateFreeImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     RegenerationModal,
@@ -48,7 +49,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     } = props;
 
     const [imageToRegenerate, setImageToRegenerate] = useState<{ url: string; index: number } | null>(null);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const isMobile = useMediaQuery('(max-width: 768px)');
+
+    const lightboxImages = [appState.image1, appState.image2, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleImage1Upload = (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -166,7 +170,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         downloadImage(url, 'ket-qua-tao-anh-tu-do.jpg');
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <PolaroidCard
@@ -174,6 +178,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
+                    onClick={onClick}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -208,6 +213,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             description={uploaderDescription1}
                             currentImage={appState.image1}
                             placeholderType="magic"
+                            onClick={() => appState.image1 && setLightboxIndex(lightboxImages.indexOf(appState.image1))}
                         />
                         <AnimatePresence>
                         {appState.image1 && (
@@ -219,6 +225,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     description={uploaderDescription2}
                                     currentImage={appState.image2}
                                     placeholderType="magic"
+                                    onClick={() => appState.image2 && setLightboxIndex(lightboxImages.indexOf(appState.image2))}
                                 />
                             </motion.div>
                         )}
@@ -298,6 +305,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.image1}
+                    onOriginalClick={() => appState.image1 && setLightboxIndex(lightboxImages.indexOf(appState.image1))}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -312,7 +320,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile}/>
+                            <PolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && setLightboxIndex(lightboxImages.indexOf(appState.image2))} />
                         </motion.div>
                     )}
                     {
@@ -344,6 +352,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     imageUrl={url}
                                     onDownload={() => handleDownloadIndividual(url)}
                                     onShake={() => setImageToRegenerate({ url, index })}
+                                    onClick={() => setLightboxIndex(lightboxImages.indexOf(url))}
                                     isMobile={isMobile}
                                 />
                             </motion.div>
@@ -376,6 +385,13 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 title="Tinh chỉnh ảnh"
                 description="Thêm ghi chú để cải thiện ảnh"
                 placeholder="Ví dụ: làm cho màu sắc tươi hơn..."
+            />
+
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

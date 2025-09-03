@@ -6,12 +6,14 @@ import React, { useState, useCallback, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDressedModelImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     RegenerationModal,
     handleFileUpload,
     useMediaQuery,
     downloadAllImagesAsZip,
+    downloadImage,
     ImageForZip,
     ResultsView,
     type DressTheModelState,
@@ -49,7 +51,10 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     } = props;
 
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const isMobile = useMediaQuery('(max-width: 768px)');
+    
+    const lightboxImages = [appState.modelImage, appState.clothingImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleModelImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -130,6 +135,12 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
+
+    const handleDownloadIndividual = () => {
+        if (appState.generatedImage) {
+            downloadImage(appState.generatedImage, 'ket-qua-mac-do.jpg');
+        }
+    };
     
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
@@ -177,7 +188,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         </div>
     );
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <PolaroidCard
@@ -185,6 +196,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
+                    onClick={onClick}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -218,6 +230,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionModel}
                         currentImage={appState.modelImage}
                         placeholderType="person"
+                        onClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))}
                     />
                      <Uploader 
                         id="clothing-upload"
@@ -226,6 +239,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionClothing}
                         currentImage={appState.clothingImage}
                         placeholderType="clothing"
+                        onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))}
                     />
                 </motion.div>
             )}
@@ -238,8 +252,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <PolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" />
-                        <PolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" />
+                        <PolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))} />
+                        <PolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -255,9 +269,12 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         <div>
                             <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
                             <textarea
-                                id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                placeholder="Ví dụ: thêm phụ kiện vòng cổ, tóc búi cao..."
-                                className="form-input h-24" rows={3}
+                                id="notes"
+                                value={appState.options.notes}
+                                onChange={(e) => handleOptionChange('notes', e.target.value)}
+                                placeholder="Ví dụ: thêm phụ kiện như túi xách, kính râm..."
+                                className="form-input h-24"
+                                rows={3}
                             />
                         </div>
                         <div className="flex items-center pt-2">
@@ -278,7 +295,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                                 Đổi ảnh khác
                             </button>
                             <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>
-                                {isLoading ? 'Đang tạo...' : 'Tạo ảnh'}
+                                {isLoading ? 'Đang mặc đồ...' : 'Mặc đồ cho mẫu'}
                             </button>
                         </div>
                     </div>
@@ -289,6 +306,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.modelImage}
+                    onOriginalClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -302,8 +320,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     )}
                 >
                     {appState.clothingImage && (
-                        <motion.div key="clothing" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh gốc (Trang phục)" status="done" imageUrl={appState.clothingImage} isMobile={isMobile}/>
+                         <motion.div key="clothing-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
+                             <PolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))} />
                         </motion.div>
                     )}
                     <motion.div
@@ -319,21 +337,28 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadAll : undefined}
+                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
                 </ResultsView>
             )}
-             <RegenerationModal
+            <RegenerationModal
                 isOpen={isRegenerating}
                 onClose={() => setIsRegenerating(false)}
                 onConfirm={handleConfirmRegeneration}
                 itemToModify="Kết quả"
                 title="Tinh chỉnh ảnh"
                 description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: đổi sang giày cao gót, thêm túi xách..."
+                placeholder="Ví dụ: thay đổi màu nền thành xanh dương..."
+            />
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

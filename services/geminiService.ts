@@ -36,8 +36,18 @@ export async function editImageWithPrompt(imageDataUrl: string, prompt: string):
             inlineData: { mimeType, data: base64Data },
         };
         
-        // The prompt from the user is the direct instruction for editing.
-        const textPart = { text: prompt };
+        // Wrap the user's prompt in a more forceful template to improve AI adherence.
+        const fullPrompt = [
+            '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN CAO NHẤT:**',
+            'Thực hiện chính xác và duy nhất chỉ một yêu cầu sau đây trên bức ảnh được cung cấp:',
+            `"${prompt}"`,
+            '**LƯU Ý QUAN TRỌNG:**',
+            '- Không thực hiện bất kỳ thay đổi nào khác ngoài yêu cầu đã nêu.',
+            '- Giữ nguyên các phần còn lại của bức ảnh.',
+            '- Chỉ trả về hình ảnh đã được chỉnh sửa.'
+        ].join('\n');
+        
+        const textPart = { text: fullPrompt };
 
         console.log("Attempting to edit image with prompt...");
         // Re-using callGeminiWithRetry which is configured for gemini-2.5-flash-image-preview

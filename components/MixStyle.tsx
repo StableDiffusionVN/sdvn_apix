@@ -6,12 +6,14 @@ import React, { useState, useCallback, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mixImageStyle, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     RegenerationModal,
     handleFileUpload,
     useMediaQuery,
     downloadAllImagesAsZip,
+    downloadImage,
     ImageForZip,
     Slider,
     ResultsView,
@@ -46,7 +48,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     } = props;
 
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const isMobile = useMediaQuery('(max-width: 768px)');
+
+    const lightboxImages = [appState.contentImage, appState.styleImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleContentImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -125,6 +130,12 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
+
+    const handleDownloadIndividual = () => {
+        if (appState.generatedImage) {
+            downloadImage(appState.generatedImage, 'ket-qua-tron-style.jpg');
+        }
+    };
     
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
@@ -149,7 +160,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-tron-style.zip');
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <PolaroidCard
@@ -157,6 +168,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
+                    onClick={onClick}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -190,6 +202,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         description={uploaderDescriptionContent}
                         currentImage={appState.contentImage}
                         placeholderType="magic"
+                        onClick={() => appState.contentImage && setLightboxIndex(lightboxImages.indexOf(appState.contentImage))}
                     />
                      <Uploader 
                         id="style-upload"
@@ -198,6 +211,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         description={uploaderDescriptionStyle}
                         currentImage={appState.styleImage}
                         placeholderType="style"
+                        onClick={() => appState.styleImage && setLightboxIndex(lightboxImages.indexOf(appState.styleImage))}
                     />
                 </motion.div>
             )}
@@ -210,8 +224,8 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <PolaroidCard imageUrl={appState.contentImage} caption="Ảnh nội dung" status="done" />
-                        <PolaroidCard imageUrl={appState.styleImage} caption="Ảnh phong cách" status="done" />
+                        <PolaroidCard imageUrl={appState.contentImage} caption="Ảnh nội dung" status="done" onClick={() => appState.contentImage && setLightboxIndex(lightboxImages.indexOf(appState.contentImage))} />
+                        <PolaroidCard imageUrl={appState.styleImage} caption="Ảnh phong cách" status="done" onClick={() => appState.styleImage && setLightboxIndex(lightboxImages.indexOf(appState.styleImage))} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -262,6 +276,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.contentImage}
+                    onOriginalClick={() => appState.contentImage && setLightboxIndex(lightboxImages.indexOf(appState.contentImage))}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -276,7 +291,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 >
                     {appState.styleImage && (
                         <motion.div key="style" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh phong cách" status="done" imageUrl={appState.styleImage} isMobile={isMobile}/>
+                            <PolaroidCard caption="Ảnh phong cách" status="done" imageUrl={appState.styleImage} isMobile={isMobile} onClick={() => appState.styleImage && setLightboxIndex(lightboxImages.indexOf(appState.styleImage))} />
                         </motion.div>
                     )}
                     <motion.div
@@ -292,8 +307,9 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadAll : undefined}
+                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
@@ -307,6 +323,12 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 title="Tinh chỉnh ảnh"
                 description="Thêm ghi chú để cải thiện ảnh"
                 placeholder="Ví dụ: làm cho màu sắc tươi hơn..."
+            />
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

@@ -522,6 +522,7 @@ interface ResultsViewProps {
     stage: 'generating' | 'results';
     originalImage: string | null;
     onDownloadOriginal?: () => void;
+    onOriginalClick?: () => void;
     children: React.ReactNode;
     actions: React.ReactNode;
     isMobile?: boolean;
@@ -532,7 +533,7 @@ interface ResultsViewProps {
 /**
  * A reusable component to display the results of an image generation process.
  */
-export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onDownloadOriginal, children, actions, isMobile, error, hasPartialError }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onDownloadOriginal, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
     
     return (
@@ -585,6 +586,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                                 imageUrl={originalImage}
                                 onDownload={onDownloadOriginal}
                                 isMobile={isMobile}
+                                onClick={onOriginalClick}
                             />
                         </motion.div>
                     )}

@@ -6,12 +6,14 @@ import React, { useState, ChangeEvent, useCallback, useRef, useEffect } from 're
 import { motion, AnimatePresence } from 'framer-motion';
 import { swapImageStyle, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     RegenerationModal,
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
+    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
@@ -45,11 +47,14 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     
     // State for searchable style dropdown
     const [styleSearch, setStyleSearch] = useState('');
     const [isStyleDropdownOpen, setStyleDropdownOpen] = useState(false);
     const styleDropdownRef = useRef<HTMLDivElement>(null);
+
+    const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const filteredStyles = STYLE_OPTIONS_LIST.filter(style => 
         style.toLowerCase().includes(styleSearch.toLowerCase())
@@ -141,6 +146,12 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
+    const handleDownloadIndividual = () => {
+        if (appState.generatedImage) {
+            downloadImage(appState.generatedImage, `anh-style-${appState.options.style.replace(/[\s()]/g, '-')}.jpg`);
+        }
+    };
+
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
             alert('Không có ảnh nào đã tạo để tải về.');
@@ -182,7 +193,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" />
+                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => setLightboxIndex(0)} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
@@ -248,6 +259,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
+                    onOriginalClick={() => setLightboxIndex(0)}
                     error={appState.error}
                     actions={
                         <>
@@ -264,8 +276,9 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
                         <PolaroidCard caption={appState.options.style} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadAll : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined} />
+                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
+                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
@@ -273,6 +286,13 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
             <RegenerationModal isOpen={isRegenerating} onClose={() => setIsRegenerating(false)}
                 onConfirm={handleConfirmRegeneration} itemToModify={appState.options.style} title="Tinh chỉnh ảnh"
                 description="Thêm ghi chú để cải thiện ảnh theo phong cách" placeholder="Ví dụ: thêm nhiều chi tiết hơn, màu sắc rực rỡ hơn..." />
+            
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+            />
         </div>
     );
 };

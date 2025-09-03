@@ -6,11 +6,13 @@ import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateToyModelImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
+    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
@@ -48,6 +50,9 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+    const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -122,6 +127,12 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
+    const handleDownloadIndividual = () => {
+        if (appState.generatedImage) {
+            downloadImage(appState.generatedImage, 'mo-hinh-do-choi.jpg');
+        }
+    };
+
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
             alert('Không có ảnh nào đã tạo để tải về.');
@@ -179,7 +190,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" />
+                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => setLightboxIndex(0)} />
                         </div>
                         <OptionsPanel>
                              <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh mô hình</h2>
@@ -216,7 +227,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onDownloadOriginal={() => appState.uploadedImage && handleDownloadAll()}
+                    onOriginalClick={() => setLightboxIndex(0)}
                     error={appState.error}
                     actions={
                         <>
@@ -235,8 +246,9 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                             caption="Mô hình đồ chơi" 
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadAll : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined} />
+                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
+                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
@@ -249,6 +261,13 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 title="Tinh chỉnh mô hình"
                 description="Thêm ghi chú để cải thiện ảnh"
                 placeholder="Ví dụ: thêm hiệu ứng ánh sáng neon, ..."
+            />
+
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

@@ -16,6 +16,7 @@ interface PolaroidCardProps {
     onDownload?: (caption: string) => void;
     isMobile?: boolean;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
+    onClick?: () => void;
 }
 
 const LoadingSpinner = () => (
@@ -73,11 +74,20 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, isMobile, placeholderType = 'person' }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, isMobile, placeholderType = 'person', onClick }) => {
     const hasImage = status === 'done' && imageUrl;
+    const isClickable = hasImage && onClick;
+
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isClickable && onClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+        }
+    };
 
     return (
-        <div className="polaroid-card">
+        <div className={cn("polaroid-card", isClickable && "cursor-pointer")} onClick={handleClick}>
             <div className={cn(
                 "polaroid-image-container group",
                 !hasImage && 'aspect-square',
@@ -87,6 +97,13 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                 {status === 'error' && <ErrorDisplay message={error} />}
                 {hasImage && (
                     <>
+                        {isClickable && (
+                            <div className="absolute inset-0 z-10 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" />
+                                </svg>
+                            </div>
+                        )}
                         <div className={cn(
                             "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
                             !isMobile && "opacity-0 group-hover:opacity-100",

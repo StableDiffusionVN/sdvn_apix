@@ -6,12 +6,14 @@ import React, { useState, ChangeEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateArchitecturalImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     RegenerationModal,
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
+    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
@@ -46,6 +48,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+    const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -115,6 +120,12 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
+    const handleDownloadIndividual = () => {
+        if (appState.generatedImage) {
+            downloadImage(appState.generatedImage, 'ket-qua-kien-truc.jpg');
+        }
+    };
+
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
             alert('Không có ảnh nào đã tạo để tải về.');
@@ -182,6 +193,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                 imageUrl={appState.uploadedImage} 
                                 caption="Ảnh phác thảo" 
                                 status="done"
+                                onClick={() => setLightboxIndex(0)}
                             />
                         </div>
 
@@ -239,6 +251,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
+                    onOriginalClick={() => setLightboxIndex(0)}
                     error={appState.error}
                     actions={
                         <>
@@ -268,8 +281,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadAll : undefined}
+                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                         />
                     </motion.div>
                 </ResultsView>
@@ -283,6 +297,13 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 title="Tinh chỉnh ảnh kiến trúc"
                 description="Thêm ghi chú để cải thiện ảnh"
                 placeholder="Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm..."
+            />
+
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

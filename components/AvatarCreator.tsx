@@ -6,6 +6,7 @@ import React, { useState, ChangeEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generatePatrioticImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
+import Lightbox from './Lightbox';
 import { 
     downloadImage, 
     RegenerationModal,
@@ -97,7 +98,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     } = props;
     
     const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const isMobile = useMediaQuery('(max-width: 768px)');
+
+    const outputLightboxImages = appState.selectedIdeas
+        .map(idea => appState.generatedImages[idea])
+        .filter(img => img?.status === 'done' && img.url)
+        .map(img => img.url!);
+
+    const lightboxImages = [appState.uploadedImage, ...outputLightboxImages].filter((img): img is string => !!img);
     
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
@@ -319,6 +328,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         imageUrl={appState.uploadedImage} 
                         caption="Ảnh của bạn" 
                         status="done"
+                        onClick={() => setLightboxIndex(0)}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
@@ -411,6 +421,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onDownloadOriginal={handleDownloadOriginalImage}
+                    onOriginalClick={() => setLightboxIndex(0)}
                     isMobile={isMobile}
                     hasPartialError={hasPartialError}
                     actions={
@@ -429,6 +440,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 >
                     {appState.selectedIdeas.map((idea, index) => {
                         const imageState = appState.generatedImages[idea];
+                        const currentImageIndexInLightbox = imageState?.url ? lightboxImages.indexOf(imageState.url) : -1;
                         return (
                             <motion.div
                                 className="w-full md:w-auto flex-shrink-0"
@@ -450,6 +462,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     error={imageState?.error}
                                     onShake={() => handleRegenerateIdea(idea)}
                                     onDownload={() => handleDownloadIndividualImage(idea)}
+                                    onClick={imageState?.status === 'done' && imageState.url ? () => setLightboxIndex(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
                             </motion.div>
@@ -464,6 +477,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 onConfirm={handleConfirmRegeneration}
                 itemToModify={modifyingIdea}
                 placeholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh, tóc búi cao..."
+            />
+
+            <Lightbox
+                images={lightboxImages}
+                selectedIndex={lightboxIndex}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
             />
         </div>
     );

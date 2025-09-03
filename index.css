@@ -547,7 +547,7 @@ body {
   display: block; /* Remove any bottom space */
 }
 
-/* --- NEW: Gallery Lightbox --- */
+/* --- UPDATED: Gallery Lightbox --- */
 .gallery-lightbox {
   position: fixed;
   inset: 0;
@@ -562,49 +562,34 @@ body {
   background-color: rgba(0,0,0,0.85);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+  cursor: pointer;
 }
 .gallery-lightbox-img {
   position: relative;
   max-width: 90vw;
-  max-height: 80vh;
+  max-height: 85vh;
   object-fit: contain;
   border-radius: 0.5rem; /* rounded-lg */
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5); /* shadow-2xl */
 }
-.gallery-nav-btn {
+.lightbox-action-btn {
   position: absolute;
-  z-index: 110;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: rgba(255, 255, 255, 0.1);
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 120;
+  background-color: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  width: 3rem; /* w-12 */
-  height: 3rem; /* h-12 */
-  border-radius: 9999px; /* rounded-full */
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
+  cursor: pointer;
 }
-.gallery-nav-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-.gallery-nav-btn.prev {
-  left: 1rem;
-}
-.gallery-nav-btn.next {
-  right: 1rem;
-}
-.gallery-nav-btn.close {
-  top: 1rem;
-  right: 1rem;
-  transform: none;
-}
-.gallery-lightbox-actions {
-  position: absolute;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 110;
+.lightbox-action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
 }
