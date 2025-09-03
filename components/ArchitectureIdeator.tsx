@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateArchitecturalImage, editImageWithPrompt } from '../services/geminiService';
 import PolaroidCard from './PolaroidCard';
 import Lightbox from './Lightbox';
+import { ImageEditorModal } from './ImageEditorModal';
 import { 
     RegenerationModal,
     AppScreenHeader,
@@ -19,6 +20,8 @@ import {
     OptionsPanel,
     type ArchitectureIdeatorState,
     handleFileUpload,
+    useLightbox,
+    useImageEditor,
 } from './uiUtils';
 
 interface ArchitectureIdeatorProps {
@@ -33,22 +36,24 @@ interface ArchitectureIdeatorProps {
     onStateChange: (newState: ArchitectureIdeatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const CONTEXT_OPTIONS = ['Tự động', 'Đô thị hiện đại (Modern city)', 'Vùng quê yên tĩnh (Countryside)', 'Ven biển (Coastal)', 'Vùng núi (Mountainous)', 'Sa mạc (Desert)', 'Rừng rậm (Jungle)', 'Khu công nghiệp (Industrial zone)', 'Không gian vũ trụ (Outer space)', 'Thế giới thần tiên (Fairy tale world)', 'Thành phố tương lai (Cyberpunk city)', 'Thành phố dưới nước (Underwater city)', 'Thành phố trên mây (City on clouds)', 'Khu di tích cổ đại (Ancient ruins)', 'Vườn Nhật Bản (Japanese garden)', 'Đường phố London thời Victoria (Victorian London)', 'Khu nhà ổ chuột Brazil (Brazilian favela)', 'Trạm nghiên cứu Bắc Cực (Arctic station)', 'Colony trên sao Hỏa (Mars colony)', 'Vùng đất hoang tàn hậu tận thế (Post-apocalyptic wasteland)', 'Làng Địa Trung Hải (Mediterranean village)', 'Cảnh quan núi lửa (Volcanic landscape)'];
 const STYLE_OPTIONS = ['Tự động', 'Hiện đại (Modern)', 'Tối giản (Minimalist)', 'Brutalist', 'Đông Dương (Indochine)', 'Cổ điển (Classical)', 'Nhiệt đới (Tropical)', 'Nhà gỗ (Cabin)', 'Go-tic (Gothic)', 'Art Deco', 'Deconstructivism', 'Bền vững (Sustainable)', 'Hữu cơ (Biophilic/Organic)', 'Tham số (Parametricism)', 'Công nghiệp (Industrial)', 'Scandinavian', 'Nhà nông trại hiện đại (Modern Farmhouse)', 'Địa Trung Hải (Mediterranean)', 'Tương lai (Futuristic)', 'Steampunk', 'Nhà trên cây (Treehouse)', 'Kiến trúc hang động (Cave architecture)', 'Nhà container (Container home)'];
 const COLOR_OPTIONS = ['Tự động', 'Tông màu ấm (Warm tones)', 'Tông màu lạnh (Cool tones)', 'Màu trung tính (Neutral colors)', 'Đơn sắc (Monochromatic)', 'Tương phản cao (High contrast)', 'Màu Pastel nhẹ nhàng (Soft pastels)', 'Màu rực rỡ (Vibrant colors)', 'Màu đất (Earthy tones)', 'Màu đá quý (Jewel tones)', 'Neonoir (Neon colors)', 'Màu gỉ sét & kim loại (Rust & Metallic)', 'Trắng và gỗ (White & Wood)', 'Xám bê tông (Concrete gray)', 'Xanh bạc hà & hồng san hô (Mint & Coral)', 'Xanh navy & vàng đồng (Navy & Brass)', 'Sepia (Nâu đỏ)', 'Đen trắng (Black & White)', 'Màu hoàng hôn (Sunset palette)', 'Màu bình minh (Sunrise palette)', 'Màu cầu vồng (Rainbow)', 'Màu của đại dương (Oceanic colors)'];
-const LIGHTING_OPTIONS = ['Tự động', 'Ánh sáng ban ngày tự nhiên (Natural daylight)', 'Bình minh/Hoàng hôn (Golden hour)', 'Ánh sáng ban đêm (Night lighting)', 'Ngày u ám, ánh sáng dịu (Overcast, soft light)', 'Nắng gắt, bóng đổ rõ (Harsh sun, hard shadows)', 'Ánh sáng Neon', 'Ánh sáng huyền ảo (Ethereal lighting)', 'Ánh sáng thể tích (Volumetric rays)', 'Ánh sáng sân khấu (Stage lighting)', 'Ánh sáng từ đèn lồng (Lantern light)', 'Ánh sáng lập lòe từ lửa (Flickering firelight)', 'Ánh sáng phát quang sinh học (Bioluminescent glow)', 'Phim noir (Film noir shadows)', 'Ánh sáng studio (Studio lighting)', 'Chiếu sáng từ dưới lên (Uplighting)', 'Ánh sáng lấp lánh (Sparkling/Twinkling lights)', 'Cháy sáng (Overexposed)', 'Tối và u ám (Dark and moody)', 'Ánh sáng phản chiếu từ nước (Water reflection)', 'Bóng đổ từ rèm cửa (Caustic shadows)'];
+const LIGHTING_OPTIONS = ['Tự động', 'Ánh sáng ban ngày tự nhiên (Natural daylight)', 'Bình minh/Hoàng hôn (Golden hour)', 'Ánh sáng ban đêm (Night lighting)', 'Ngày u ám, ánh sáng dịu (Overcast, soft light)', 'Nắng gắt, bóng đổ rõ (Harsh sun, hard shadows)', 'Ánh sáng Neon', 'Ánh sáng huyền ảo (Ethereal lighting)', 'Ánh sáng thể tích (Volumetric rays)', 'Ánh sáng sân khấu (Stage lighting)', 'Ánh sáng từ đèn lồng (Lantern light)', 'Ánh sáng lập lòe từ lửa (Flickering firelight)', 'Ánh sáng phát quang sinh học (Bioluminescent glow)', 'Phim noir (Film noir shadows)', 'Ánh sáng studio (Studio lighting)', 'Chiếu sáng từ dưới lên (Uplighting)', 'Ánh sáng lấp lánh (Twinkling/Twinkling lights)', 'Cháy sáng (Overexposed)', 'Tối và u ám (Dark and moody)', 'Ánh sáng phản chiếu từ nước (Water reflection)', 'Bóng đổ từ rèm cửa (Caustic shadows)'];
 
 const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps 
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
@@ -150,6 +155,16 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-kien-truc.zip');
     };
+    
+    const handleSaveUploadedImage = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
+
+    const handleSaveGeneratedImage = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
 
     const renderSelect = (id: keyof ArchitectureIdeatorState['options'], label: string, optionList: string[]) => (
         <div>
@@ -193,7 +208,8 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                 imageUrl={appState.uploadedImage} 
                                 caption="Ảnh phác thảo" 
                                 status="done"
-                                onClick={() => setLightboxIndex(0)}
+                                onClick={() => openLightbox(0)}
+                                onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                             />
                         </div>
 
@@ -251,7 +267,8 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onOriginalClick={() => setLightboxIndex(0)}
+                    onOriginalClick={() => openLightbox(0)}
+                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -283,7 +300,8 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             error={appState.error ?? undefined}
                             onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
+                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                         />
                     </motion.div>
                 </ResultsView>
@@ -302,8 +320,8 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

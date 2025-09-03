@@ -18,6 +18,8 @@ import {
     ImageForZip,
     type AvatarCreatorState,
     handleFileUpload,
+    useLightbox,
+    useImageEditor,
 } from './uiUtils';
 
 const IDEAS_BY_CATEGORY = [
@@ -86,6 +88,7 @@ interface AvatarCreatorProps {
     onStateChange: (newState: AvatarCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
@@ -94,11 +97,12 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         uploaderCaption, uploaderDescription,
         addImagesToGallery,
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps
     } = props;
     
     const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const outputLightboxImages = appState.selectedIdeas
@@ -290,6 +294,17 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         }
     };
 
+    const handleSaveUploadedImage = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
+
+    const handleSaveGeneratedImage = (idea: string) => (newUrl: string) => {
+        const newGeneratedImages = { ...appState.generatedImages, [idea]: { status: 'done' as 'done', url: newUrl } };
+        const newHistorical = [...appState.historicalImages, { idea: `${idea}-edit`, url: newUrl }];
+        onStateChange({ ...appState, generatedImages: newGeneratedImages, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+
     const getButtonText = () => {
         if (appState.stage === 'generating') return 'Đang tạo...';
         if (appState.selectedIdeas.length < minIdeas) return `Chọn ít nhất ${minIdeas} ý tưởng`;
@@ -328,7 +343,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         imageUrl={appState.uploadedImage} 
                         caption="Ảnh của bạn" 
                         status="done"
-                        onClick={() => setLightboxIndex(0)}
+                        onClick={() => openLightbox(0)}
+                        onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
@@ -421,7 +437,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onDownloadOriginal={handleDownloadOriginalImage}
-                    onOriginalClick={() => setLightboxIndex(0)}
+                    onOriginalClick={() => openLightbox(0)}
+                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     isMobile={isMobile}
                     hasPartialError={hasPartialError}
                     actions={
@@ -462,7 +479,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     error={imageState?.error}
                                     onShake={() => handleRegenerateIdea(idea)}
                                     onDownload={() => handleDownloadIndividualImage(idea)}
-                                    onClick={imageState?.status === 'done' && imageState.url ? () => setLightboxIndex(currentImageIndexInLightbox) : undefined}
+                                    onEdit={imageState?.status === 'done' && imageState.url ? () => openImageEditor(imageState.url!, handleSaveGeneratedImage(idea)) : undefined}
+                                    onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
                             </motion.div>
@@ -482,8 +500,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

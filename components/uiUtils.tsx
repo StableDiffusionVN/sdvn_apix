@@ -271,6 +271,62 @@ export const useMediaQuery = (query: string) => {
     return matches;
 };
 
+/**
+ * Custom hook to manage the state and actions for the Lightbox component.
+ * @returns An object with the lightbox's current index and functions to control it.
+ */
+export const useLightbox = () => {
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+    const openLightbox = useCallback((index: number) => {
+        setLightboxIndex(index);
+    }, []);
+
+    const closeLightbox = useCallback(() => {
+        setLightboxIndex(null);
+    }, []);
+
+    const navigateLightbox = useCallback((newIndex: number) => {
+        setLightboxIndex(newIndex);
+    }, []);
+
+    return {
+        lightboxIndex,
+        openLightbox,
+        closeLightbox,
+        navigateLightbox,
+    };
+};
+
+
+// --- NEW: Image Editor Hook ---
+export interface ImageToEdit {
+    url: string;
+    onSave: (newUrl: string) => void;
+}
+export const useImageEditor = () => {
+    const [imageToEdit, setImageToEdit] = useState<ImageToEdit | null>(null);
+
+    const openImageEditor = useCallback((url: string, onSave: (newUrl: string) => void) => {
+        if (!url) {
+            console.error("openImageEditor called with no URL.");
+            return;
+        }
+        setImageToEdit({ url, onSave });
+    }, []);
+
+    const closeImageEditor = useCallback(() => {
+        setImageToEdit(null);
+    }, []);
+
+    return {
+        imageToEdit,
+        openImageEditor,
+        closeImageEditor,
+    };
+};
+
+
 // --- NEW: Centralized State Definitions ---
 
 export type HomeState = { stage: 'home' };
@@ -523,6 +579,7 @@ interface ResultsViewProps {
     originalImage: string | null;
     onDownloadOriginal?: () => void;
     onOriginalClick?: () => void;
+    onEditOriginal?: () => void;
     children: React.ReactNode;
     actions: React.ReactNode;
     isMobile?: boolean;
@@ -533,7 +590,7 @@ interface ResultsViewProps {
 /**
  * A reusable component to display the results of an image generation process.
  */
-export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onDownloadOriginal, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onDownloadOriginal, onOriginalClick, onEditOriginal, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
     
     return (
@@ -585,6 +642,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                                 status="done"
                                 imageUrl={originalImage}
                                 onDownload={onDownloadOriginal}
+                                onEdit={onEditOriginal}
                                 isMobile={isMobile}
                                 onClick={onOriginalClick}
                             />

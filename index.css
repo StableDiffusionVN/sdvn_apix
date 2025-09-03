@@ -593,3 +593,38 @@ body {
   background-color: rgba(0, 0, 0, 0.7);
   transform: scale(1.1);
 }
+
+/* --- NEW: Image Editor Modal & ReactCrop --- */
+.image-editor-modal-content {
+  max-height: 100vh;
+}
+
+.image-editor-preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0,0,0,0.3);
+  border-radius: 0.25rem;
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.image-editor-preview {
+  max-width: 100%;
+  height: 660px;
+  max-height: 80vh !important;
+  object-fit: contain;
+  display: block;
+}
+
+.ReactCrop__crop-selection {
+  border: 2px dashed rgba(251, 191, 36, 0.8); /* yellow-400 @ 80% */
+}
+
+.ReactCrop__drag-handle {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background-color: rgba(0, 0, 0, 0.5);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}

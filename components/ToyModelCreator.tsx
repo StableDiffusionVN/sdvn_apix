@@ -19,6 +19,7 @@ import {
     RegenerationModal,
     type ToyModelCreatorState,
     handleFileUpload,
+    useLightbox,
 } from './uiUtils';
 
 interface ToyModelCreatorProps {
@@ -33,6 +34,7 @@ interface ToyModelCreatorProps {
     onStateChange: (newState: ToyModelCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const COMPUTER_OPTIONS = ['Tự động', 'iMac Pro màn hình 5K', 'PC Gaming (full LED RGB, tản nhiệt nước)', 'Laptop Macbook Pro', 'Laptop Gaming Alienware', 'Microsoft Surface Studio', 'Dàn máy tính server', 'Máy tính cổ điển (phong cách 80s)', 'Màn hình cong siêu rộng', 'Concept máy tính trong suốt', 'Máy tính bảng iPad Pro', 'Máy tính bảng Samsung Galaxy Tab S9 Ultra', 'Máy tính bảng vẽ Wacom MobileStudio Pro'];
@@ -46,11 +48,12 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
@@ -66,6 +69,16 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
             });
         });
     }, [appState, onStateChange]);
+
+    const handleSaveUploadedImage = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
+
+    const handleSaveGeneratedImage = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
     
     const handleOptionChange = (field: keyof ToyModelCreatorState['options'], value: string | boolean) => {
         const newState = { ...appState, options: { ...appState.options, [field]: value } };
@@ -190,7 +203,13 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => setLightboxIndex(0)} />
+                            <PolaroidCard 
+                                imageUrl={appState.uploadedImage} 
+                                caption="Ảnh gốc" 
+                                status="done" 
+                                onClick={() => openLightbox(0)} 
+                                onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
+                            />
                         </div>
                         <OptionsPanel>
                              <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh mô hình</h2>
@@ -227,7 +246,8 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onOriginalClick={() => setLightboxIndex(0)}
+                    onOriginalClick={() => openLightbox(0)}
+                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -248,7 +268,8 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
+                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
@@ -266,8 +287,8 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

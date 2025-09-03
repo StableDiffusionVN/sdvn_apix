@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from './components/Footer';
@@ -18,6 +18,8 @@ import FreeGeneration from './components/FreeGeneration';
 import ToyModelCreator from './components/ToyModelCreator';
 import SearchModal from './components/SearchModal';
 import GalleryModal from './components/GalleryModal';
+import InfoModal from './components/InfoModal';
+import { ImageEditorModal } from './components/ImageEditorModal';
 import {
     renderSmartlyWrappedTitle,
     type AnyAppState,
@@ -32,6 +34,7 @@ import {
     type FreeGenerationState,
     type ToyModelCreatorState,
     getInitialStateForApp,
+    useImageEditor,
 } from './components/uiUtils';
 
 
@@ -75,7 +78,9 @@ function App() {
     const [theme, setTheme] = useState<Theme>('vietnam');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
+    const { imageToEdit, openImageEditor, closeImageEditor } = useImageEditor();
     const [settings, setSettings] = useState({
         home: {
             mainTitle: "Tự hào Việt Nam",
@@ -277,17 +282,17 @@ function App() {
         navigateTo('home');
     };
 
-    const handleGoBack = () => {
+    const handleGoBack = useCallback(() => {
         if (historyIndex > 0) {
             setHistoryIndex(prev => prev - 1);
         }
-    };
+    }, [historyIndex]);
     
-    const handleGoForward = () => {
+    const handleGoForward = useCallback(() => {
         if (historyIndex < viewHistory.length - 1) {
             setHistoryIndex(prev => prev + 1);
         }
-    };
+    }, [historyIndex, viewHistory.length]);
 
     const handleResetApp = () => {
         const currentViewId = viewHistory[historyIndex].viewId;
@@ -296,11 +301,52 @@ function App() {
         }
     };
     
-    const handleOpenSearch = () => setIsSearchOpen(true);
-    const handleCloseSearch = () => setIsSearchOpen(false);
-    const handleOpenGallery = () => setIsGalleryOpen(true);
-    const handleCloseGallery = () => setIsGalleryOpen(false);
+    const handleOpenSearch = useCallback(() => setIsSearchOpen(true), []);
+    const handleCloseSearch = useCallback(() => setIsSearchOpen(false), []);
+    const handleOpenGallery = useCallback(() => setIsGalleryOpen(true), []);
+    const handleCloseGallery = useCallback(() => setIsGalleryOpen(false), []);
+    const handleOpenInfo = useCallback(() => setIsInfoOpen(true), []);
+    const handleCloseInfo = useCallback(() => setIsInfoOpen(false), []);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            // Ignore if user is typing in an input/textarea to avoid hijacking browser functionality.
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
+            const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
+            const isSearch = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f';
+            const isGallery = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g';
+            const isHelp = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+
+            if (isUndo) {
+                e.preventDefault();
+                handleGoBack();
+            } else if (isRedo) {
+                e.preventDefault();
+                handleGoForward();
+            } else if (isSearch) {
+                e.preventDefault();
+                handleOpenSearch();
+            } else if (isGallery) {
+                if (sessionGalleryImages.length > 0) {
+                    e.preventDefault();
+                    handleOpenGallery();
+                }
+            } else if (isHelp) {
+                e.preventDefault();
+                handleOpenInfo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, sessionGalleryImages.length]);
 
     const renderContent = () => {
         const motionProps = {
@@ -315,6 +361,7 @@ function App() {
             onStateChange: handleStateChange,
             onReset: handleResetApp,
             onGoBack: handleGoBack,
+            openImageEditor,
         };
 
         switch (currentView.viewId) {
@@ -448,7 +495,7 @@ function App() {
                 <button
                     onClick={handleGoBack}
                     className="btn-search"
-                    aria-label="Quay lại"
+                    aria-label="Quay lại (Cmd/Ctrl+Z)"
                     disabled={historyIndex <= 0}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -458,7 +505,7 @@ function App() {
                 <button
                     onClick={handleGoForward}
                     className="btn-search"
-                    aria-label="Tiến lên"
+                    aria-label="Tiến lên (Cmd/Ctrl+Shift+Z)"
                     disabled={historyIndex >= viewHistory.length - 1}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -468,7 +515,7 @@ function App() {
                 <button
                     onClick={handleOpenGallery}
                     className="btn-gallery"
-                    aria-label="Mở thư viện ảnh"
+                    aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
                     disabled={sessionGalleryImages.length === 0}
                 >
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -478,10 +525,19 @@ function App() {
                 <button
                     onClick={handleOpenSearch}
                     className="btn-search"
-                    aria-label="Tìm kiếm ứng dụng"
+                    aria-label="Tìm kiếm ứng dụng (Cmd/Ctrl+F)"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleOpenInfo}
+                    className="btn-search"
+                    aria-label="Mở hướng dẫn (Cmd/Ctrl+H)"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V12M12 8h.01" />
                     </svg>
                 </button>
             </div>
@@ -503,6 +559,14 @@ function App() {
                 isOpen={isGalleryOpen}
                 onClose={handleCloseGallery}
                 images={sessionGalleryImages}
+            />
+             <InfoModal
+                isOpen={isInfoOpen}
+                onClose={handleCloseInfo}
+            />
+            <ImageEditorModal 
+                imageToEdit={imageToEdit}
+                onClose={closeImageEditor}
             />
             <Footer theme={theme} onThemeChange={handleThemeChange} />
         </main>

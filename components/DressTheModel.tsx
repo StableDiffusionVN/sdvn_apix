@@ -17,6 +17,7 @@ import {
     ImageForZip,
     ResultsView,
     type DressTheModelState,
+    useLightbox,
 } from './uiUtils';
 
 interface DressTheModelProps {
@@ -33,6 +34,7 @@ interface DressTheModelProps {
     onStateChange: (newState: DressTheModelState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 
@@ -47,11 +49,12 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         uploaderCaptionClothing, uploaderDescriptionClothing,
         addImagesToGallery,
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps
     } = props;
 
     const [isRegenerating, setIsRegenerating] = useState(false);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
     
     const lightboxImages = [appState.modelImage, appState.clothingImage, ...appState.historicalImages].filter((img): img is string => !!img);
@@ -174,6 +177,14 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-mac-do.zip');
     };
 
+    const handleSaveModelImage = (newUrl: string) => onStateChange({ ...appState, modelImage: newUrl });
+    const handleSaveClothingImage = (newUrl: string) => onStateChange({ ...appState, clothingImage: newUrl });
+    const handleSaveGeneratedImage = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+
     const renderSelect = (id: keyof DressTheModelState['options'], label: string, optionList: string[]) => (
         <div>
             <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
@@ -188,7 +199,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         </div>
     );
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick, onEdit }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <PolaroidCard
@@ -197,6 +208,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={onClick}
+                    onEdit={currentImage ? onEdit : undefined}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -230,7 +242,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionModel}
                         currentImage={appState.modelImage}
                         placeholderType="person"
-                        onClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))}
+                        onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))}
+                        onEdit={() => openImageEditor(appState.modelImage!, handleSaveModelImage)}
                     />
                      <Uploader 
                         id="clothing-upload"
@@ -239,7 +252,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionClothing}
                         currentImage={appState.clothingImage}
                         placeholderType="clothing"
-                        onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))}
+                        onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))}
+                        onEdit={() => openImageEditor(appState.clothingImage!, handleSaveClothingImage)}
                     />
                 </motion.div>
             )}
@@ -252,8 +266,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <PolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))} />
-                        <PolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))} />
+                        <PolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} onEdit={() => openImageEditor(appState.modelImage!, handleSaveModelImage)} />
+                        <PolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onEdit={() => openImageEditor(appState.clothingImage!, handleSaveClothingImage)} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -306,7 +320,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.modelImage}
-                    onOriginalClick={() => appState.modelImage && setLightboxIndex(lightboxImages.indexOf(appState.modelImage))}
+                    onOriginalClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))}
+                    onEditOriginal={() => appState.modelImage && openImageEditor(appState.modelImage, handleSaveModelImage)}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -321,7 +336,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 >
                     {appState.clothingImage && (
                          <motion.div key="clothing-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                             <PolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && setLightboxIndex(lightboxImages.indexOf(appState.clothingImage))} />
+                             <PolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onEdit={() => appState.clothingImage && openImageEditor(appState.clothingImage, handleSaveClothingImage)} />
                         </motion.div>
                     )}
                     <motion.div
@@ -339,7 +354,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                             error={appState.error ?? undefined}
                             onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
+                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
@@ -357,8 +373,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

@@ -17,7 +17,8 @@ import {
     ResultsView,
     OptionsPanel,
     downloadImage,
-    type FreeGenerationState
+    type FreeGenerationState,
+    useLightbox
 } from './uiUtils';
 
 interface FreeGenerationProps {
@@ -34,6 +35,7 @@ interface FreeGenerationProps {
     onStateChange: (newState: FreeGenerationState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const NUMBER_OF_IMAGES_OPTIONS = ['1', '2', '3', '4'] as const;
@@ -45,11 +47,12 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         uploaderCaption2, uploaderDescription2,
         addImagesToGallery,
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps
     } = props;
 
     const [imageToRegenerate, setImageToRegenerate] = useState<{ url: string; index: number } | null>(null);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const lightboxImages = [appState.image1, appState.image2, ...appState.historicalImages].filter((img): img is string => !!img);
@@ -76,6 +79,22 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 error: null,
             });
         });
+    };
+    
+    const handleSaveImage1 = (newUrl: string) => onStateChange({ ...appState, image1: newUrl });
+    const handleSaveImage2 = (newUrl: string) => onStateChange({ ...appState, image2: newUrl });
+
+    const handleSaveGeneratedImage = (index: number) => (newUrl: string) => {
+        const newGeneratedImages = [...appState.generatedImages];
+        newGeneratedImages[index] = newUrl;
+        const newHistoricalImages = [...appState.historicalImages, newUrl];
+        onStateChange({
+            ...appState,
+            stage: 'results',
+            generatedImages: newGeneratedImages,
+            historicalImages: newHistoricalImages,
+        });
+        addImagesToGallery([newUrl]);
     };
 
     const handleOptionChange = (field: keyof FreeGenerationState['options'], value: string | boolean | number) => {
@@ -170,7 +189,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         downloadImage(url, 'ket-qua-tao-anh-tu-do.jpg');
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick, onEdit }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <PolaroidCard
@@ -179,6 +198,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={onClick}
+                    onEdit={currentImage ? onEdit : undefined}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -213,7 +233,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             description={uploaderDescription1}
                             currentImage={appState.image1}
                             placeholderType="magic"
-                            onClick={() => appState.image1 && setLightboxIndex(lightboxImages.indexOf(appState.image1))}
+                            onClick={() => appState.image1 && openLightbox(lightboxImages.indexOf(appState.image1))}
+                            onEdit={() => appState.image1 && openImageEditor(appState.image1, handleSaveImage1)}
                         />
                         <AnimatePresence>
                         {appState.image1 && (
@@ -225,7 +246,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     description={uploaderDescription2}
                                     currentImage={appState.image2}
                                     placeholderType="magic"
-                                    onClick={() => appState.image2 && setLightboxIndex(lightboxImages.indexOf(appState.image2))}
+                                    onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))}
+                                    onEdit={() => appState.image2 && openImageEditor(appState.image2, handleSaveImage2)}
                                 />
                             </motion.div>
                         )}
@@ -305,7 +327,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.image1}
-                    onOriginalClick={() => appState.image1 && setLightboxIndex(lightboxImages.indexOf(appState.image1))}
+                    onOriginalClick={() => appState.image1 && openLightbox(lightboxImages.indexOf(appState.image1))}
+                    onEditOriginal={() => appState.image1 && openImageEditor(appState.image1, handleSaveImage1)}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -320,7 +343,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && setLightboxIndex(lightboxImages.indexOf(appState.image2))} />
+                            <PolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onEdit={() => appState.image2 && openImageEditor(appState.image2, handleSaveImage2)} />
                         </motion.div>
                     )}
                     {
@@ -352,7 +375,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     imageUrl={url}
                                     onDownload={() => handleDownloadIndividual(url)}
                                     onShake={() => setImageToRegenerate({ url, index })}
-                                    onClick={() => setLightboxIndex(lightboxImages.indexOf(url))}
+                                    onClick={() => openLightbox(lightboxImages.indexOf(url))}
+                                    onEdit={() => openImageEditor(url, handleSaveGeneratedImage(index))}
                                     isMobile={isMobile}
                                 />
                             </motion.div>
@@ -390,8 +414,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

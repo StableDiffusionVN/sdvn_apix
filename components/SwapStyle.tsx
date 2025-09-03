@@ -20,6 +20,8 @@ import {
     Slider,
     type SwapStyleState,
     handleFileUpload,
+    useLightbox,
+    useImageEditor,
 } from './uiUtils';
 import { STYLE_OPTIONS_LIST } from '../lib/styles';
 
@@ -35,6 +37,7 @@ interface SwapStyleProps {
     onStateChange: (newState: SwapStyleState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const STYLE_STRENGTH_LEVELS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'] as const;
@@ -43,11 +46,12 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
         appState, onStateChange, onReset, onGoBack,
+        openImageEditor,
         ...headerProps
     } = props;
     
     const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
-    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     
     // State for searchable style dropdown
     const [styleSearch, setStyleSearch] = useState('');
@@ -171,6 +175,16 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'anh-theo-style.zip');
     };
 
+    const handleSaveUploadedImage = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
+
+    const handleSaveGeneratedImage = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+
     const isLoading = appState.stage === 'generating';
 
     return (
@@ -193,7 +207,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => setLightboxIndex(0)} />
+                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
@@ -259,7 +273,8 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onOriginalClick={() => setLightboxIndex(0)}
+                    onOriginalClick={() => openLightbox(0)}
+                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -278,7 +293,8 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
                             onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onClick={!appState.error && appState.generatedImage ? () => setLightboxIndex(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
+                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
@@ -290,8 +306,8 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={(newIndex) => setLightboxIndex(newIndex)}
+                onClose={closeLightbox}
+                onNavigate={navigateLightbox}
             />
         </div>
     );

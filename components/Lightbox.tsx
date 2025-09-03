@@ -48,7 +48,7 @@ const Lightbox: React.FC<LightboxProps> = ({ images, selectedIndex, onClose, onN
                 <motion.div className="gallery-lightbox" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <motion.div className="gallery-lightbox-backdrop" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}></motion.div>
                     
-                    <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-8 md:p-16" onClick={onClose}>
+                    <div className="relative w-full h-full flex items-center justify-center" onClick={onClose}>
                         <AnimatePresence mode="wait">
                             <motion.div 
                                 key={selectedIndex}
