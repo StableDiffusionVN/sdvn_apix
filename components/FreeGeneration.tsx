@@ -61,6 +61,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 historicalImages: [],
                 error: null,
             });
+            addImagesToGallery([imageDataUrl]);
         });
     };
 
@@ -73,11 +74,18 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 historicalImages: [],
                 error: null,
             });
+            addImagesToGallery([imageDataUrl]);
         });
     };
     
-    const handleSaveImage1 = (newUrl: string) => onStateChange({ ...appState, image1: newUrl });
-    const handleSaveImage2 = (newUrl: string) => onStateChange({ ...appState, image2: newUrl });
+    const handleSaveImage1 = (newUrl: string) => {
+        onStateChange({ ...appState, image1: newUrl });
+        addImagesToGallery([newUrl]);
+    };
+    const handleSaveImage2 = (newUrl: string) => {
+        onStateChange({ ...appState, image2: newUrl });
+        addImagesToGallery([newUrl]);
+    };
 
     const handleSaveGeneratedImage = (index: number) => (newUrl: string) => {
         const newGeneratedImages = [...appState.generatedImages];

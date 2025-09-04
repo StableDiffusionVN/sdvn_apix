@@ -61,6 +61,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
             historicalImages: [],
             error: null,
         });
+        addImagesToGallery([imageDataUrl]);
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -69,6 +70,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
 
     const handleUploadedImageChange = (newUrl: string) => {
         onStateChange({ ...appState, uploadedImage: newUrl });
+        addImagesToGallery([newUrl]);
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {

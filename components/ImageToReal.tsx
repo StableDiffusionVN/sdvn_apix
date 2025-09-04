@@ -57,6 +57,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
             historicalImages: [],
             error: null,
         });
+        addImagesToGallery([imageDataUrl]);
     };
     
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -112,6 +113,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
 
     const handleUploadedImageChange = (newUrl: string) => {
         onStateChange({ ...appState, uploadedImage: newUrl });
+        addImagesToGallery([newUrl]);
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {

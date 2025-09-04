@@ -61,6 +61,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 historicalImages: [],
                 error: null,
             });
+            addImagesToGallery([imageDataUrl]);
         });
     };
 
@@ -74,11 +75,18 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 historicalImages: [],
                 error: null,
             });
+            addImagesToGallery([imageDataUrl]);
         });
     };
     
-    const handleContentImageChange = (newUrl: string) => onStateChange({ ...appState, contentImage: newUrl });
-    const handleStyleImageChange = (newUrl: string) => onStateChange({ ...appState, styleImage: newUrl });
+    const handleContentImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, contentImage: newUrl });
+        addImagesToGallery([newUrl]);
+    };
+    const handleStyleImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, styleImage: newUrl });
+        addImagesToGallery([newUrl]);
+    };
     const handleGeneratedImageChange = (newUrl: string) => {
         const newHistorical = [...appState.historicalImages, newUrl];
         onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });

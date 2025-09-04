@@ -319,6 +319,10 @@ export const ImageEditorProvider: React.FC<{children: React.ReactNode}> = ({ chi
     const [imageToEdit, setImageToEdit] = useState<ImageToEdit | null>(null);
 
     const openImageEditor = useCallback((url: string, onSave: (newUrl: string) => void) => {
+        if (window.innerWidth < 768) {
+            alert("Chức năng chỉnh sửa ảnh không khả dụng trên thiết bị di động.");
+            return;
+        }
         if (!url) {
             console.error("openImageEditor called with no URL.");
             return;

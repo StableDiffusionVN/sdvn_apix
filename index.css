@@ -594,7 +594,7 @@ body {
   transform: scale(1.1);
 }
 
-/* --- NEW: Image Editor Modal & ReactCrop --- */
+/* --- NEW: Image Editor Modal --- */
 .image-editor-modal-content {
   max-height: 100vh;
 }
@@ -611,20 +611,7 @@ body {
 
 .image-editor-preview {
   max-width: 100%;
-  height: 660px;
-  max-height: 80vh !important;
+  max-height: 100%;
   object-fit: contain;
   display: block;
-}
-
-.ReactCrop__crop-selection {
-  border: 2px dashed rgba(251, 191, 36, 0.8); /* yellow-400 @ 80% */
-}
-
-.ReactCrop__drag-handle {
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background-color: rgba(0, 0, 0, 0.5);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
 }

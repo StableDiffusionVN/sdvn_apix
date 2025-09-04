@@ -116,6 +116,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             historicalImages: [],
             error: null,
         });
+        addImagesToGallery([imageDataUrl]);
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +125,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     
     const handleUploadedImageChange = (newUrl: string) => {
         onStateChange({ ...appState, uploadedImage: newUrl });
+        addImagesToGallery([newUrl]);
     };
 
     const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {

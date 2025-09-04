@@ -65,6 +65,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 error: null,
             };
             onStateChange(newState);
+            addImagesToGallery([imageDataUrl]);
         });
     };
     
@@ -79,11 +80,18 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 error: null,
             };
             onStateChange(newState);
+            addImagesToGallery([imageDataUrl]);
         });
     };
     
-    const handleModelImageChange = (newUrl: string) => onStateChange({ ...appState, modelImage: newUrl });
-    const handleClothingImageChange = (newUrl: string) => onStateChange({ ...appState, clothingImage: newUrl });
+    const handleModelImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, modelImage: newUrl });
+        addImagesToGallery([newUrl]);
+    };
+    const handleClothingImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, clothingImage: newUrl });
+        addImagesToGallery([newUrl]);
+    };
     const handleGeneratedImageChange = (newUrl: string) => {
         const newHistorical = [...appState.historicalImages, newUrl];
         onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });

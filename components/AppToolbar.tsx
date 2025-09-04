@@ -60,7 +60,7 @@ const AppToolbar: React.FC = () => {
     }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, sessionGalleryImages.length]);
 
     return (
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
             <button
                 onClick={handleGoHome}
                 className="btn-search"

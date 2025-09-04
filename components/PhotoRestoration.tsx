@@ -82,6 +82,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
             historicalImages: [],
             error: null,
         });
+        addImagesToGallery([imageDataUrl]);
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +144,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     
     const handleUploadedImageChange = (newUrl: string) => {
         onStateChange({ ...appState, uploadedImage: newUrl });
+        addImagesToGallery([newUrl]);
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {
