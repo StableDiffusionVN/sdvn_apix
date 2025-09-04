@@ -301,13 +301,14 @@ export const useLightbox = () => {
 
 // --- NEW: Image Editor Hook ---
 export interface ImageToEdit {
-    url: string;
+    url: string | null;
     onSave: (newUrl: string) => void;
 }
 
 interface ImageEditorContextType {
     imageToEdit: ImageToEdit | null;
     openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
+    openEmptyImageEditor: (onSave: (newUrl: string) => void) => void;
     closeImageEditor: () => void;
 }
 
@@ -330,11 +331,19 @@ export const ImageEditorProvider: React.FC<{children: React.ReactNode}> = ({ chi
         setImageToEdit({ url, onSave });
     }, []);
 
+    const openEmptyImageEditor = useCallback((onSave: (newUrl: string) => void) => {
+        if (window.innerWidth < 768) {
+            alert("Chức năng chỉnh sửa ảnh không khả dụng trên thiết bị di động.");
+            return;
+        }
+        setImageToEdit({ url: null, onSave });
+    }, []);
+
     const closeImageEditor = useCallback(() => {
         setImageToEdit(null);
     }, []);
 
-    const value = { imageToEdit, openImageEditor, closeImageEditor };
+    const value = { imageToEdit, openImageEditor, openEmptyImageEditor, closeImageEditor };
 
     return (
         <ImageEditorContext.Provider value={value}>
@@ -591,6 +600,7 @@ interface AppControlContextType {
     isGalleryOpen: boolean;
     isInfoOpen: boolean;
     addImagesToGallery: (newImages: string[]) => void;
+    removeImageFromGallery: (imageIndex: number) => void;
     handleThemeChange: (newTheme: Theme) => void;
     navigateTo: (viewId: string) => void;
     handleStateChange: (newAppState: AnyAppState) => void;
@@ -626,6 +636,10 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const uniqueNewImages = newImages.filter(img => !prev.includes(img));
             return [...prev, ...uniqueNewImages];
         });
+    }, []);
+
+    const removeImageFromGallery = useCallback((indexToRemove: number) => {
+        setSessionGalleryImages(prev => prev.filter((_, index) => index !== indexToRemove));
     }, []);
 
     useEffect(() => {
@@ -742,6 +756,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isGalleryOpen,
         isInfoOpen,
         addImagesToGallery,
+        removeImageFromGallery,
         handleThemeChange,
         navigateTo,
         handleStateChange,

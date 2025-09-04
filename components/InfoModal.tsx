@@ -52,11 +52,13 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                             <div>
                                 <h4 className="font-bold text-lg text-yellow-400/90 mb-2">Phím tắt</h4>
                                 <ul className="space-y-2">
+                                    <li className="flex justify-between items-center"><span>Về trang chủ</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
                                     <li className="flex justify-between items-center"><span>Quay lại (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
                                     <li className="flex justify-between items-center"><span>Tiến lên (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
                                     <li className="flex justify-between items-center"><span>Tìm kiếm ứng dụng</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
                                     <li className="flex justify-between items-center"><span>Mở thư viện ảnh</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
-                                    <li className="flex justify-between items-center"><span>Mở bảng hướng dẫn này</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
+                                    <li className="flex justify-between items-center"><span>Mở Trình chỉnh sửa ảnh</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
+                                    <li className="flex justify-between items-center"><span>Mở bảng hướng dẫn này</span> <Shortcut keys="Cmd/Ctrl + I" /></li>
                                 </ul>
                             </div>
                             <div>

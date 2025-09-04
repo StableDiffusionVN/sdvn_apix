@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React, { useEffect, useCallback } from 'react';
-import { useAppControls } from './uiUtils';
+import { useAppControls, useImageEditor } from './uiUtils';
 
 const AppToolbar: React.FC = () => {
     const {
@@ -17,7 +17,16 @@ const AppToolbar: React.FC = () => {
         handleOpenGallery,
         handleOpenSearch,
         handleOpenInfo,
+        addImagesToGallery
     } = useAppControls();
+
+    const { openEmptyImageEditor } = useImageEditor();
+
+    const handleOpenEditor = useCallback(() => {
+        openEmptyImageEditor((newUrl) => {
+            addImagesToGallery([newUrl]);
+        });
+    }, [openEmptyImageEditor, addImagesToGallery]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,7 +40,9 @@ const AppToolbar: React.FC = () => {
             const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
             const isSearch = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f';
             const isGallery = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g';
-            const isHelp = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+            const isHome = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+            const isInfo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i';
+            const isEditor = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e';
 
             if (isUndo) {
                 e.preventDefault();
@@ -43,13 +54,17 @@ const AppToolbar: React.FC = () => {
                 e.preventDefault();
                 handleOpenSearch();
             } else if (isGallery) {
-                if (sessionGalleryImages.length > 0) {
-                    e.preventDefault();
-                    handleOpenGallery();
-                }
-            } else if (isHelp) {
+                e.preventDefault();
+                handleOpenGallery();
+            } else if (isHome) {
+                e.preventDefault();
+                handleGoHome();
+            } else if (isInfo) {
                 e.preventDefault();
                 handleOpenInfo();
+            } else if (isEditor) {
+                e.preventDefault();
+                handleOpenEditor();
             }
         };
 
@@ -57,14 +72,14 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, sessionGalleryImages.length]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor]);
 
     return (
         <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
             <button
                 onClick={handleGoHome}
                 className="btn-search"
-                aria-label="Trở về trang chủ"
+                aria-label="Trở về trang chủ (Cmd/Ctrl+H)"
                 disabled={currentView.viewId === 'home'}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -95,10 +110,18 @@ const AppToolbar: React.FC = () => {
                 onClick={handleOpenGallery}
                 className="btn-gallery"
                 aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
-                disabled={sessionGalleryImages.length === 0}
             >
                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </button>
+            <button
+                onClick={handleOpenEditor}
+                className="btn-search"
+                aria-label="Mở trình chỉnh sửa ảnh (Cmd/Ctrl+E)"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
                 </svg>
             </button>
             <button
@@ -113,10 +136,10 @@ const AppToolbar: React.FC = () => {
             <button
                 onClick={handleOpenInfo}
                 className="btn-search"
-                aria-label="Mở hướng dẫn (Cmd/Ctrl+H)"
+                aria-label="Mở hướng dẫn (Cmd/Ctrl+I)"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V12M12 8h.01" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </button>
         </div>

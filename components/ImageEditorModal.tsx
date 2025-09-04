@@ -2,10 +2,71 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
+import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type ImageToEdit } from './uiUtils';
+import { type ImageToEdit, useAppControls, handleFileUpload } from './uiUtils';
 import { cn } from '../lib/utils';
+
+// --- Gallery Picker Component (copied from ActionablePolaroidCard) ---
+interface GalleryPickerProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSelect: (imageUrl: string) => void;
+    images: string[];
+}
+
+const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, onSelect, images }) => {
+    if (!isOpen) {
+        return null;
+    }
+
+    return ReactDOM.createPortal(
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="modal-overlay z-[70]"
+                    aria-modal="true"
+                    role="dialog"
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="modal-content !max-w-4xl !h-[85vh] flex flex-col"
+                    >
+                        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                            <h3 className="base-font font-bold text-2xl text-yellow-400">Chọn ảnh từ Thư viện</h3>
+                            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Đóng thư viện">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="gallery-grid">
+                            {images.map((img, index) => (
+                                <motion.div
+                                    key={`${img.slice(-20)}-${index}`}
+                                    className="gallery-grid-item"
+                                    onClick={() => onSelect(img)}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.03 }}
+                                >
+                                    <img src={img} alt={`Generated image ${index + 1}`} loading="lazy" />
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>,
+        document.body
+    );
+};
 
 // --- Reusable Range Slider Component ---
 interface RangeSliderProps {
@@ -198,6 +259,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
     
     // UI states
     const [openSection, setOpenSection] = useState<'adj' | 'hls' | 'effects' | null>('adj');
+    const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
+    const { sessionGalleryImages } = useAppControls();
 
     // Image and Crop states
     const [isCropping, setIsCropping] = useState(false);
@@ -212,6 +275,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
     const originalPreviewData = useRef<ImageData | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isOpen = imageToEdit !== null;
 
@@ -366,6 +430,12 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         image.onload = () => {
             sourceImageRef.current = image;
             const containerRect = container.getBoundingClientRect();
+
+            // FIX: Add guard against zero-sized container or image to prevent crash
+            if (containerRect.width <= 0 || containerRect.height <= 0 || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+                console.warn("Canvas container or image has zero dimensions. Aborting canvas setup.");
+                return;
+            }
             
             const isSwapped = rotation === 90 || rotation === 270;
             const imageAspectRatio = isSwapped
@@ -424,6 +494,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
             canvas.width = isSwapped ? image.naturalHeight : image.naturalWidth;
             canvas.height = isSwapped ? image.naturalWidth : image.naturalHeight;
 
+            // FIX: Add guard against zero-sized canvas to prevent crash on save
+            if (canvas.width <= 0 || canvas.height <= 0) {
+                console.error("Cannot save image with zero dimensions.");
+                setIsLoading(false);
+                return;
+            }
+            
             const ctx = canvas.getContext('2d');
             if (!ctx) { setIsLoading(false); return; }
 
@@ -632,6 +709,17 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
     };
     const currentChannelAdjustments = colorAdjustments[activeColorTab];
 
+    const handleFileSelected = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        handleFileUpload(e, (newUrl) => {
+            setInternalImageUrl(newUrl);
+        });
+    }, []);
+
+    const handleGallerySelect = (newUrl: string) => {
+        setInternalImageUrl(newUrl);
+        setIsGalleryPickerOpen(false);
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -644,165 +732,200 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                         initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
                         onClick={(e) => e.stopPropagation()} className="modal-content !max-w-6xl !h-[90vh] image-editor-modal-content"
                     >
-                        <div className="flex flex-col md:flex-row gap-8 w-full h-full overflow-hidden">
-                            {/* Left Column: Image Preview */}
-                            <div className="flex-1 flex items-center justify-center min-h-0">
-                                <div className="image-editor-preview-container w-full h-full">
-                                    <canvas
-                                        ref={previewCanvasRef} className="image-editor-preview"
-                                        onMouseDown={handleCropMouseDown} onMouseMove={handleCropMouseMove}
-                                        onMouseUp={handleCropMouseUp} onMouseLeave={handleCropMouseUp}
-                                        onTouchStart={handleCropMouseDown} onTouchMove={handleCropMouseMove} onTouchEnd={handleCropMouseUp}
-                                    />
-                                </div>
-                            </div>
-                            
-                            {/* Right Column: Controls and Actions */}
-                            <div className="flex flex-col flex-shrink-0 md:w-80">
-                                <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                                    <h3 className="base-font font-bold text-2xl text-yellow-400">Image Editor</h3>
-                                    <button onClick={resetAll} className="btn btn-secondary btn-sm !text-xs !py-1 !px-3">Reset All</button>
-                                </div>
-                                
-                                <div className="flex-shrink-0 space-y-2 border border-neutral-700 rounded-lg p-3">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="base-font font-bold text-neutral-200">Transform</h4>
-                                        <button onClick={() => setIsCropping(prev => !prev)} className={cn('px-3 py-1 text-sm rounded-md transition-colors', isCropping ? 'bg-yellow-400 text-black' : 'bg-neutral-600 hover:bg-neutral-500 text-white' )}>
-                                            {isCropping ? 'Cancel Crop' : 'Crop'}
-                                        </button>
-                                    </div>
-                                    <AnimatePresence>
-                                        {isCropping && (
-                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                                <div className="pt-2 flex flex-wrap gap-2">
-                                                    {CROP_PRESETS.map(p => (
-                                                        <button key={p.name} onClick={() => handlePresetSelect(p.name)} className={cn("px-2 py-1 text-xs rounded-md transition-colors", activePreset === p.name ? 'bg-yellow-400 text-black' : 'bg-neutral-600 hover:bg-neutral-500 text-white')}>
-                                                            {p.name}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                    <div className="grid grid-cols-2 gap-2 pt-1">
-                                        <button onClick={() => setRotation(r => (r - 90 + 360) % 360)} className={transformButtonClasses} disabled={isCropping}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V9a6 6 0 0112 0v3" /></svg>
-                                            Rotate Left
-                                        </button>
-                                        <button onClick={() => setRotation(r => (r + 90) % 360)} className={transformButtonClasses} disabled={isCropping}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15l6 6m0 0l6-6m-6 6V9a6 6 0 00-12 0v3" /></svg>
-                                            Rotate Right
-                                        </button>
-                                        <button onClick={() => setFlipHorizontal(f => !f)} className={transformButtonClasses} disabled={isCropping}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 12L4 13m3 3l3-3m7-3v12m0-12l3-3m-3 3l-3 3" /></svg>
-                                            Flip Horizontal
-                                        </button>
-                                        <button onClick={() => setFlipVertical(f => !f)} className={transformButtonClasses} disabled={isCropping}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7l-4 4-4-4m8 10l-4-4-4 4" /></svg>
-                                            Flip Vertical
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className={`flex-grow overflow-y-auto space-y-2 pr-2 -mr-2 mt-4 transition-opacity duration-200 ${isCropping ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
-                                    {/* Basic Section */}
-                                    <div className="border border-neutral-700 rounded-lg overflow-hidden">
-                                        <button onClick={() => setOpenSection(openSection === 'adj' ? null : 'adj')} className={accordionHeaderClasses} aria-expanded={openSection === 'adj'}>
-                                            <h4 className="base-font font-bold text-neutral-200">Basic</h4>
-                                            <motion.div animate={{ rotate: openSection === 'adj' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
-                                        </button>
-                                        <AnimatePresence>
-                                            {openSection === 'adj' && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                                    <div className="p-3 space-y-3">
-                                                        <RangeSlider id="luminance" label="Exposure" value={luminance} min={-100} max={100} step={1} onChange={setLuminance} onReset={() => setLuminance(0)} />
-                                                        <RangeSlider id="contrast" label="Contrast" value={contrast} min={-100} max={100} step={1} onChange={setContrast} onReset={() => setContrast(0)} />
-                                                        <RangeSlider id="temp" label="Temp" value={temp} min={-100} max={100} step={1} onChange={setTemp} onReset={() => setTemp(0)} />
-                                                        <RangeSlider id="tint" label="Tint" value={tint} min={-100} max={100} step={1} onChange={setTint} onReset={() => setTint(0)} />
-                                                        <RangeSlider id="vibrance" label="Vibrance" value={vibrance} min={-100} max={100} step={1} onChange={setVibrance} onReset={() => setVibrance(0)} />
-                                                        <RangeSlider id="saturation" label="Saturation" value={saturation} min={-100} max={100} step={1} onChange={setSaturation} onReset={() => setSaturation(0)} />
-                                                        <RangeSlider id="hue" label="Hue" value={hue} min={-180} max={180} step={1} onChange={setHue} onReset={() => setHue(0)} />
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                    {/* HLS Section */}
-                                    <div className="border border-neutral-700 rounded-lg overflow-hidden">
-                                        <button onClick={() => setOpenSection(openSection === 'hls' ? null : 'hls')} className={accordionHeaderClasses} aria-expanded={openSection === 'hls'}>
-                                            <h4 className="base-font font-bold text-neutral-200">HLS</h4>
-                                            <motion.div animate={{ rotate: openSection === 'hls' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
-                                        </button>
-                                        <AnimatePresence>
-                                            {openSection === 'hls' && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                                    <div className="p-3 space-y-3">
-                                                        <div className="flex justify-center gap-4 py-2">
-                                                             {COLOR_CHANNELS.map(channel => (
-                                                                <button
-                                                                    key={channel.id}
-                                                                    onClick={() => setActiveColorTab(channel.id)}
-                                                                    className={cn(
-                                                                        "w-6 h-6 rounded-full transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-800",
-                                                                        activeColorTab === channel.id ? 'ring-2 ring-yellow-400 scale-110' : 'hover:scale-110'
-                                                                    )}
-                                                                    style={{ backgroundColor: channel.color }}
-                                                                    aria-label={`Select ${channel.name}`}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                        <AnimatePresence mode="wait">
-                                                            <motion.div key={activeColorTab} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.15 }} className="space-y-3">
-                                                                <RangeSlider id={`${activeColorTab}-h`} label="Hue" value={currentChannelAdjustments.h} min={-180} max={180} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 'h', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 'h')} />
-                                                                <RangeSlider id={`${activeColorTab}-s`} label="Saturation" value={currentChannelAdjustments.s} min={-100} max={100} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 's', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 's')} />
-                                                                <RangeSlider id={`${activeColorTab}-l`} label="Luminance" value={currentChannelAdjustments.l} min={-100} max={100} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 'l', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 'l')} />
-                                                            </motion.div>
-                                                        </AnimatePresence>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                     {/* Effects Section */}
-                                    <div className="border border-neutral-700 rounded-lg overflow-hidden">
-                                        <button onClick={() => setOpenSection(openSection === 'effects' ? null : 'effects')} className={accordionHeaderClasses} aria-expanded={openSection === 'effects'}>
-                                            <h4 className="base-font font-bold text-neutral-200">Effects</h4>
-                                            <motion.div animate={{ rotate: openSection === 'effects' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
-                                        </button>
-                                        <AnimatePresence>
-                                            {openSection === 'effects' && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                                    <div className="p-3 space-y-3">
-                                                        <RangeSlider id="grain" label="Grain" value={grain} min={0} max={100} step={1} onChange={setGrain} onReset={() => setGrain(0)} />
-                                                        <RangeSlider id="clarity" label="Clarity" value={clarity} min={-100} max={100} step={1} onChange={setClarity} onReset={() => setClarity(0)} />
-                                                        <RangeSlider id="dehaze" label="Dehaze" value={dehaze} min={-100} max={100} step={1} onChange={setDehaze} onReset={() => setDehaze(0)} />
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
-                                
-                                <AnimatePresence>
-                                {isCropping && (
-                                     <motion.div 
-                                        className="mt-auto pt-4 border-t border-white/10"
-                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                        {!internalImageUrl ? (
+                             <>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/png, image/jpeg, image/webp"
+                                    onChange={handleFileSelected}
+                                    onClick={(e) => ((e.target as HTMLInputElement).value = '')}
+                                />
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-neutral-900/50 rounded-lg border-2 border-dashed border-neutral-700">
+                                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-8 rounded-lg hover:bg-neutral-800/50 transition-colors">
+                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <h4 className="text-xl font-bold text-neutral-200">Tải ảnh lên</h4>
+                                        <p className="text-neutral-400">Nhấn vào đây để chọn ảnh từ máy tính</p>
+                                    </button>
+                                    <p className="text-neutral-500">hoặc</p>
+                                    <button
+                                        onClick={() => setIsGalleryPickerOpen(true)}
+                                        className="btn btn-secondary btn-sm"
+                                        disabled={sessionGalleryImages.length === 0}
                                     >
-                                        <div className="flex justify-end items-center gap-4">
-                                            <button onClick={handleCancelCrop} className="btn btn-secondary btn-sm">Cancel</button>
-                                            <button onClick={handleApplyCrop} className="btn btn-primary btn-sm" disabled={!cropRect || cropRect.width < 1}>Apply Crop</button>
+                                        Chọn từ Thư viện
+                                    </button>
+                                </div>
+                                <GalleryPicker
+                                    isOpen={isGalleryPickerOpen}
+                                    onClose={() => setIsGalleryPickerOpen(false)}
+                                    onSelect={handleGallerySelect}
+                                    images={sessionGalleryImages}
+                                />
+                            </>
+                        ) : (
+                            <div className="flex flex-col md:flex-row gap-8 w-full h-full overflow-hidden">
+                                {/* Left Column: Image Preview */}
+                                <div className="flex-1 flex items-center justify-center min-h-0">
+                                    <div className="image-editor-preview-container w-full h-full">
+                                        <canvas
+                                            ref={previewCanvasRef} className="image-editor-preview"
+                                            onMouseDown={handleCropMouseDown} onMouseMove={handleCropMouseMove}
+                                            onMouseUp={handleCropMouseUp} onMouseLeave={handleCropMouseUp}
+                                            onTouchStart={handleCropMouseDown} onTouchMove={handleCropMouseMove} onTouchEnd={handleCropMouseUp}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Right Column: Controls and Actions */}
+                                <div className="flex flex-col flex-shrink-0 md:w-80">
+                                    <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                                        <h3 className="base-font font-bold text-2xl text-yellow-400">Image Editor</h3>
+                                        <button onClick={resetAll} className="btn btn-secondary btn-sm !text-xs !py-1 !px-3">Reset All</button>
+                                    </div>
+                                    
+                                    <div className="flex-shrink-0 space-y-2 border border-neutral-700 rounded-lg p-3">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="base-font font-bold text-neutral-200">Transform</h4>
+                                            <button onClick={() => setIsCropping(prev => !prev)} className={cn('px-3 py-1 text-sm rounded-md transition-colors', isCropping ? 'bg-yellow-400 text-black' : 'bg-neutral-600 hover:bg-neutral-500 text-white' )}>
+                                                {isCropping ? 'Cancel Crop' : 'Crop'}
+                                            </button>
                                         </div>
-                                     </motion.div>
-                                )}
-                                </AnimatePresence>
+                                        <AnimatePresence>
+                                            {isCropping && (
+                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                                    <div className="pt-2 flex flex-wrap gap-2">
+                                                        {CROP_PRESETS.map(p => (
+                                                            <button key={p.name} onClick={() => handlePresetSelect(p.name)} className={cn("px-2 py-1 text-xs rounded-md transition-colors", activePreset === p.name ? 'bg-yellow-400 text-black' : 'bg-neutral-600 hover:bg-neutral-500 text-white')}>
+                                                                {p.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                        <div className="grid grid-cols-2 gap-2 pt-1">
+                                            <button onClick={() => setRotation(r => (r - 90 + 360) % 360)} className={transformButtonClasses} disabled={isCropping}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V9a6 6 0 0112 0v3" /></svg>
+                                                Rotate Left
+                                            </button>
+                                            <button onClick={() => setRotation(r => (r + 90) % 360)} className={transformButtonClasses} disabled={isCropping}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15l6 6m0 0l6-6m-6 6V9a6 6 0 00-12 0v3" /></svg>
+                                                Rotate Right
+                                            </button>
+                                            <button onClick={() => setFlipHorizontal(f => !f)} className={transformButtonClasses} disabled={isCropping}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 12L4 13m3 3l3-3m7-3v12m0-12l3-3m-3 3l-3 3" /></svg>
+                                                Flip Horizontal
+                                            </button>
+                                            <button onClick={() => setFlipVertical(f => !f)} className={transformButtonClasses} disabled={isCropping}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7l-4 4-4-4m8 10l-4-4-4 4" /></svg>
+                                                Flip Vertical
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                <div className={`flex justify-end items-center gap-4 mt-auto pt-4 border-t border-white/10 flex-shrink-0 ${isCropping ? 'hidden' : ''}`}>
-                                    <button onClick={onClose} className="btn btn-secondary btn-sm" disabled={isLoading}>Cancel</button>
-                                    <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save Changes'}</button>
+                                    <div className={`flex-grow overflow-y-auto space-y-2 pr-2 -mr-2 mt-4 transition-opacity duration-200 ${isCropping ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                                        {/* Basic Section */}
+                                        <div className="border border-neutral-700 rounded-lg overflow-hidden">
+                                            <button onClick={() => setOpenSection(openSection === 'adj' ? null : 'adj')} className={accordionHeaderClasses} aria-expanded={openSection === 'adj'}>
+                                                <h4 className="base-font font-bold text-neutral-200">Basic</h4>
+                                                <motion.div animate={{ rotate: openSection === 'adj' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
+                                            </button>
+                                            <AnimatePresence>
+                                                {openSection === 'adj' && (
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                                        <div className="p-3 space-y-3">
+                                                            <RangeSlider id="luminance" label="Exposure" value={luminance} min={-100} max={100} step={1} onChange={setLuminance} onReset={() => setLuminance(0)} />
+                                                            <RangeSlider id="contrast" label="Contrast" value={contrast} min={-100} max={100} step={1} onChange={setContrast} onReset={() => setContrast(0)} />
+                                                            <RangeSlider id="temp" label="Temp" value={temp} min={-100} max={100} step={1} onChange={setTemp} onReset={() => setTemp(0)} />
+                                                            <RangeSlider id="tint" label="Tint" value={tint} min={-100} max={100} step={1} onChange={setTint} onReset={() => setTint(0)} />
+                                                            <RangeSlider id="vibrance" label="Vibrance" value={vibrance} min={-100} max={100} step={1} onChange={setVibrance} onReset={() => setVibrance(0)} />
+                                                            <RangeSlider id="saturation" label="Saturation" value={saturation} min={-100} max={100} step={1} onChange={setSaturation} onReset={() => setSaturation(0)} />
+                                                            <RangeSlider id="hue" label="Hue" value={hue} min={-180} max={180} step={1} onChange={setHue} onReset={() => setHue(0)} />
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                        {/* HLS Section */}
+                                        <div className="border border-neutral-700 rounded-lg overflow-hidden">
+                                            <button onClick={() => setOpenSection(openSection === 'hls' ? null : 'hls')} className={accordionHeaderClasses} aria-expanded={openSection === 'hls'}>
+                                                <h4 className="base-font font-bold text-neutral-200">HLS</h4>
+                                                <motion.div animate={{ rotate: openSection === 'hls' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
+                                            </button>
+                                            <AnimatePresence>
+                                                {openSection === 'hls' && (
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                                        <div className="p-3 space-y-3">
+                                                            <div className="flex justify-center gap-4 py-2">
+                                                                 {COLOR_CHANNELS.map(channel => (
+                                                                    <button
+                                                                        key={channel.id}
+                                                                        onClick={() => setActiveColorTab(channel.id)}
+                                                                        className={cn(
+                                                                            "w-6 h-6 rounded-full transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-800",
+                                                                            activeColorTab === channel.id ? 'ring-2 ring-yellow-400 scale-110' : 'hover:scale-110'
+                                                                        )}
+                                                                        style={{ backgroundColor: channel.color }}
+                                                                        aria-label={`Select ${channel.name}`}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                            <AnimatePresence mode="wait">
+                                                                <motion.div key={activeColorTab} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.15 }} className="space-y-3">
+                                                                    <RangeSlider id={`${activeColorTab}-h`} label="Hue" value={currentChannelAdjustments.h} min={-180} max={180} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 'h', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 'h')} />
+                                                                    <RangeSlider id={`${activeColorTab}-s`} label="Saturation" value={currentChannelAdjustments.s} min={-100} max={100} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 's', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 's')} />
+                                                                    <RangeSlider id={`${activeColorTab}-l`} label="Luminance" value={currentChannelAdjustments.l} min={-100} max={100} step={1} onChange={v => handleColorAdjustmentChange(activeColorTab, 'l', v)} onReset={() => handleColorAdjustmentReset(activeColorTab, 'l')} />
+                                                                </motion.div>
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                         {/* Effects Section */}
+                                        <div className="border border-neutral-700 rounded-lg overflow-hidden">
+                                            <button onClick={() => setOpenSection(openSection === 'effects' ? null : 'effects')} className={accordionHeaderClasses} aria-expanded={openSection === 'effects'}>
+                                                <h4 className="base-font font-bold text-neutral-200">Effects</h4>
+                                                <motion.div animate={{ rotate: openSection === 'effects' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg></motion.div>
+                                            </button>
+                                            <AnimatePresence>
+                                                {openSection === 'effects' && (
+                                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                                        <div className="p-3 space-y-3">
+                                                            <RangeSlider id="grain" label="Grain" value={grain} min={0} max={100} step={1} onChange={setGrain} onReset={() => setGrain(0)} />
+                                                            <RangeSlider id="clarity" label="Clarity" value={clarity} min={-100} max={100} step={1} onChange={setClarity} onReset={() => setClarity(0)} />
+                                                            <RangeSlider id="dehaze" label="Dehaze" value={dehaze} min={-100} max={100} step={1} onChange={setDehaze} onReset={() => setDehaze(0)} />
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </div>
+                                    
+                                    <AnimatePresence>
+                                    {isCropping && (
+                                         <motion.div 
+                                            className="mt-auto pt-4 border-t border-white/10"
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                        >
+                                            <div className="flex justify-end items-center gap-4">
+                                                <button onClick={handleCancelCrop} className="btn btn-secondary btn-sm">Cancel</button>
+                                                <button onClick={handleApplyCrop} className="btn btn-primary btn-sm" disabled={!cropRect || cropRect.width < 1}>Apply Crop</button>
+                                            </div>
+                                         </motion.div>
+                                    )}
+                                    </AnimatePresence>
+
+                                    <div className={`flex justify-end items-center gap-4 mt-auto pt-4 border-t border-white/10 flex-shrink-0 ${isCropping ? 'hidden' : ''}`}>
+                                        <button onClick={onClose} className="btn btn-secondary btn-sm" disabled={isLoading}>Cancel</button>
+                                        <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save Changes'}</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
                     </motion.div>
                 </motion.div>
             )}
