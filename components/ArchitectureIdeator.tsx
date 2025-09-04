@@ -5,23 +5,19 @@
 import React, { useState, ChangeEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateArchitecturalImage, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
-import { ImageEditorModal } from './ImageEditorModal';
 import { 
-    RegenerationModal,
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
     type ArchitectureIdeatorState,
     handleFileUpload,
     useLightbox,
-    useImageEditor,
 } from './uiUtils';
 
 interface ArchitectureIdeatorProps {
@@ -36,7 +32,6 @@ interface ArchitectureIdeatorProps {
     onStateChange: (newState: ArchitectureIdeatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const CONTEXT_OPTIONS = ['Tự động', 'Đô thị hiện đại (Modern city)', 'Vùng quê yên tĩnh (Countryside)', 'Ven biển (Coastal)', 'Vùng núi (Mountainous)', 'Sa mạc (Desert)', 'Rừng rậm (Jungle)', 'Khu công nghiệp (Industrial zone)', 'Không gian vũ trụ (Outer space)', 'Thế giới thần tiên (Fairy tale world)', 'Thành phố tương lai (Cyberpunk city)', 'Thành phố dưới nước (Underwater city)', 'Thành phố trên mây (City on clouds)', 'Khu di tích cổ đại (Ancient ruins)', 'Vườn Nhật Bản (Japanese garden)', 'Đường phố London thời Victoria (Victorian London)', 'Khu nhà ổ chuột Brazil (Brazilian favela)', 'Trạm nghiên cứu Bắc Cực (Arctic station)', 'Colony trên sao Hỏa (Mars colony)', 'Vùng đất hoang tàn hậu tận thế (Post-apocalyptic wasteland)', 'Làng Địa Trung Hải (Mediterranean village)', 'Cảnh quan núi lửa (Volcanic landscape)'];
@@ -48,26 +43,26 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
         appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
         ...headerProps 
     } = props;
     
-    const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-            onStateChange({
-                ...appState,
-                stage: 'configuring',
-                uploadedImage: imageDataUrl,
-                generatedImage: null,
-                historicalImages: [],
-                error: null,
-            });
+    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            stage: 'configuring',
+            uploadedImage: imageDataUrl,
+            generatedImage: null,
+            historicalImages: [],
+            error: null,
         });
+    };
+
+    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
     const handleOptionChange = (field: keyof ArchitectureIdeatorState['options'], value: string | boolean) => {
@@ -100,8 +95,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         }
     };
 
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -120,15 +114,19 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
         }
     };
+    
+    const handleUploadedImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
+
+    const handleGeneratedImageChange = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
 
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
-    };
-
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, 'ket-qua-kien-truc.jpg');
-        }
     };
 
     const handleDownloadAll = () => {
@@ -156,16 +154,6 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-kien-truc.zip');
     };
     
-    const handleSaveUploadedImage = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-    };
-
-    const handleSaveGeneratedImage = (newUrl: string) => {
-        const newHistorical = [...appState.historicalImages, newUrl];
-        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
     const renderSelect = (id: keyof ArchitectureIdeatorState['options'], label: string, optionList: string[]) => (
         <div>
             <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
@@ -195,6 +183,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                     <ImageUploader
                         id="sketch-upload"
                         onImageUpload={handleImageUpload}
+                        onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
                         placeholderType="architecture"
@@ -204,12 +193,15 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard 
+                            <ActionablePolaroidCard 
                                 imageUrl={appState.uploadedImage} 
                                 caption="Ảnh phác thảo" 
                                 status="done"
                                 onClick={() => openLightbox(0)}
-                                onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
+                                isEditable={true}
+                                isSwappable={true}
+                                isGallerySelectable={true}
+                                onImageChange={handleUploadedImageChange}
                             />
                         </div>
 
@@ -268,7 +260,6 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onOriginalClick={() => openLightbox(0)}
-                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -293,29 +284,24 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}
                     >
-                        <PolaroidCard
+                        <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh ảnh kiến trúc"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                            regenerationPlaceholder="Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm..."
                         />
                     </motion.div>
                 </ResultsView>
             )}
-
-            <RegenerationModal
-                isOpen={isRegenerating}
-                onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify="Kết quả"
-                title="Tinh chỉnh ảnh kiến trúc"
-                description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm..."
-            />
 
             <Lightbox
                 images={lightboxImages}

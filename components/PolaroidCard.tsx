@@ -15,6 +15,9 @@ interface PolaroidCardProps {
     onShake?: (caption: string) => void;
     onDownload?: (caption: string) => void;
     onEdit?: (caption: string) => void;
+    onSwapImage?: () => void;
+    onSelectFromGallery?: () => void;
+    isGalleryDisabled?: boolean;
     isMobile?: boolean;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
     onClick?: () => void;
@@ -75,9 +78,9 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, onEdit, isMobile, placeholderType = 'person', onClick }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isGalleryDisabled = false, isMobile, placeholderType = 'person', onClick }) => {
     const hasImage = status === 'done' && imageUrl;
-    const isClickable = hasImage && onClick;
+    const isClickable = !!onClick;
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (isClickable && onClick) {
@@ -105,54 +108,6 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                                 </svg>
                             </div>
                         )}
-                        <div className={cn(
-                            "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
-                            !isMobile && "opacity-0 group-hover:opacity-100",
-                        )}>
-                             {onEdit && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onEdit(caption);
-                                    }}
-                                    className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
-                                    aria-label={`Sửa ảnh cho ${caption}`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-                                    </svg>
-                                </button>
-                            )}
-                             {onShake && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onShake(caption);
-                                    }}
-                                    className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
-                                    aria-label={`Tạo lại ảnh cho ${caption}`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.899 2.186l-1.42.71a5.002 5.002 0 00-8.479-1.554H10a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm12 14a1 1 0 01-1-1v-2.101a7.002 7.002 0 01-11.899-2.186l1.42-.71a5.002 5.002 0 008.479 1.554H10a1 1 0 110-2h6a1 1 0 011 1v6a1 1 0 01-1 1z" clipRule="evenodd" />
-                                    </svg>
-                                </button>
-                            )}
-                            {onDownload && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDownload(caption);
-                                    }}
-                                    className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
-                                    aria-label={`Tải ảnh cho ${caption}`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-                        
                         <img
                             key={imageUrl}
                             src={imageUrl}
@@ -162,6 +117,87 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                     </>
                 )}
                 {status === 'done' && !imageUrl && <Placeholder type={placeholderType} />}
+
+                {/* --- BUTTON CONTAINER --- */}
+                <div className={cn(
+                    "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
+                    (hasImage || onSelectFromGallery) ? (!isMobile ? 'opacity-0 group-hover:opacity-100' : '') : 'opacity-0 pointer-events-none'
+                )}>
+                     {hasImage && onEdit && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(caption);
+                            }}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                            aria-label={`Sửa ảnh cho ${caption}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                            </svg>
+                        </button>
+                    )}
+                     {hasImage && onSwapImage && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSwapImage();
+                            }}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                            aria-label={`Đổi ảnh cho ${caption}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 12L4 13m3 3l3-3m6 0v12m0-12l3 3m-3-3l-3 3" />
+                            </svg>
+                        </button>
+                    )}
+                    {onSelectFromGallery && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isGalleryDisabled) onSelectFromGallery();
+                            }}
+                            disabled={isGalleryDisabled}
+                            className={cn(
+                                "p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white",
+                                isGalleryDisabled && "opacity-50 cursor-not-allowed hover:bg-black/50"
+                            )}
+                            aria-label={`Chọn ảnh từ thư viện`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                            </svg>
+                        </button>
+                    )}
+                     {hasImage && onShake && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onShake(caption);
+                            }}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                            aria-label={`Tạo lại ảnh cho ${caption}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.899 2.186l-1.42.71a5.002 5.002 0 00-8.479-1.554H10a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm12 14a1 1 0 01-1-1v-2.101a7.002 7.002 0 01-11.899-2.186l1.42-.71a5.002 5.002 0 008.479 1.554H10a1 1 0 110-2h6a1 1 0 011 1v6a1 1 0 01-1 1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    )}
+                    {hasImage && onDownload && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDownload(caption);
+                            }}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                            aria-label={`Tải ảnh cho ${caption}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="absolute bottom-4 left-4 right-4 text-center px-2">
                 <p className={cn(

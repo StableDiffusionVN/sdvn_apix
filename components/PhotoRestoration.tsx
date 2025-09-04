@@ -5,22 +5,19 @@
 import React, { useState, ChangeEvent, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { restoreOldPhoto, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
-    RegenerationModal,
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
     type PhotoRestorationState,
     handleFileUpload,
     useLightbox,
-    useImageEditor,
 } from './uiUtils';
 import { COUNTRIES } from '../lib/countries';
 
@@ -36,7 +33,6 @@ interface PhotoRestorationProps {
     onStateChange: (newState: PhotoRestorationState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const PHOTO_TYPE_OPTIONS = ['Chân dung', 'Phong cảnh', 'Gia đình', 'Sự kiện', 'Kiến trúc', 'Đời thường'];
@@ -45,12 +41,10 @@ const GENDER_OPTIONS = ['Tự động', 'Nam', 'Nữ', 'Nhiều người'];
 const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps 
     } = props;
     
-    const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     
     // State for searchable nationality dropdown
@@ -79,17 +73,19 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-            onStateChange({
-                ...appState,
-                stage: 'configuring',
-                uploadedImage: imageDataUrl,
-                generatedImage: null,
-                historicalImages: [],
-                error: null,
-            });
+    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            stage: 'configuring',
+            uploadedImage: imageDataUrl,
+            generatedImage: null,
+            historicalImages: [],
+            error: null,
         });
+    };
+
+    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
     const handleOptionChange = (field: keyof PhotoRestorationState['options'], value: string | boolean) => {
@@ -125,8 +121,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         }
     };
     
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -146,14 +141,18 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         }
     };
     
-    const handleBackToOptions = () => {
-        onStateChange({ ...appState, stage: 'configuring', error: null });
+    const handleUploadedImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
     };
 
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, 'anh-phuc-che.jpg');
-        }
+    const handleGeneratedImageChange = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+    
+    const handleBackToOptions = () => {
+        onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
     const handleDownloadAll = () => {
@@ -177,16 +176,6 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'anh-phuc-che.zip');
     };
     
-    const handleSaveUploadedImage = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-    };
-
-    const handleSaveGeneratedImage = (newUrl: string) => {
-        const newHistorical = [...appState.historicalImages, newUrl];
-        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
     const renderSelect = (id: keyof PhotoRestorationState['options'], label: string, optionList: string[]) => (
         <div>
             <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
@@ -209,6 +198,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                     <ImageUploader
                         id="photo-restore-upload"
                         onImageUpload={handleImageUpload}
+                        onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
                         placeholderType="person"
@@ -218,7 +208,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)} />
+                            <ActionablePolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Thông tin bổ sung</h2>
@@ -305,7 +295,6 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onOriginalClick={() => openLightbox(0)}
-                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -320,19 +309,20 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
-                        <PolaroidCard caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                        <ActionablePolaroidCard caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined} 
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh ảnh"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh phục chế"
+                            regenerationPlaceholder="Ví dụ: làm cho màu da sáng hơn..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
-
-            <RegenerationModal isOpen={isRegenerating} onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration} itemToModify="Kết quả" title="Tinh chỉnh ảnh"
-                description="Thêm ghi chú để cải thiện ảnh phục chế" placeholder="Ví dụ: làm cho màu da sáng hơn..." />
 
             <Lightbox
                 images={lightboxImages}

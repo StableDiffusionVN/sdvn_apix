@@ -5,11 +5,9 @@
 import React, { useState, ChangeEvent, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generatePatrioticImage, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
-    downloadImage, 
-    RegenerationModal,
     useMediaQuery,
     AppScreenHeader,
     ImageUploader,
@@ -19,7 +17,6 @@ import {
     type AvatarCreatorState,
     handleFileUpload,
     useLightbox,
-    useImageEditor,
 } from './uiUtils';
 
 const IDEAS_BY_CATEGORY = [
@@ -88,7 +85,6 @@ interface AvatarCreatorProps {
     onStateChange: (newState: AvatarCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
@@ -96,12 +92,10 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         minIdeas, maxIdeas, 
         uploaderCaption, uploaderDescription,
         addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
     
-    const [modifyingIdea, setModifyingIdea] = useState<string | null>(null);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -112,19 +106,25 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
     const lightboxImages = [appState.uploadedImage, ...outputLightboxImages].filter((img): img is string => !!img);
     
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-            onStateChange({
-                ...appState,
-                stage: 'configuring',
-                uploadedImage: imageDataUrl,
-                generatedImages: {},
-                selectedIdeas: [],
-                historicalImages: [],
-                error: null,
-            });
+    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            stage: 'configuring',
+            uploadedImage: imageDataUrl,
+            generatedImages: {},
+            selectedIdeas: [],
+            historicalImages: [],
+            error: null,
         });
+    };
+
+    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
+    
+    const handleUploadedImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
+    };
 
     const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {
         onStateChange({
@@ -210,23 +210,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         onStateChange({ ...currentAppState, stage: 'results' });
     };
 
-    const handleRegenerateIdea = (idea: string) => {
-        if (appState.generatedImages[idea]?.status === 'pending') return;
-        setModifyingIdea(idea);
-    };
-
-    const handleConfirmRegeneration = async (customPrompt: string) => {
-        if (!modifyingIdea) return;
-
-        const imageToEditState = appState.generatedImages[modifyingIdea];
+    const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
+        const imageToEditState = appState.generatedImages[idea];
         if (imageToEditState?.status !== 'done' || !imageToEditState.url) {
-            setModifyingIdea(null);
             return;
         }
 
-        const idea = modifyingIdea;
         const imageUrlToEdit = imageToEditState.url;
-        setModifyingIdea(null);
         
         onStateChange({
             ...appState,
@@ -251,21 +241,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         }
     };
     
+     const handleGeneratedImageChange = (idea: string) => (newUrl: string) => {
+        const newGeneratedImages = { ...appState.generatedImages, [idea]: { status: 'done' as 'done', url: newUrl } };
+        const newHistorical = [...appState.historicalImages, { idea: `${idea}-edit`, url: newUrl }];
+        onStateChange({ ...appState, generatedImages: newGeneratedImages, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+    
     const handleChooseOtherIdeas = () => {
         onStateChange({ ...appState, stage: 'configuring' });
-    };
-
-    const handleDownloadIndividualImage = (idea: string) => {
-        const image = appState.generatedImages[idea];
-        if (image?.status === 'done' && image.url) {
-            downloadImage(image.url, `vietnamtrongtoi-${idea.replace(/\s+/g, '-').toLowerCase()}.jpg`);
-        }
-    };
-
-    const handleDownloadOriginalImage = () => {
-        if (appState.uploadedImage) {
-            downloadImage(appState.uploadedImage, 'anh-goc.jpg');
-        }
     };
 
     const handleDownloadAll = async () => {
@@ -294,17 +278,6 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         }
     };
 
-    const handleSaveUploadedImage = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-    };
-
-    const handleSaveGeneratedImage = (idea: string) => (newUrl: string) => {
-        const newGeneratedImages = { ...appState.generatedImages, [idea]: { status: 'done' as 'done', url: newUrl } };
-        const newHistorical = [...appState.historicalImages, { idea: `${idea}-edit`, url: newUrl }];
-        onStateChange({ ...appState, generatedImages: newGeneratedImages, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
     const getButtonText = () => {
         if (appState.stage === 'generating') return 'Đang tạo...';
         if (appState.selectedIdeas.length < minIdeas) return `Chọn ít nhất ${minIdeas} ý tưởng`;
@@ -326,6 +299,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 <ImageUploader 
                     id="avatar-upload"
                     onImageUpload={handleImageUpload}
+                    onImageChange={handleImageSelectedForUploader}
                     uploaderCaption={uploaderCaption}
                     uploaderDescription={uploaderDescription}
                     placeholderType="person"
@@ -339,12 +313,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <PolaroidCard 
+                    <ActionablePolaroidCard 
                         imageUrl={appState.uploadedImage} 
                         caption="Ảnh của bạn" 
                         status="done"
                         onClick={() => openLightbox(0)}
-                        onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
+                        isEditable={true}
+                        isSwappable={true}
+                        isGallerySelectable={true}
+                        onImageChange={handleUploadedImageChange}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
@@ -436,9 +413,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onDownloadOriginal={handleDownloadOriginalImage}
                     onOriginalClick={() => openLightbox(0)}
-                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     isMobile={isMobile}
                     hasPartialError={hasPartialError}
                     actions={
@@ -472,14 +447,17 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 transition={{ type: 'spring', stiffness: 80, damping: 15, delay: index * 0.15 }}
                                 whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
                             >
-                                <PolaroidCard
+                                <ActionablePolaroidCard
                                     caption={idea}
                                     status={imageState?.status || 'pending'}
                                     imageUrl={imageState?.url}
                                     error={imageState?.error}
-                                    onShake={() => handleRegenerateIdea(idea)}
-                                    onDownload={() => handleDownloadIndividualImage(idea)}
-                                    onEdit={imageState?.status === 'done' && imageState.url ? () => openImageEditor(imageState.url!, handleSaveGeneratedImage(idea)) : undefined}
+                                    isDownloadable={true}
+                                    isEditable={true}
+                                    isRegeneratable={true}
+                                    onImageChange={handleGeneratedImageChange(idea)}
+                                    onRegenerate={(prompt) => handleRegenerateIdea(idea, prompt)}
+                                    regenerationPlaceholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh..."
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -489,14 +467,6 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 </ResultsView>
             )}
             
-            <RegenerationModal
-                isOpen={!!modifyingIdea}
-                onClose={() => setModifyingIdea(null)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify={modifyingIdea}
-                placeholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh, tóc búi cao..."
-            />
-
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}

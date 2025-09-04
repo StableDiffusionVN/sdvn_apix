@@ -1,0 +1,126 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+import React, { useEffect, useCallback } from 'react';
+import { useAppControls } from './uiUtils';
+
+const AppToolbar: React.FC = () => {
+    const {
+        currentView,
+        historyIndex,
+        viewHistory,
+        sessionGalleryImages,
+        handleGoHome,
+        handleGoBack,
+        handleGoForward,
+        handleOpenGallery,
+        handleOpenSearch,
+        handleOpenInfo,
+    } = useAppControls();
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            // Ignore if user is typing in an input/textarea to avoid hijacking browser functionality.
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
+            const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
+            const isSearch = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f';
+            const isGallery = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g';
+            const isHelp = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+
+            if (isUndo) {
+                e.preventDefault();
+                handleGoBack();
+            } else if (isRedo) {
+                e.preventDefault();
+                handleGoForward();
+            } else if (isSearch) {
+                e.preventDefault();
+                handleOpenSearch();
+            } else if (isGallery) {
+                if (sessionGalleryImages.length > 0) {
+                    e.preventDefault();
+                    handleOpenGallery();
+                }
+            } else if (isHelp) {
+                e.preventDefault();
+                handleOpenInfo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, sessionGalleryImages.length]);
+
+    return (
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <button
+                onClick={handleGoHome}
+                className="btn-search"
+                aria-label="Trở về trang chủ"
+                disabled={currentView.viewId === 'home'}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            </button>
+            <button
+                onClick={handleGoBack}
+                className="btn-search"
+                aria-label="Quay lại (Cmd/Ctrl+Z)"
+                disabled={historyIndex <= 0}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15l-6-6m0 0l6-6m-6 6h13.5a5.5 5.5 0 010 11H10" />
+                </svg>
+            </button>
+            <button
+                onClick={handleGoForward}
+                className="btn-search"
+                aria-label="Tiến lên (Cmd/Ctrl+Shift+Z)"
+                disabled={historyIndex >= viewHistory.length - 1}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H6.5a5.5 5.5 0 000 11H10" />
+                </svg>
+            </button>
+            <button
+                onClick={handleOpenGallery}
+                className="btn-gallery"
+                aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
+                disabled={sessionGalleryImages.length === 0}
+            >
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+            </button>
+            <button
+                onClick={handleOpenSearch}
+                className="btn-search"
+                aria-label="Tìm kiếm ứng dụng (Cmd/Ctrl+F)"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </button>
+            <button
+                onClick={handleOpenInfo}
+                className="btn-search"
+                aria-label="Mở hướng dẫn (Cmd/Ctrl+H)"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V12M12 8h.01" />
+                </svg>
+            </button>
+        </div>
+    );
+};
+
+export default AppToolbar;

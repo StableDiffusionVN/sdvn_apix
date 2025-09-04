@@ -5,15 +5,13 @@
 import React, { useState, useCallback, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDressedModelImage, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
-    RegenerationModal,
     handleFileUpload,
     useMediaQuery,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     ResultsView,
     type DressTheModelState,
@@ -34,7 +32,6 @@ interface DressTheModelProps {
     onStateChange: (newState: DressTheModelState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 
@@ -48,12 +45,10 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         uploaderCaptionModel, uploaderDescriptionModel,
         uploaderCaptionClothing, uploaderDescriptionClothing,
         addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
 
-    const [isRegenerating, setIsRegenerating] = useState(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
     
@@ -86,6 +81,14 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
             onStateChange(newState);
         });
     };
+    
+    const handleModelImageChange = (newUrl: string) => onStateChange({ ...appState, modelImage: newUrl });
+    const handleClothingImageChange = (newUrl: string) => onStateChange({ ...appState, clothingImage: newUrl });
+    const handleGeneratedImageChange = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
 
     const handleOptionChange = (field: keyof DressTheModelState['options'], value: string | boolean) => {
         onStateChange({
@@ -114,8 +117,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         }
     };
 
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -137,12 +139,6 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
 
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
-    };
-
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, 'ket-qua-mac-do.jpg');
-        }
     };
     
     const handleDownloadAll = () => {
@@ -177,14 +173,6 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-mac-do.zip');
     };
 
-    const handleSaveModelImage = (newUrl: string) => onStateChange({ ...appState, modelImage: newUrl });
-    const handleSaveClothingImage = (newUrl: string) => onStateChange({ ...appState, clothingImage: newUrl });
-    const handleSaveGeneratedImage = (newUrl: string) => {
-        const newHistorical = [...appState.historicalImages, newUrl];
-        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
     const renderSelect = (id: keyof DressTheModelState['options'], label: string, optionList: string[]) => (
         <div>
             <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
@@ -199,16 +187,19 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         </div>
     );
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick, onEdit }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-                <PolaroidCard
+                <ActionablePolaroidCard
                     caption={caption}
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
-                    onClick={onClick}
-                    onEdit={currentImage ? onEdit : undefined}
+                    onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
+                    isEditable={!!currentImage}
+                    isSwappable={true}
+                    isGallerySelectable={true}
+                    onImageChange={id === 'model-upload' ? handleModelImageChange : handleClothingImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -242,8 +233,6 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionModel}
                         currentImage={appState.modelImage}
                         placeholderType="person"
-                        onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))}
-                        onEdit={() => openImageEditor(appState.modelImage!, handleSaveModelImage)}
                     />
                      <Uploader 
                         id="clothing-upload"
@@ -252,8 +241,6 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         description={uploaderDescriptionClothing}
                         currentImage={appState.clothingImage}
                         placeholderType="clothing"
-                        onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))}
-                        onEdit={() => openImageEditor(appState.clothingImage!, handleSaveClothingImage)}
                     />
                 </motion.div>
             )}
@@ -266,8 +253,8 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <PolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} onEdit={() => openImageEditor(appState.modelImage!, handleSaveModelImage)} />
-                        <PolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onEdit={() => openImageEditor(appState.clothingImage!, handleSaveClothingImage)} />
+                        <ActionablePolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleModelImageChange} />
+                        <ActionablePolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -321,7 +308,6 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.modelImage}
                     onOriginalClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))}
-                    onEditOriginal={() => appState.modelImage && openImageEditor(appState.modelImage, handleSaveModelImage)}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -336,7 +322,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 >
                     {appState.clothingImage && (
                          <motion.div key="clothing-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                             <PolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onEdit={() => appState.clothingImage && openImageEditor(appState.clothingImage, handleSaveClothingImage)} />
+                             <ActionablePolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} onImageChange={handleClothingImageChange} />
                         </motion.div>
                     )}
                     <motion.div
@@ -347,29 +333,25 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}
                         whileHover={{ scale: 1.05, zIndex: 10 }}
                     >
-                        <PolaroidCard
+                        <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh ảnh"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                            regenerationPlaceholder="Ví dụ: thay đổi màu nền thành xanh dương..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
                 </ResultsView>
             )}
-            <RegenerationModal
-                isOpen={isRegenerating}
-                onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify="Kết quả"
-                title="Tinh chỉnh ảnh"
-                description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: thay đổi màu nền thành xanh dương..."
-            />
             <Lightbox
                 images={lightboxImages}
                 selectedIndex={lightboxIndex}

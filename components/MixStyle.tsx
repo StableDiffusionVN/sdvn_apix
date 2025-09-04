@@ -2,18 +2,16 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useCallback, ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mixImageStyle, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
-    RegenerationModal,
     handleFileUpload,
     useMediaQuery,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     Slider,
     ResultsView,
@@ -35,7 +33,6 @@ interface MixStyleProps {
     onStateChange: (newState: MixStyleState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const STYLE_STRENGTH_OPTIONS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'] as const;
@@ -45,12 +42,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         uploaderCaptionContent, uploaderDescriptionContent,
         uploaderCaptionStyle, uploaderDescriptionStyle,
         addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
 
-    const [isRegenerating, setIsRegenerating] = useState(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -81,6 +76,14 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
             });
         });
     };
+    
+    const handleContentImageChange = (newUrl: string) => onStateChange({ ...appState, contentImage: newUrl });
+    const handleStyleImageChange = (newUrl: string) => onStateChange({ ...appState, styleImage: newUrl });
+    const handleGeneratedImageChange = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
 
     const handleOptionChange = (field: keyof MixStyleState['options'], value: string | boolean) => {
         onStateChange({
@@ -109,8 +112,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         }
     };
     
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -134,12 +136,6 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, 'ket-qua-tron-style.jpg');
-        }
-    };
-    
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
             alert('Không có ảnh nào đã tạo để tải về.');
@@ -163,24 +159,19 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-tron-style.zip');
     };
 
-    const handleSaveContentImage = (newUrl: string) => onStateChange({ ...appState, contentImage: newUrl });
-    const handleSaveStyleImage = (newUrl: string) => onStateChange({ ...appState, styleImage: newUrl });
-    const handleSaveGeneratedImage = (newUrl: string) => {
-        const newHistorical = [...appState.historicalImages, newUrl];
-        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick, onEdit }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-                <PolaroidCard
+                <ActionablePolaroidCard
                     caption={caption}
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
-                    onClick={onClick}
-                    onEdit={currentImage ? onEdit : undefined}
+                    onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
+                    isEditable={!!currentImage}
+                    isSwappable={true}
+                    isGallerySelectable={true}
+                    onImageChange={id === 'content-upload' ? handleContentImageChange : handleStyleImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -214,8 +205,6 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         description={uploaderDescriptionContent}
                         currentImage={appState.contentImage}
                         placeholderType="magic"
-                        onClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))}
-                        onEdit={() => appState.contentImage && openImageEditor(appState.contentImage, handleSaveContentImage)}
                     />
                      <Uploader 
                         id="style-upload"
@@ -224,8 +213,6 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         description={uploaderDescriptionStyle}
                         currentImage={appState.styleImage}
                         placeholderType="style"
-                        onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))}
-                        onEdit={() => appState.styleImage && openImageEditor(appState.styleImage, handleSaveStyleImage)}
                     />
                 </motion.div>
             )}
@@ -238,8 +225,8 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <PolaroidCard imageUrl={appState.contentImage} caption="Ảnh nội dung" status="done" onClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))} onEdit={() => appState.contentImage && openImageEditor(appState.contentImage, handleSaveContentImage)} />
-                        <PolaroidCard imageUrl={appState.styleImage} caption="Ảnh phong cách" status="done" onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} onEdit={() => appState.styleImage && openImageEditor(appState.styleImage, handleSaveStyleImage)} />
+                        <ActionablePolaroidCard imageUrl={appState.contentImage} caption="Ảnh nội dung" status="done" onClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleContentImageChange} />
+                        <ActionablePolaroidCard imageUrl={appState.styleImage} caption="Ảnh phong cách" status="done" onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleStyleImageChange} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -291,7 +278,6 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.contentImage}
                     onOriginalClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))}
-                    onEditOriginal={() => appState.contentImage && openImageEditor(appState.contentImage, handleSaveContentImage)}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -306,7 +292,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 >
                     {appState.styleImage && (
                         <motion.div key="style" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh phong cách" status="done" imageUrl={appState.styleImage} isMobile={isMobile} onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} onEdit={() => appState.styleImage && openImageEditor(appState.styleImage, handleSaveStyleImage)} />
+                            <ActionablePolaroidCard caption="Ảnh phong cách" status="done" imageUrl={appState.styleImage} isMobile={isMobile} onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} onImageChange={handleStyleImageChange} />
                         </motion.div>
                     )}
                     <motion.div
@@ -317,30 +303,25 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}
                         whileHover={{ scale: 1.05, zIndex: 10 }}
                     >
-                        <PolaroidCard
+                        <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh ảnh"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                            regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn, ít chi tiết hơn..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
                 </ResultsView>
             )}
-
-            <RegenerationModal
-                isOpen={isRegenerating}
-                onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify="Kết quả"
-                title="Tinh chỉnh ảnh"
-                description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: làm cho màu sắc tươi hơn, ít chi tiết hơn..."
-            />
 
             <Lightbox
                 images={lightboxImages}

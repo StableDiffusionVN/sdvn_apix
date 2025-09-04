@@ -2,21 +2,19 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent } from 'react';
+import React, { ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateFreeImage, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
-    RegenerationModal,
     handleFileUpload,
     useMediaQuery,
     downloadAllImagesAsZip,
     ImageForZip,
     ResultsView,
     OptionsPanel,
-    downloadImage,
     type FreeGenerationState,
     useLightbox
 } from './uiUtils';
@@ -35,7 +33,6 @@ interface FreeGenerationProps {
     onStateChange: (newState: FreeGenerationState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const NUMBER_OF_IMAGES_OPTIONS = ['1', '2', '3', '4'] as const;
@@ -46,12 +43,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         uploaderCaption1, uploaderDescription1,
         uploaderCaption2, uploaderDescription2,
         addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
 
-    const [imageToRegenerate, setImageToRegenerate] = useState<{ url: string; index: number } | null>(null);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -136,13 +131,12 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         }
     };
 
-    const handleConfirmRegeneration = async (prompt: string) => {
-        if (!imageToRegenerate) return;
-
-        const { url, index } = imageToRegenerate;
+    const handleRegeneration = async (index: number, prompt: string) => {
+        const url = appState.generatedImages[index];
+        if (!url) return;
+        
         const originalGeneratedImages = [...appState.generatedImages];
-        setImageToRegenerate(null);
-
+        
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
@@ -185,20 +179,19 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'ket-qua-tao-anh-tu-do.zip');
     };
 
-    const handleDownloadIndividual = (url: string) => {
-        downloadImage(url, 'ket-qua-tao-anh-tu-do.jpg');
-    };
-
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onClick, onEdit }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-                <PolaroidCard
+                 <ActionablePolaroidCard
                     caption={caption}
                     status="done"
                     imageUrl={currentImage || undefined}
                     placeholderType={placeholderType}
-                    onClick={onClick}
-                    onEdit={currentImage ? onEdit : undefined}
+                    onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
+                    isEditable={!!currentImage}
+                    isSwappable={true}
+                    isGallerySelectable={true}
+                    onImageChange={id === 'free-gen-upload-1' ? handleSaveImage1 : handleSaveImage2}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -233,8 +226,6 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             description={uploaderDescription1}
                             currentImage={appState.image1}
                             placeholderType="magic"
-                            onClick={() => appState.image1 && openLightbox(lightboxImages.indexOf(appState.image1))}
-                            onEdit={() => appState.image1 && openImageEditor(appState.image1, handleSaveImage1)}
                         />
                         <AnimatePresence>
                         {appState.image1 && (
@@ -246,8 +237,6 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     description={uploaderDescription2}
                                     currentImage={appState.image2}
                                     placeholderType="magic"
-                                    onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))}
-                                    onEdit={() => appState.image2 && openImageEditor(appState.image2, handleSaveImage2)}
                                 />
                             </motion.div>
                         )}
@@ -328,7 +317,6 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.image1}
                     onOriginalClick={() => appState.image1 && openLightbox(lightboxImages.indexOf(appState.image1))}
-                    onEditOriginal={() => appState.image1 && openImageEditor(appState.image1, handleSaveImage1)}
                     error={appState.error}
                     isMobile={isMobile}
                     actions={(
@@ -343,7 +331,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <PolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onEdit={() => appState.image2 && openImageEditor(appState.image2, handleSaveImage2)} />
+                            <ActionablePolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} isEditable={true} onImageChange={handleSaveImage2} />
                         </motion.div>
                     )}
                     {
@@ -356,7 +344,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 + index * 0.1 }}
                             >
-                                <PolaroidCard caption={`Kết quả ${index + 1}`} status="pending" />
+                                <ActionablePolaroidCard caption={`Kết quả ${index + 1}`} status="pending" />
                             </motion.div>
                         ))
                        :
@@ -369,14 +357,19 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 + index * 0.1 }}
                                 whileHover={{ scale: 1.05, zIndex: 10 }}
                             >
-                                <PolaroidCard
+                                <ActionablePolaroidCard
                                     caption={`Kết quả ${index + 1}`}
                                     status={'done'}
                                     imageUrl={url}
-                                    onDownload={() => handleDownloadIndividual(url)}
-                                    onShake={() => setImageToRegenerate({ url, index })}
+                                    isDownloadable={true}
+                                    isEditable={true}
+                                    isRegeneratable={true}
+                                    onImageChange={handleSaveGeneratedImage(index)}
+                                    onRegenerate={(prompt) => handleRegeneration(index, prompt)}
+                                    regenerationTitle="Tinh chỉnh ảnh"
+                                    regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                                    regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn..."
                                     onClick={() => openLightbox(lightboxImages.indexOf(url))}
-                                    onEdit={() => openImageEditor(url, handleSaveGeneratedImage(index))}
                                     isMobile={isMobile}
                                 />
                             </motion.div>
@@ -390,7 +383,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             transition={{ type: 'spring', stiffness: 80, damping: 15 }}
                         >
-                            <PolaroidCard
+                            <ActionablePolaroidCard
                                 caption="Lỗi"
                                 status="error"
                                 error={appState.error}
@@ -401,15 +394,6 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
                 </ResultsView>
             )}
-             <RegenerationModal
-                isOpen={!!imageToRegenerate}
-                onClose={() => setImageToRegenerate(null)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify={imageToRegenerate ? `Kết quả ${imageToRegenerate.index + 1}`: ''}
-                title="Tinh chỉnh ảnh"
-                description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: làm cho màu sắc tươi hơn..."
-            />
 
             <Lightbox
                 images={lightboxImages}

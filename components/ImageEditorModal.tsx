@@ -47,7 +47,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({ id, label, value, min, max, s
 
 // --- Aspect Ratio Definitions ---
 const ASPECT_RATIOS = [
-    { label: 'Free', value: '' }, // Using empty string for controlled component
+    { label: 'Off', value: 'off' },
+    { label: 'Free', value: '' },
     { label: '1:1', value: String(1 / 1) },
     { label: '4:3', value: String(4 / 3) },
     { label: '3:2', value: String(3 / 2) },
@@ -64,57 +65,106 @@ interface ImageEditorModalProps {
     onClose: () => void;
 }
 
+// --- Color Conversion Helpers ---
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return [h, s, l];
+}
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    let r, g, b;
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p: number, q: number, t: number) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return [r * 255, g * 255, b * 255];
+}
+
+
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit, onClose }) => {
     const [crop, setCrop] = useState<Crop>();
     const [completedCrop, setCompletedCrop] = useState<Crop>();
-    const [brightness, setBrightness] = useState(100);
-    const [warmth, setWarmth] = useState(0);
-    const [saturation, setSaturation] = useState(100);
-    const [vibrance, setVibrance] = useState(100); // Using contrast for this
-    const [tint, setTint] = useState(0); // Using hue-rotate for this
-    const [aspect, setAspect] = useState<number | undefined>();
+    const [exposure, setExposure] = useState(0);
+    const [contrast, setContrast] = useState(0);
+    const [temp, setTemp] = useState(0);
+    const [tint, setTint] = useState(0);
+    const [saturation, setSaturation] = useState(0);
+    const [vibrance, setVibrance] = useState(0);
+    const [aspect, setAspect] = useState<string>('off');
     const [isLoading, setIsLoading] = useState(false);
+    
     const imgRef = useRef<HTMLImageElement>(null);
+    const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    const imageStyle = { filter: `brightness(${brightness}%) sepia(${warmth}%) saturate(${saturation}%) contrast(${vibrance}%) hue-rotate(${tint}deg)` };
     const isOpen = imageToEdit !== null;
+    const isCropDisabled = aspect === 'off';
+
+    const resetAllFilters = useCallback(() => {
+        setExposure(0);
+        setContrast(0);
+        setTemp(0);
+        setTint(0);
+        setSaturation(0);
+        setVibrance(0);
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
-            // Reset state when a new image is opened
+            resetAllFilters();
             setCrop(undefined);
             setCompletedCrop(undefined);
-            setBrightness(100);
-            setWarmth(0);
-            setSaturation(100);
-            setVibrance(100);
-            setTint(0);
-            setAspect(undefined);
+            setAspect('off');
         }
-    }, [isOpen, imageToEdit?.url]);
+    }, [isOpen, imageToEdit?.url, resetAllFilters]);
+
 
     const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const { width, height } = e.currentTarget;
-        const currentAspect = aspect || width / height;
+        const currentAspect = aspect && !isCropDisabled ? parseFloat(aspect) : width / height;
         const initialCrop = centerCrop(
-            makeAspectCrop({ unit: '%', width: 90 }, currentAspect, width, height),
+            makeAspectCrop({ unit: '%', width: 100 }, currentAspect, width, height),
             width,
             height
         );
         setCrop(initialCrop);
-        setCompletedCrop(initialCrop); // Set completed crop on load
+        setCompletedCrop(initialCrop);
     };
 
     const handleAspectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
-        const newAspect = value ? parseFloat(value) : undefined;
-        setAspect(newAspect);
+        setAspect(value);
 
         if (imgRef.current) {
             const { width, height } = imgRef.current;
-            const cropWidth = newAspect ? 90 : 100; // Use a slightly smaller crop for aspect ratios
+            const newIsDisabled = value === 'off';
+            const newAspectValue = value && !newIsDisabled ? parseFloat(value) : undefined;
+            
             const newCrop = centerCrop(
-                makeAspectCrop({ unit: '%', width: cropWidth }, newAspect || width / height, width, height),
+                makeAspectCrop({ unit: '%', width: 100 }, newAspectValue || width / height, width, height),
                 width,
                 height
             );
@@ -122,12 +172,84 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
             setCompletedCrop(newCrop);
         }
     };
+    
+    const applyFiltersToCanvas = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        const exposureFactor = Math.pow(2, exposure);
+        const contrastFactor = (100 + contrast) / 100;
+
+        for (let i = 0; i < data.length; i += 4) {
+            let r = data[i];
+            let g = data[i + 1];
+            let b = data[i + 2];
+
+            // 1. Exposure
+            r *= exposureFactor;
+            g *= exposureFactor;
+            b *= exposureFactor;
+            
+            // 2. Contrast
+            r = (r - 127.5) * contrastFactor + 127.5;
+            g = (g - 127.5) * contrastFactor + 127.5;
+            b = (b - 127.5) * contrastFactor + 127.5;
+            
+            // 3. Temperature & Tint
+            r += temp / 2.5;
+            g += tint / 2.5;
+            b -= temp / 2.5;
+            
+            // 4. Saturation & Vibrance (in HSL)
+            let [h, s, l] = rgbToHsl(r, g, b);
+
+            // Vibrance
+            const vibranceAmount = vibrance / 100;
+            const saturationAmount = saturation / 100;
+            if (vibranceAmount !== 0) {
+                 const max_sat = Math.max(r, g, b) / 255;
+                 const avg_sat = (r + g + b) / 3 / 255;
+                 const sat_delta = max_sat - avg_sat;
+                 const vibrance_mult = Math.abs(sat_delta * 2);
+                 s += (vibranceAmount > 0) ? (vibranceAmount * (1 - s) * vibrance_mult) : (vibranceAmount * s * vibrance_mult);
+            }
+
+            // Saturation
+            s += saturationAmount;
+            
+            s = Math.max(0, Math.min(1, s));
+            
+            [r, g, b] = hslToRgb(h, s, l);
+
+            // Clamp values
+            data[i] = Math.max(0, Math.min(255, r));
+            data[i + 1] = Math.max(0, Math.min(255, g));
+            data[i + 2] = Math.max(0, Math.min(255, b));
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+    }, [exposure, contrast, temp, tint, saturation, vibrance]);
+
+
+    useEffect(() => {
+        if (!isOpen || !imgRef.current?.complete || !previewCanvasRef.current) return;
+        const image = imgRef.current;
+        if (image.naturalWidth === 0) return;
+
+        const canvas = previewCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0, image.width, image.height);
+        
+        applyFiltersToCanvas(ctx, canvas.width, canvas.height);
+
+    }, [isOpen, applyFiltersToCanvas, imageToEdit?.url]);
 
 
     const handleSave = useCallback(async () => {
-        if (!completedCrop || !imgRef.current || !imageToEdit) {
-            return;
-        }
+        if (!imgRef.current || !imageToEdit) return;
 
         setIsLoading(true);
         const image = imgRef.current;
@@ -135,11 +257,12 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         const scaleX = image.naturalWidth / image.width;
         const scaleY = image.naturalHeight / image.height;
 
-        const cropX = completedCrop.x * scaleX;
-        const cropY = completedCrop.y * scaleY;
-        const cropWidth = completedCrop.width * scaleX;
-        const cropHeight = completedCrop.height * scaleY;
-
+        const isCropping = !isCropDisabled && completedCrop;
+        const cropX = isCropping ? completedCrop.x * scaleX : 0;
+        const cropY = isCropping ? completedCrop.y * scaleY : 0;
+        const cropWidth = isCropping ? completedCrop.width * scaleX : image.naturalWidth;
+        const cropHeight = isCropping ? completedCrop.height * scaleY : image.naturalHeight;
+        
         canvas.width = cropWidth;
         canvas.height = cropHeight;
 
@@ -150,21 +273,10 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
             return;
         }
 
-        ctx.filter = imageStyle.filter;
+        ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        
+        applyFiltersToCanvas(ctx, canvas.width, canvas.height);
 
-        ctx.drawImage(
-            image,
-            cropX,
-            cropY,
-            cropWidth,
-            cropHeight,
-            0,
-            0,
-            cropWidth,
-            cropHeight
-        );
-
-        // Use a short timeout to allow the UI to update before blocking the main thread
         setTimeout(() => {
             const base64Image = canvas.toDataURL('image/png');
             imageToEdit.onSave(base64Image);
@@ -172,7 +284,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
             onClose();
         }, 50);
 
-    }, [completedCrop, imageStyle.filter, imageToEdit, onClose]);
+    }, [completedCrop, isCropDisabled, applyFiltersToCanvas, imageToEdit, onClose]);
 
 
     return (
@@ -199,21 +311,21 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                             <div className="flex-1 flex items-center justify-center min-h-0">
                                 <div className="image-editor-preview-container w-full h-full">
                                     {imageToEdit?.url && (
-                                        <ReactCrop
-                                            crop={crop}
-                                            onChange={c => setCrop(c)}
-                                            onComplete={c => setCompletedCrop(c)}
-                                            aspect={aspect}
-                                        >
-                                            <img
-                                                ref={imgRef}
-                                                src={imageToEdit.url}
-                                                alt="Image preview for editing"
-                                                className="image-editor-preview"
-                                                style={imageStyle}
-                                                onLoad={onImageLoad}
-                                            />
-                                        </ReactCrop>
+                                        <>
+                                         <img ref={imgRef} src={imageToEdit.url} alt="Hidden source for editor" onLoad={onImageLoad} style={{ display: 'none' }} />
+                                            <ReactCrop
+                                                crop={crop}
+                                                onChange={c => setCrop(c)}
+                                                onComplete={c => setCompletedCrop(c)}
+                                                aspect={aspect && !isCropDisabled ? parseFloat(aspect) : undefined}
+                                                disabled={isCropDisabled}
+                                            >
+                                                <canvas
+                                                    ref={previewCanvasRef}
+                                                    className="image-editor-preview"
+                                                />
+                                            </ReactCrop>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -227,7 +339,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                         <label htmlFor="aspect-ratio" className="base-font font-bold text-neutral-200 mb-1 block">Aspect Ratio</label>
                                         <select
                                             id="aspect-ratio"
-                                            value={aspect || ''}
+                                            value={aspect}
                                             onChange={handleAspectChange}
                                             className="form-input"
                                         >
@@ -237,41 +349,12 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                         </select>
                                     </div>
                                     <div className="hidden md:flex md:flex-col md:gap-4">
-                                        <RangeSlider
-                                            id="brightness"
-                                            label="Brightness"
-                                            value={brightness}
-                                            min={50} max={200} step={1}
-                                            onChange={setBrightness} onReset={() => setBrightness(100)}
-                                        />
-                                        <RangeSlider
-                                            id="warmth"
-                                            label="Warmth"
-                                            value={warmth}
-                                            min={0} max={100} step={1}
-                                            onChange={setWarmth} onReset={() => setWarmth(0)}
-                                        />
-                                        <RangeSlider
-                                            id="saturation"
-                                            label="Saturation"
-                                            value={saturation}
-                                            min={0} max={200} step={1}
-                                            onChange={setSaturation} onReset={() => setSaturation(100)}
-                                        />
-                                        <RangeSlider
-                                            id="vibrance"
-                                            label="Vibrance"
-                                            value={vibrance}
-                                            min={50} max={200} step={1}
-                                            onChange={setVibrance} onReset={() => setVibrance(100)}
-                                        />
-                                        <RangeSlider
-                                            id="tint"
-                                            label="Tint"
-                                            value={tint}
-                                            min={-50} max={50} step={1}
-                                            onChange={setTint} onReset={() => setTint(0)}
-                                        />
+                                        <RangeSlider id="exposure" label="Exposure" value={exposure} min={-5} max={5} step={0.1} onChange={setExposure} onReset={() => setExposure(0)} />
+                                        <RangeSlider id="contrast" label="Contrast" value={contrast} min={-100} max={100} step={1} onChange={setContrast} onReset={() => setContrast(0)} />
+                                        <RangeSlider id="temp" label="Temp" value={temp} min={-100} max={100} step={1} onChange={setTemp} onReset={() => setTemp(0)} />
+                                        <RangeSlider id="tint" label="Tint" value={tint} min={-100} max={100} step={1} onChange={setTint} onReset={() => setTint(0)} />
+                                        <RangeSlider id="saturation" label="Saturation" value={saturation} min={-100} max={100} step={1} onChange={setSaturation} onReset={() => setSaturation(0)} />
+                                        <RangeSlider id="vibrance" label="Vibrance" value={vibrance} min={-100} max={100} step={1} onChange={setVibrance} onReset={() => setVibrance(0)} />
                                     </div>
                                 </div>
                                 

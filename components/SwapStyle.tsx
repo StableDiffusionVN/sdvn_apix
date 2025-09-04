@@ -2,18 +2,16 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback, useRef, useEffect } from 'react';
+import React, { ChangeEvent, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { swapImageStyle, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
-    RegenerationModal,
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
@@ -21,7 +19,6 @@ import {
     type SwapStyleState,
     handleFileUpload,
     useLightbox,
-    useImageEditor,
 } from './uiUtils';
 import { STYLE_OPTIONS_LIST } from '../lib/styles';
 
@@ -37,7 +34,6 @@ interface SwapStyleProps {
     onStateChange: (newState: SwapStyleState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const STYLE_STRENGTH_LEVELS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'] as const;
@@ -45,17 +41,15 @@ const STYLE_STRENGTH_LEVELS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 
 const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
     
-    const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     
     // State for searchable style dropdown
-    const [styleSearch, setStyleSearch] = useState('');
-    const [isStyleDropdownOpen, setStyleDropdownOpen] = useState(false);
+    const [styleSearch, setStyleSearch] = React.useState('');
+    const [isStyleDropdownOpen, setStyleDropdownOpen] = React.useState(false);
     const styleDropdownRef = useRef<HTMLDivElement>(null);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
@@ -78,18 +72,20 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+    
+    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            stage: 'configuring',
+            uploadedImage: imageDataUrl,
+            generatedImage: null,
+            historicalImages: [],
+            error: null,
+        });
+    };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-            onStateChange({
-                ...appState,
-                stage: 'configuring',
-                uploadedImage: imageDataUrl,
-                generatedImage: null,
-                historicalImages: [],
-                error: null,
-            });
-        });
+        handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
     const handleOptionChange = (field: keyof SwapStyleState['options'], value: string | boolean) => {
@@ -125,8 +121,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         }
     };
     
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -146,14 +141,18 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         }
     };
 
-    const handleBackToOptions = () => {
-        onStateChange({ ...appState, stage: 'configuring', error: null });
+    const handleUploadedImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, uploadedImage: newUrl });
     };
 
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, `anh-style-${appState.options.style.replace(/[\s()]/g, '-')}.jpg`);
-        }
+    const handleGeneratedImageChange = (newUrl: string) => {
+        const newHistorical = [...appState.historicalImages, newUrl];
+        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
+        addImagesToGallery([newUrl]);
+    };
+
+    const handleBackToOptions = () => {
+        onStateChange({ ...appState, stage: 'configuring', error: null });
     };
 
     const handleDownloadAll = () => {
@@ -175,16 +174,6 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         downloadAllImagesAsZip(imagesToZip, 'anh-theo-style.zip');
     };
 
-    const handleSaveUploadedImage = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-    };
-
-    const handleSaveGeneratedImage = (newUrl: string) => {
-        const newHistorical = [...appState.historicalImages, newUrl];
-        onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
-        addImagesToGallery([newUrl]);
-    };
-
     const isLoading = appState.stage === 'generating';
 
     return (
@@ -198,6 +187,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                     <ImageUploader
                         id="swap-style-upload"
                         onImageUpload={handleImageUpload}
+                        onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
                         placeholderType="magic"
@@ -207,7 +197,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)} />
+                            <ActionablePolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange}/>
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
@@ -274,7 +264,6 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onOriginalClick={() => openLightbox(0)}
-                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -289,19 +278,20 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
-                        <PolaroidCard caption={appState.options.style} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                        <ActionablePolaroidCard caption={appState.options.style} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh ảnh"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh theo phong cách"
+                            regenerationPlaceholder="Ví dụ: thêm nhiều chi tiết hơn, màu sắc rực rỡ hơn..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
-
-            <RegenerationModal isOpen={isRegenerating} onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration} itemToModify={appState.options.style} title="Tinh chỉnh ảnh"
-                description="Thêm ghi chú để cải thiện ảnh theo phong cách" placeholder="Ví dụ: thêm nhiều chi tiết hơn, màu sắc rực rỡ hơn..." />
             
             <Lightbox
                 images={lightboxImages}

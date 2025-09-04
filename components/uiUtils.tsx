@@ -2,12 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext, createContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import PolaroidCard from './PolaroidCard';
 import { cn } from '../lib/utils';
 import { COUNTRIES } from '../lib/countries';
 import { STYLE_OPTIONS_LIST } from '../lib/styles';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 
 // Declare JSZip for creating zip files
 declare const JSZip: any;
@@ -304,7 +304,18 @@ export interface ImageToEdit {
     url: string;
     onSave: (newUrl: string) => void;
 }
-export const useImageEditor = () => {
+
+interface ImageEditorContextType {
+    imageToEdit: ImageToEdit | null;
+    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
+    closeImageEditor: () => void;
+}
+
+// Create a context with a default undefined value
+const ImageEditorContext = createContext<ImageEditorContextType | undefined>(undefined);
+
+// Create a provider component
+export const ImageEditorProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
     const [imageToEdit, setImageToEdit] = useState<ImageToEdit | null>(null);
 
     const openImageEditor = useCallback((url: string, onSave: (newUrl: string) => void) => {
@@ -319,11 +330,22 @@ export const useImageEditor = () => {
         setImageToEdit(null);
     }, []);
 
-    return {
-        imageToEdit,
-        openImageEditor,
-        closeImageEditor,
-    };
+    const value = { imageToEdit, openImageEditor, closeImageEditor };
+
+    return (
+        <ImageEditorContext.Provider value={value}>
+            {children}
+        </ImageEditorContext.Provider>
+    );
+};
+
+// Create the custom hook
+export const useImageEditor = (): ImageEditorContextType => {
+    const context = useContext(ImageEditorContext);
+    if (context === undefined) {
+        throw new Error('useImageEditor must be used within an ImageEditorProvider');
+    }
+    return context;
 };
 
 
@@ -492,6 +514,39 @@ export type AnyAppState =
   | FreeGenerationState
   | ToyModelCreatorState;
 
+// --- App Navigation & State Types (Moved from App.tsx) ---
+export interface AppConfig {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+}
+
+export type Theme = 'sdvn' | 'vietnam' | 'dark' | 'dark-green' | 'dark-blue';
+
+export type HomeView = { viewId: 'home'; state: HomeState };
+export type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
+export type AvatarCreatorView = { viewId: 'avatar-creator'; state: AvatarCreatorState };
+export type DressTheModelView = { viewId: 'dress-the-model'; state: DressTheModelState };
+export type PhotoRestorationView = { viewId: 'photo-restoration'; state: PhotoRestorationState };
+export type ImageToRealView = { viewId: 'image-to-real'; state: ImageToRealState };
+export type SwapStyleView = { viewId: 'swap-style'; state: SwapStyleState };
+export type MixStyleView = { viewId: 'mix-style'; state: MixStyleState };
+export type FreeGenerationView = { viewId: 'free-generation'; state: FreeGenerationState };
+export type ToyModelCreatorView = { viewId: 'toy-model-creator'; state: ToyModelCreatorState };
+
+export type ViewState =
+  | HomeView
+  | ArchitectureIdeatorView
+  | AvatarCreatorView
+  | DressTheModelView
+  | PhotoRestorationView
+  | ImageToRealView
+  | SwapStyleView
+  | MixStyleView
+  | FreeGenerationView
+  | ToyModelCreatorView;
+
 // Helper function to get initial state for an app
 export const getInitialStateForApp = (viewId: string): AnyAppState => {
     switch (viewId) {
@@ -518,6 +573,200 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         default:
             return { stage: 'home' };
     }
+};
+
+// --- App Control Context ---
+interface AppControlContextType {
+    currentView: ViewState;
+    settings: any;
+    theme: Theme;
+    sessionGalleryImages: string[];
+    historyIndex: number;
+    viewHistory: ViewState[];
+    isSearchOpen: boolean;
+    isGalleryOpen: boolean;
+    isInfoOpen: boolean;
+    addImagesToGallery: (newImages: string[]) => void;
+    handleThemeChange: (newTheme: Theme) => void;
+    navigateTo: (viewId: string) => void;
+    handleStateChange: (newAppState: AnyAppState) => void;
+    handleSelectApp: (appId: string) => void;
+    handleGoHome: () => void;
+    handleGoBack: () => void;
+    handleGoForward: () => void;
+    handleResetApp: () => void;
+    handleOpenSearch: () => void;
+    handleCloseSearch: () => void;
+    handleOpenGallery: () => void;
+    handleCloseGallery: () => void;
+    handleOpenInfo: () => void;
+    handleCloseInfo: () => void;
+}
+
+const AppControlContext = createContext<AppControlContextType | undefined>(undefined);
+
+export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [viewHistory, setViewHistory] = useState<ViewState[]>([{ viewId: 'home', state: { stage: 'home' } }]);
+    const [historyIndex, setHistoryIndex] = useState(0);
+    const [theme, setTheme] = useState<Theme>('vietnam');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
+    const [settings, setSettings] = useState(null); // Initially null
+
+    const currentView = viewHistory[historyIndex];
+
+    const addImagesToGallery = useCallback((newImages: string[]) => {
+        setSessionGalleryImages(prev => {
+            const uniqueNewImages = newImages.filter(img => !prev.includes(img));
+            return [...prev, ...uniqueNewImages];
+        });
+    }, []);
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('app-theme') as Theme;
+        if (savedTheme && ['sdvn', 'vietnam', 'dark', 'dark-green', 'dark-blue'].includes(savedTheme)) {
+            setTheme(savedTheme);
+        }
+
+        const fetchSettings = async () => {
+            try {
+                const response = await fetch('/setting.json');
+                 if (!response.ok) {
+                    console.warn('Could not load setting.json, using built-in settings.');
+                    // In a real-world scenario, you might have default settings hardcoded here.
+                    // For now, we'll just log the issue.
+                    return;
+                }
+                const data = await response.json();
+                setSettings(data);
+            } catch (error) {
+                console.error("Failed to fetch or parse setting.json:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    useEffect(() => {
+        document.body.classList.remove('theme-sdvn', 'theme-vietnam', 'theme-dark', 'theme-dark-green', 'theme-dark-blue');
+        document.body.classList.add(`theme-${theme}`);
+        localStorage.setItem('app-theme', theme);
+    }, [theme]);
+
+    const handleThemeChange = (newTheme: Theme) => {
+        setTheme(newTheme);
+    };
+
+    const navigateTo = useCallback((viewId: string) => {
+        const current = viewHistory[historyIndex];
+        const initialState = getInitialStateForApp(viewId);
+    
+        if (current.viewId === viewId && JSON.stringify(current.state) === JSON.stringify(initialState)) {
+            return;
+        }
+    
+        const newHistory = viewHistory.slice(0, historyIndex + 1);
+        newHistory.push({ viewId, state: initialState } as ViewState);
+        
+        setViewHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    }, [viewHistory, historyIndex]);
+    
+    const handleStateChange = useCallback((newAppState: AnyAppState) => {
+        const current = viewHistory[historyIndex];
+        if (JSON.stringify(current.state) === JSON.stringify(newAppState)) {
+            return; // No change
+        }
+    
+        const newHistory = viewHistory.slice(0, historyIndex + 1);
+        newHistory.push({ viewId: current.viewId, state: newAppState } as ViewState);
+    
+        setViewHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    }, [viewHistory, historyIndex]);
+
+    const handleSelectApp = useCallback((appId: string) => {
+        if (settings) {
+            const validAppIds = settings.apps.map((app: AppConfig) => app.id);
+            if (validAppIds.includes(appId)) {
+                navigateTo(appId);
+            } else {
+                navigateTo('home');
+            }
+        }
+    }, [settings, navigateTo]);
+
+    const handleGoHome = useCallback(() => {
+        navigateTo('home');
+    }, [navigateTo]);
+
+    const handleGoBack = useCallback(() => {
+        if (historyIndex > 0) {
+            setHistoryIndex(prev => prev - 1);
+        }
+    }, [historyIndex]);
+    
+    const handleGoForward = useCallback(() => {
+        if (historyIndex < viewHistory.length - 1) {
+            setHistoryIndex(prev => prev + 1);
+        }
+    }, [historyIndex, viewHistory.length]);
+
+    const handleResetApp = useCallback(() => {
+        const currentViewId = viewHistory[historyIndex].viewId;
+        if (currentViewId !== 'home') {
+            navigateTo(currentViewId);
+        }
+    }, [viewHistory, historyIndex, navigateTo]);
+    
+    const handleOpenSearch = useCallback(() => setIsSearchOpen(true), []);
+    const handleCloseSearch = useCallback(() => setIsSearchOpen(false), []);
+    const handleOpenGallery = useCallback(() => setIsGalleryOpen(true), []);
+    const handleCloseGallery = useCallback(() => setIsGalleryOpen(false), []);
+    const handleOpenInfo = useCallback(() => setIsInfoOpen(true), []);
+    const handleCloseInfo = useCallback(() => setIsInfoOpen(false), []);
+
+    const value: AppControlContextType = {
+        currentView,
+        settings,
+        theme,
+        sessionGalleryImages,
+        historyIndex,
+        viewHistory,
+        isSearchOpen,
+        isGalleryOpen,
+        isInfoOpen,
+        addImagesToGallery,
+        handleThemeChange,
+        navigateTo,
+        handleStateChange,
+        handleSelectApp,
+        handleGoHome,
+        handleGoBack,
+        handleGoForward,
+        handleResetApp,
+        handleOpenSearch,
+        handleCloseSearch,
+        handleOpenGallery,
+        handleCloseGallery,
+        handleOpenInfo,
+        handleCloseInfo,
+    };
+
+    return (
+        <AppControlContext.Provider value={value}>
+            {children}
+        </AppControlContext.Provider>
+    );
+};
+
+export const useAppControls = (): AppControlContextType => {
+    const context = useContext(AppControlContext);
+    if (context === undefined) {
+        throw new Error('useAppControls must be used within an AppControlProvider');
+    }
+    return context;
 };
 
 // --- Reusable UI Components ---
@@ -548,6 +797,7 @@ export const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({ mainTitle, sub
 
 interface ImageUploaderProps {
     onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onImageChange: (imageDataUrl: string) => void;
     uploaderCaption: string;
     uploaderDescription: string;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
@@ -557,16 +807,31 @@ interface ImageUploaderProps {
 /**
  * A reusable image uploader component with a Polaroid card style.
  */
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, uploaderCaption, uploaderDescription, placeholderType = 'person', id }) => (
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onImageChange, uploaderCaption, uploaderDescription, placeholderType = 'person', id }) => (
     <div className="flex flex-col items-center justify-center w-full">
-        <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
-            <PolaroidCard
-                caption={uploaderCaption}
-                status="done"
-                placeholderType={placeholderType}
-            />
-        </label>
-        <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onImageUpload} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <div className="group transform hover:scale-105 transition-transform duration-300">
+                <label htmlFor={id} className="cursor-pointer">
+                    <ActionablePolaroidCard
+                        caption={uploaderCaption}
+                        status="done"
+                        imageUrl={undefined}
+                        placeholderType={placeholderType}
+                        isSwappable={false} // The label handles file uploads
+                        isGallerySelectable={true}
+                        onImageChange={onImageChange}
+                    />
+                </label>
+            </div>
+        </motion.div>
+        <input 
+            id={id} 
+            type="file" 
+            className="hidden" 
+            accept="image/png, image/jpeg, image/webp" 
+            onChange={onImageUpload} 
+            onClick={(e) => (e.currentTarget.value = '')}
+        />
         <p className="mt-8 base-font font-bold text-neutral-300 text-center max-w-lg text-lg">
             {uploaderDescription}
         </p>
@@ -577,9 +842,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, upl
 interface ResultsViewProps {
     stage: 'generating' | 'results';
     originalImage: string | null;
-    onDownloadOriginal?: () => void;
     onOriginalClick?: () => void;
-    onEditOriginal?: () => void;
     children: React.ReactNode;
     actions: React.ReactNode;
     isMobile?: boolean;
@@ -590,7 +853,7 @@ interface ResultsViewProps {
 /**
  * A reusable component to display the results of an image generation process.
  */
-export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onDownloadOriginal, onOriginalClick, onEditOriginal, children, actions, isMobile, error, hasPartialError }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
     
     return (
@@ -637,15 +900,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                             transition={{ type: 'spring', stiffness: 80, damping: 15, delay: -0.15 }}
                             whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
                         >
-                            <PolaroidCard
-                                caption="Ảnh gốc"
-                                status="done"
-                                imageUrl={originalImage}
-                                onDownload={onDownloadOriginal}
-                                onEdit={onEditOriginal}
-                                isMobile={isMobile}
-                                onClick={onOriginalClick}
-                            />
+                             <div className={cn("polaroid-card")}>
+                                <div className={cn("polaroid-image-container has-image")}>
+                                    <img src={originalImage} alt="Ảnh gốc" className="w-full h-auto md:w-auto md:h-full block" onClick={onOriginalClick}/>
+                                </div>
+                                <div className="absolute bottom-4 left-4 right-4 text-center px-2">
+                                    <p className="polaroid-caption text-black">Ảnh gốc</p>
+                                </div>
+                            </div>
                         </motion.div>
                     )}
                     {children}

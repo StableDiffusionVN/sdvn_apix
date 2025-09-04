@@ -2,21 +2,19 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
+import React, { ChangeEvent, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateToyModelImage, editImageWithPrompt } from '../services/geminiService';
-import PolaroidCard from './PolaroidCard';
+import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     ImageUploader,
     ResultsView,
     downloadAllImagesAsZip,
-    downloadImage,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
-    RegenerationModal,
     type ToyModelCreatorState,
     handleFileUpload,
     useLightbox,
@@ -34,7 +32,6 @@ interface ToyModelCreatorProps {
     onStateChange: (newState: ToyModelCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
-    openImageEditor: (url: string, onSave: (newUrl: string) => void) => void;
 }
 
 const COMPUTER_OPTIONS = ['Tự động', 'iMac Pro màn hình 5K', 'PC Gaming (full LED RGB, tản nhiệt nước)', 'Laptop Macbook Pro', 'Laptop Gaming Alienware', 'Microsoft Surface Studio', 'Dàn máy tính server', 'Máy tính cổ điển (phong cách 80s)', 'Màn hình cong siêu rộng', 'Concept máy tính trong suốt', 'Máy tính bảng iPad Pro', 'Máy tính bảng Samsung Galaxy Tab S9 Ultra', 'Máy tính bảng vẽ Wacom MobileStudio Pro'];
@@ -47,34 +44,34 @@ const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2
 const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
-        appState, onStateChange, onReset, onGoBack,
-        openImageEditor,
+        appState, onStateChange, onReset,
         ...headerProps
     } = props;
     
-    const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-            onStateChange({
-                ...appState,
-                stage: 'configuring',
-                uploadedImage: imageDataUrl,
-                generatedImage: null,
-                historicalImages: [],
-                error: null,
-            });
+    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            stage: 'configuring',
+            uploadedImage: imageDataUrl,
+            generatedImage: null,
+            historicalImages: [],
+            error: null,
         });
+    };
+
+    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+        handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
 
-    const handleSaveUploadedImage = (newUrl: string) => {
+    const handleUploadedImageChange = (newUrl: string) => {
         onStateChange({ ...appState, uploadedImage: newUrl });
     };
 
-    const handleSaveGeneratedImage = (newUrl: string) => {
+    const handleGeneratedImageChange = (newUrl: string) => {
         const newHistorical = [...appState.historicalImages, newUrl];
         onStateChange({ ...appState, stage: 'results', generatedImage: newUrl, historicalImages: newHistorical });
         addImagesToGallery([newUrl]);
@@ -115,8 +112,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         }
     };
     
-    const handleConfirmRegeneration = async (prompt: string) => {
-        setIsRegenerating(false);
+    const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
         onStateChange({ ...appState, stage: 'generating', error: null });
@@ -138,12 +134,6 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
 
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
-    };
-
-    const handleDownloadIndividual = () => {
-        if (appState.generatedImage) {
-            downloadImage(appState.generatedImage, 'mo-hinh-do-choi.jpg');
-        }
     };
 
     const handleDownloadAll = () => {
@@ -194,6 +184,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     <ImageUploader
                         id="toy-model-upload"
                         onImageUpload={handleImageUpload}
+                        onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
                         placeholderType="magic"
@@ -203,12 +194,15 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <PolaroidCard 
+                            <ActionablePolaroidCard 
                                 imageUrl={appState.uploadedImage} 
                                 caption="Ảnh gốc" 
                                 status="done" 
                                 onClick={() => openLightbox(0)} 
-                                onEdit={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
+                                isEditable={true}
+                                isSwappable={true}
+                                isGallerySelectable={true}
+                                onImageChange={handleUploadedImageChange}
                             />
                         </div>
                         <OptionsPanel>
@@ -247,7 +241,6 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
                     onOriginalClick={() => openLightbox(0)}
-                    onEditOriginal={() => openImageEditor(appState.uploadedImage!, handleSaveUploadedImage)}
                     error={appState.error}
                     actions={
                         <>
@@ -262,27 +255,22 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
-                        <PolaroidCard 
+                        <ActionablePolaroidCard 
                             caption="Mô hình đồ chơi" 
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            onDownload={!appState.error && appState.generatedImage ? handleDownloadIndividual : undefined}
-                            onShake={!appState.error && appState.generatedImage ? () => setIsRegenerating(true) : undefined}
-                            onEdit={!appState.error && appState.generatedImage ? () => openImageEditor(appState.generatedImage!, handleSaveGeneratedImage) : undefined}
+                            isDownloadable={true}
+                            isEditable={true}
+                            isRegeneratable={true}
+                            onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            regenerationTitle="Tinh chỉnh mô hình"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                            regenerationPlaceholder="Ví dụ: thêm hiệu ứng ánh sáng neon, ..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>
             )}
-
-             <RegenerationModal
-                isOpen={isRegenerating}
-                onClose={() => setIsRegenerating(false)}
-                onConfirm={handleConfirmRegeneration}
-                itemToModify="Mô hình đồ chơi"
-                title="Tinh chỉnh mô hình"
-                description="Thêm ghi chú để cải thiện ảnh"
-                placeholder="Ví dụ: thêm hiệu ứng ánh sáng neon, ..."
-            />
 
             <Lightbox
                 images={lightboxImages}
