@@ -9,14 +9,16 @@ import Footer from './components/Footer';
 import Home from './components/Home';
 import ArchitectureIdeator from './components/ArchitectureIdeator';
 import AvatarCreator from './components/AvatarCreator';
-import DressTheModel from './components/DressTheModel';
+// FIX: Module '"file:///components/DressTheModel"' has no default export.
+import { DressTheModel } from './components/DressTheModel';
 import PhotoRestoration from './components/PhotoRestoration';
 import ImageToReal from './components/ImageToReal';
 import SwapStyle from './components/SwapStyle';
 import MixStyle from './components/MixStyle';
 import FreeGeneration from './components/FreeGeneration';
 import ToyModelCreator from './components/ToyModelCreator';
-import ImageInterpolation from './components/ImageInterpolation';
+// FIX: Module '"file:///components/ImageInterpolation"' has no default export.
+import { ImageInterpolation } from './components/ImageInterpolation';
 import SearchModal from './components/SearchModal';
 import GalleryModal from './components/GalleryModal';
 import InfoModal from './components/InfoModal';

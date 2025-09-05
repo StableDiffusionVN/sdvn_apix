@@ -11,12 +11,13 @@ import {
     AppScreenHeader,
     handleFileUpload,
     useMediaQuery,
-    downloadAllImagesAsZip,
     ImageForZip,
     ResultsView,
     OptionsPanel,
     type FreeGenerationState,
-    useLightbox
+    useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface FreeGenerationProps {
@@ -46,7 +47,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         appState, onStateChange, onReset,
         ...headerProps
     } = props;
-
+    
+    const { videoTasks, generateVideo } = useVideoGeneration();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -165,26 +167,27 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             onStateChange({ ...appState, stage: 'results', error: errorMessage, generatedImages: originalGeneratedImages });
         }
     };
-
+    
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null, generatedImages: [] });
     };
     
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-             alert('Không có ảnh nào đã tạo để tải về.');
-            return;
+        const inputImages: ImageForZip[] = [];
+        if (appState.image1) {
+            inputImages.push({ url: appState.image1, filename: 'anh-goc-1', folder: 'input' });
         }
-
-        const imagesToZip: ImageForZip[] = [];
-        if (appState.image1) imagesToZip.push({ url: appState.image1, filename: 'anh-goc-1', folder: 'input' });
-        if (appState.image2) imagesToZip.push({ url: appState.image2, filename: 'anh-goc-2', folder: 'input' });
+        if (appState.image2) {
+            inputImages.push({ url: appState.image2, filename: 'anh-goc-2', folder: 'input' });
+        }
         
-        appState.historicalImages.forEach((url, index) => {
-            imagesToZip.push({ url, filename: `ket-qua-${index + 1}`, folder: 'output'});
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'ket-qua-tao-anh-tu-do.zip',
+            baseOutputFilename: 'ket-qua',
         });
-        
-        downloadAllImagesAsZip(imagesToZip, 'ket-qua-tao-anh-tu-do.zip');
     };
 
     const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
@@ -193,7 +196,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                  <ActionablePolaroidCard
                     caption={caption}
                     status="done"
-                    imageUrl={currentImage || undefined}
+                    mediaUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
                     isEditable={!!currentImage}
@@ -254,6 +257,20 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     <OptionsPanel>
                         <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Nhập yêu cầu (Prompt)</h2>
                         
+                        <div className="bg-yellow-900/30 border border-yellow-400/50 rounded-lg p-3 my-4 text-sm text-neutral-300 space-y-1">
+                            <div className="flex items-center gap-2 font-bold text-yellow-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <span>Mẹo sử dụng</span>
+                            </div>
+                            <ul className="list-disc list-inside pl-2 space-y-1 base-font">
+                                <li>Không input ảnh để sử dụng <strong>Imagen</strong>.</li>
+                                <li>Input ảnh để sử dụng <strong>Gemini Image</strong> (chỉnh sửa ảnh).</li>
+                                <li>Trường hợp input nhiều ảnh, nên đặt ảnh chính làm ảnh cuối cùng.</li>
+                            </ul>
+                        </div>
+
                         <div>
                             <textarea
                                 id="prompt" value={appState.options.prompt} onChange={(e) => handleOptionChange('prompt', e.target.value)}
@@ -339,7 +356,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard caption="Ảnh gốc 2" status="done" imageUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} isEditable={true} onImageChange={handleSaveImage2} />
+                            <ActionablePolaroidCard caption="Ảnh gốc 2" status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} isEditable={true} onImageChange={handleSaveImage2} />
                         </motion.div>
                     )}
                     {
@@ -368,14 +385,15 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 <ActionablePolaroidCard
                                     caption={`Kết quả ${index + 1}`}
                                     status={'done'}
-                                    imageUrl={url}
+                                    mediaUrl={url}
                                     isDownloadable={true}
                                     isEditable={true}
                                     isRegeneratable={true}
+                                    onGenerateVideoFromPrompt={(prompt) => generateVideo(url, prompt)}
                                     onImageChange={handleSaveGeneratedImage(index)}
                                     onRegenerate={(prompt) => handleRegeneration(index, prompt)}
-                                    regenerationTitle="Tinh chỉnh ảnh"
-                                    regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                                    regenerationTitle="Tinh chỉnh ảnh hoặc Tạo video"
+                                    regenerationDescription="Thêm yêu cầu để cải thiện ảnh, hoặc dùng prompt để tạo video"
                                     regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn..."
                                     onClick={() => openLightbox(lightboxImages.indexOf(url))}
                                     isMobile={isMobile}
@@ -383,6 +401,29 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             </motion.div>
                        ))
                     }
+                    {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                    isMobile={isMobile}
+                                />
+                            </motion.div>
+                        );
+                    })}
                      {appState.error && !isLoading && (
                          <motion.div
                             className="w-full md:w-auto flex-shrink-0"

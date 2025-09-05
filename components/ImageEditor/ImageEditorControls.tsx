@@ -42,6 +42,7 @@ const SelectionControls: React.FC<ImageEditorControlsProps> = (props) => {
 
 export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) => {
     const { activeTool, openSection, setOpenSection, cropAspectRatio, setCropAspectRatio, handleCancelCrop, handleApplyCrop, cropSelection, isSelectionActive } = props;
+    const { activeTool: _unused, ...restProps } = props;
 
     const accordionHeaderClasses = "w-full flex justify-between items-center p-3 bg-neutral-700 hover:bg-neutral-600 transition-colors";
 
@@ -74,7 +75,7 @@ export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) =
                 {(activeTool === 'brush' || activeTool === 'eraser') && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">
                        {/* FIX: Pass the narrowed 'activeTool' prop to satisfy the component's stricter type, avoiding a TypeScript error. */}
-                       <BrushEraserSettings {...props} activeTool={activeTool} />
+                       <BrushEraserSettings {...restProps} activeTool={activeTool} />
                     </motion.div>
                 )}
             </AnimatePresence>

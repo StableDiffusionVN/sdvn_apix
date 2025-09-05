@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback } from 'react';
+import React, { useState, ChangeEvent, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateArchitecturalImage, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -11,13 +11,14 @@ import {
     AppScreenHeader,
     ImageUploader,
     ResultsView,
-    downloadAllImagesAsZip,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
     type ArchitectureIdeatorState,
     handleFileUpload,
     useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface ArchitectureIdeatorProps {
@@ -47,6 +48,47 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     } = props;
     
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
+    
+    // Searchable dropdown states
+    const [contextSearch, setContextSearch] = useState(appState.options.context);
+    const [isContextDropdownOpen, setIsContextDropdownOpen] = useState(false);
+    const contextDropdownRef = useRef<HTMLDivElement>(null);
+
+    const [styleSearch, setStyleSearch] = useState(appState.options.style);
+    const [isStyleDropdownOpen, setIsStyleDropdownOpen] = useState(false);
+    const styleDropdownRef = useRef<HTMLDivElement>(null);
+
+    const [colorSearch, setColorSearch] = useState(appState.options.color);
+    const [isColorDropdownOpen, setIsColorDropdownOpen] = useState(false);
+    const colorDropdownRef = useRef<HTMLDivElement>(null);
+
+    const [lightingSearch, setLightingSearch] = useState(appState.options.lighting);
+    const [isLightingDropdownOpen, setIsLightingDropdownOpen] = useState(false);
+    const lightingDropdownRef = useRef<HTMLDivElement>(null);
+
+    const filteredContexts = CONTEXT_OPTIONS.filter(opt => opt.toLowerCase().includes(contextSearch.toLowerCase()));
+    const filteredStyles = STYLE_OPTIONS.filter(opt => opt.toLowerCase().includes(styleSearch.toLowerCase()));
+    const filteredColors = COLOR_OPTIONS.filter(opt => opt.toLowerCase().includes(colorSearch.toLowerCase()));
+    const filteredLightings = LIGHTING_OPTIONS.filter(opt => opt.toLowerCase().includes(lightingSearch.toLowerCase()));
+
+    useEffect(() => {
+        setContextSearch(appState.options.context);
+        setStyleSearch(appState.options.style);
+        setColorSearch(appState.options.color);
+        setLightingSearch(appState.options.lighting);
+    }, [appState.options]);
+    
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (contextDropdownRef.current && !contextDropdownRef.current.contains(event.target as Node)) setIsContextDropdownOpen(false);
+            if (styleDropdownRef.current && !styleDropdownRef.current.contains(event.target as Node)) setIsStyleDropdownOpen(false);
+            if (colorDropdownRef.current && !colorDropdownRef.current.contains(event.target as Node)) setIsColorDropdownOpen(false);
+            if (lightingDropdownRef.current && !lightingDropdownRef.current.contains(event.target as Node)) setIsLightingDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
@@ -75,6 +117,29 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
             }
         });
     };
+    
+    const handleSelectOption = (field: keyof ArchitectureIdeatorState['options'], value: string) => {
+        handleOptionChange(field, value);
+        switch(field) {
+            case 'context':
+                setContextSearch(value);
+                setIsContextDropdownOpen(false);
+                break;
+            case 'style':
+                setStyleSearch(value);
+                setIsStyleDropdownOpen(false);
+                break;
+            case 'color':
+                setColorSearch(value);
+                setIsColorDropdownOpen(false);
+                break;
+            case 'lighting':
+                setLightingSearch(value);
+                setIsLightingDropdownOpen(false);
+                break;
+        }
+    };
+
 
     const executeInitialGeneration = async () => {
         if (!appState.uploadedImage) return;
@@ -132,43 +197,23 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     };
 
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-
-        const imagesToZip: ImageForZip[] = [];
+        const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            imagesToZip.push({
+            inputImages.push({
                 url: appState.uploadedImage,
                 filename: 'anh-phac-thao-goc',
                 folder: 'input',
             });
         }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `ket-qua-kien-truc-${index + 1}`,
-                folder: 'output',
-            });
-        });
         
-        downloadAllImagesAsZip(imagesToZip, 'ket-qua-kien-truc.zip');
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'ket-qua-kien-truc.zip',
+            baseOutputFilename: 'ket-qua-kien-truc',
+        });
     };
-    
-    const renderSelect = (id: keyof ArchitectureIdeatorState['options'], label: string, optionList: string[]) => (
-        <div>
-            <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
-            <select
-                id={id}
-                value={appState.options[id] as string}
-                onChange={(e) => handleOptionChange(id, e.target.value)}
-                className="form-input"
-            >
-                {optionList.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-        </div>
-    );
     
     const isLoading = appState.stage === 'generating';
 
@@ -196,7 +241,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
                             <ActionablePolaroidCard 
-                                imageUrl={appState.uploadedImage} 
+                                mediaUrl={appState.uploadedImage} 
                                 caption="Ảnh phác thảo" 
                                 status="done"
                                 onClick={() => openLightbox(0)}
@@ -210,10 +255,66 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh ý tưởng</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {renderSelect('context', 'Bối cảnh', CONTEXT_OPTIONS)}
-                                {renderSelect('style', 'Phong cách kiến trúc', STYLE_OPTIONS)}
-                                {renderSelect('color', 'Tông màu', COLOR_OPTIONS)}
-                                {renderSelect('lighting', 'Ánh sáng', LIGHTING_OPTIONS)}
+                               <div ref={contextDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="context-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Bối cảnh</label>
+                                    <input type="text" id="context-search" value={contextSearch}
+                                        onChange={(e) => { setContextSearch(e.target.value); handleOptionChange('context', e.target.value); setIsContextDropdownOpen(true); }}
+                                        onFocus={() => setIsContextDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsContextDropdownOpen(false), 200)}
+                                        className="form-input" placeholder="Tìm hoặc nhập bối cảnh..." autoComplete="off" />
+                                    {isContextDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredContexts.length > 0 ? filteredContexts.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleSelectOption('context', opt)} className="searchable-dropdown-item">{opt}</li>
+                                            )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div ref={styleDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="style-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Phong cách kiến trúc</label>
+                                    <input type="text" id="style-search" value={styleSearch}
+                                        onChange={(e) => { setStyleSearch(e.target.value); handleOptionChange('style', e.target.value); setIsStyleDropdownOpen(true); }}
+                                        onFocus={() => setIsStyleDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsStyleDropdownOpen(false), 200)}
+                                        className="form-input" placeholder="Tìm hoặc nhập phong cách..." autoComplete="off" />
+                                    {isStyleDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredStyles.length > 0 ? filteredStyles.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleSelectOption('style', opt)} className="searchable-dropdown-item">{opt}</li>
+                                            )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div ref={colorDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="color-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tông màu</label>
+                                    <input type="text" id="color-search" value={colorSearch}
+                                        onChange={(e) => { setColorSearch(e.target.value); handleOptionChange('color', e.target.value); setIsColorDropdownOpen(true); }}
+                                        onFocus={() => setIsColorDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsColorDropdownOpen(false), 200)}
+                                        className="form-input" placeholder="Tìm hoặc nhập tông màu..." autoComplete="off" />
+                                    {isColorDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredColors.length > 0 ? filteredColors.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleSelectOption('color', opt)} className="searchable-dropdown-item">{opt}</li>
+                                            )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div ref={lightingDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="lighting-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ánh sáng</label>
+                                    <input type="text" id="lighting-search" value={lightingSearch}
+                                        onChange={(e) => { setLightingSearch(e.target.value); handleOptionChange('lighting', e.target.value); setIsLightingDropdownOpen(true); }}
+                                        onFocus={() => setIsLightingDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsLightingDropdownOpen(false), 200)}
+                                        className="form-input" placeholder="Tìm hoặc nhập ánh sáng..." autoComplete="off" />
+                                    {isLightingDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredLightings.length > 0 ? filteredLightings.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleSelectOption('lighting', opt)} className="searchable-dropdown-item">{opt}</li>
+                                            )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
@@ -289,7 +390,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined}
+                            mediaUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isDownloadable={true}
@@ -297,11 +398,34 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle="Tinh chỉnh ảnh kiến trúc"
                             regenerationDescription="Thêm ghi chú để cải thiện ảnh"
                             regenerationPlaceholder="Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm..."
                         />
                     </motion.div>
+                    {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
 

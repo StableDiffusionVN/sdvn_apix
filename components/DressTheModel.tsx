@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useCallback, ChangeEvent } from 'react';
+import React, { useState, useCallback, ChangeEvent, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDressedModelImage, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -11,11 +11,13 @@ import {
     AppScreenHeader,
     handleFileUpload,
     useMediaQuery,
-    downloadAllImagesAsZip,
     ImageForZip,
     ResultsView,
     type DressTheModelState,
     useLightbox,
+    OptionsPanel,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface DressTheModelProps {
@@ -40,7 +42,8 @@ const POSE_OPTIONS = ['Tự động', 'Giữ nguyên tư thế gốc', 'Đứng 
 const PHOTO_STYLE_OPTIONS = ['Tự động', 'Ảnh bìa tạp chí (Vogue, Harper\'s Bazaar)', 'Ảnh lookbook sản phẩm', 'Chân dung cận cảnh', 'Ảnh chụp đường phố (Street style)', 'Phong cách phim điện ảnh (Cinematic)', 'Ảnh chụp tự nhiên (Candid)', 'Ảnh chụp bằng máy phim (35mm film grain)', 'Ảnh Polaroid', 'Ảnh đen trắng cổ điển', 'Ảnh high-key (sáng, ít bóng)', 'Ảnh low-key (tối, tương phản cao)', 'Góc máy Hà Lan (Dutch angle)', 'Ảnh mắt cá (Fisheye lens)', 'Chồng ảnh (Double exposure)', 'Phong cách Lomography (màu sắc rực rỡ, vignette)', 'Chụp từ góc thấp', 'Chụp từ góc cao (bird\'s eye view)', 'Chuyển động mờ (Motion blur)', 'Chân dung siêu thực (Surreal portrait)', 'Ảnh có vệt sáng (Light leaks)'];
 const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
 
-const DressTheModel: React.FC<DressTheModelProps> = (props) => {
+// FIX: This component was not implemented, causing it to return 'void'.
+export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const { 
         uploaderCaptionModel, uploaderDescriptionModel,
         uploaderCaptionClothing, uploaderDescriptionClothing,
@@ -50,46 +53,84 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     } = props;
 
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
     
+    // Searchable dropdown states
+    const [backgroundSearch, setBackgroundSearch] = useState(appState.options.background);
+    const [isBackgroundDropdownOpen, setIsBackgroundDropdownOpen] = useState(false);
+    const backgroundDropdownRef = useRef<HTMLDivElement>(null);
+    const [poseSearch, setPoseSearch] = useState(appState.options.pose);
+    const [isPoseDropdownOpen, setIsPoseDropdownOpen] = useState(false);
+    const poseDropdownRef = useRef<HTMLDivElement>(null);
+    const [styleSearch, setStyleSearch] = useState(appState.options.style);
+    const [isStyleDropdownOpen, setIsStyleDropdownOpen] = useState(false);
+    const styleDropdownRef = useRef<HTMLDivElement>(null);
+    
+    const filteredBackgrounds = BACKGROUND_OPTIONS.filter(opt => opt.toLowerCase().includes(backgroundSearch.toLowerCase()));
+    const filteredPoses = POSE_OPTIONS.filter(opt => opt.toLowerCase().includes(poseSearch.toLowerCase()));
+    const filteredStyles = PHOTO_STYLE_OPTIONS.filter(opt => opt.toLowerCase().includes(styleSearch.toLowerCase()));
+    
+    useEffect(() => {
+        setBackgroundSearch(appState.options.background);
+        setPoseSearch(appState.options.pose);
+        setStyleSearch(appState.options.style);
+    }, [appState.options]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (backgroundDropdownRef.current && !backgroundDropdownRef.current.contains(event.target as Node)) setIsBackgroundDropdownOpen(false);
+            if (poseDropdownRef.current && !poseDropdownRef.current.contains(event.target as Node)) setIsPoseDropdownOpen(false);
+            if (styleDropdownRef.current && !styleDropdownRef.current.contains(event.target as Node)) setIsStyleDropdownOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const lightboxImages = [appState.modelImage, appState.clothingImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleModelImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
-            const newState: DressTheModelState = {
+            onStateChange({
                 ...appState,
                 stage: appState.clothingImage ? 'configuring' : 'idle',
                 modelImage: imageDataUrl,
                 generatedImage: null,
                 historicalImages: [],
                 error: null,
-            };
-            onStateChange(newState);
+            });
             addImagesToGallery([imageDataUrl]);
         });
     };
-    
+
     const handleClothingImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
-             const newState: DressTheModelState = {
+            onStateChange({
                 ...appState,
                 stage: appState.modelImage ? 'configuring' : 'idle',
                 clothingImage: imageDataUrl,
                 generatedImage: null,
                 historicalImages: [],
                 error: null,
-            };
-            onStateChange(newState);
+            });
             addImagesToGallery([imageDataUrl]);
         });
     };
     
     const handleModelImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, modelImage: newUrl });
+        onStateChange({
+            ...appState,
+            stage: appState.clothingImage ? 'configuring' : 'idle',
+            modelImage: newUrl,
+        });
         addImagesToGallery([newUrl]);
     };
     const handleClothingImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, clothingImage: newUrl });
+        onStateChange({
+            ...appState,
+            stage: appState.modelImage ? 'configuring' : 'idle',
+            clothingImage: newUrl,
+        });
         addImagesToGallery([newUrl]);
     };
     const handleGeneratedImageChange = (newUrl: string) => {
@@ -99,275 +140,239 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     };
 
     const handleOptionChange = (field: keyof DressTheModelState['options'], value: string | boolean) => {
-        onStateChange({
-            ...appState,
-            options: { ...appState.options, [field]: value }
-        });
+        onStateChange({ ...appState, options: { ...appState.options, [field]: value } });
     };
+    
+    const handleSelectOption = (field: keyof DressTheModelState['options'], value: string) => {
+        handleOptionChange(field, value);
+        switch(field) {
+            case 'background':
+                setBackgroundSearch(value);
+                setIsBackgroundDropdownOpen(false);
+                break;
+            case 'pose':
+                setPoseSearch(value);
+                setIsPoseDropdownOpen(false);
+                break;
+            case 'style':
+                setStyleSearch(value);
+                setIsStyleDropdownOpen(false);
+                break;
+        }
+    };
+
 
     const executeInitialGeneration = async () => {
         if (!appState.modelImage || !appState.clothingImage) return;
-        
         onStateChange({ ...appState, stage: 'generating', error: null });
-
         try {
             const resultUrl = await generateDressedModelImage(appState.modelImage, appState.clothingImage, appState.options);
-            onStateChange({
-                ...appState,
-                stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
-            });
+            onStateChange({ ...appState, stage: 'results', generatedImage: resultUrl, historicalImages: [...appState.historicalImages, resultUrl] });
             addImagesToGallery([resultUrl]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
         }
     };
-
+    
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
-
         onStateChange({ ...appState, stage: 'generating', error: null });
-
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            onStateChange({
-                ...appState,
-                stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
-            });
+            onStateChange({ ...appState, stage: 'results', generatedImage: resultUrl, historicalImages: [...appState.historicalImages, resultUrl] });
             addImagesToGallery([resultUrl]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
         }
     };
-
+    
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
-    
-    const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
 
-        const imagesToZip: ImageForZip[] = [];
+    const handleDownloadAll = () => {
+        const inputImages: ImageForZip[] = [];
         if (appState.modelImage) {
-            imagesToZip.push({
-                url: appState.modelImage,
-                filename: 'anh-mau-goc',
-                folder: 'input',
-            });
+            inputImages.push({ url: appState.modelImage, filename: 'model-goc', folder: 'input' });
         }
         if (appState.clothingImage) {
-            imagesToZip.push({
-                url: appState.clothingImage,
-                filename: 'anh-trang-phuc-goc',
-                folder: 'input',
-            });
+            inputImages.push({ url: appState.clothingImage, filename: 'trang-phuc-goc', folder: 'input' });
         }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `ket-qua-trang-phuc-${index + 1}`,
-                folder: 'output',
-            });
+        
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'ket-qua-thu-do.zip',
+            baseOutputFilename: 'ket-qua-thu-do',
         });
-
-        downloadAllImagesAsZip(imagesToZip, 'ket-qua-mac-do.zip');
     };
 
-    const renderSelect = (id: keyof DressTheModelState['options'], label: string, optionList: string[]) => (
-        <div>
-            <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
-            <select
-                id={id}
-                value={appState.options[id] as string}
-                onChange={(e) => handleOptionChange(id, e.target.value)}
-                className="form-input"
-            >
-                {optionList.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-        </div>
-    );
-
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, onImageChange, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <ActionablePolaroidCard
-                    caption={caption}
-                    status="done"
-                    imageUrl={currentImage || undefined}
-                    placeholderType={placeholderType}
+                    caption={caption} status="done" mediaUrl={currentImage || undefined} placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
-                    isEditable={!!currentImage}
-                    isSwappable={true}
-                    isGallerySelectable={true}
-                    onImageChange={id === 'model-upload' ? handleModelImageChange : handleClothingImageChange}
+                    isEditable={!!currentImage} isSwappable={true} isGallerySelectable={true} onImageChange={onImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
-            <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">
-                {description}
-            </p>
+            {description && <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">{description}</p>}
         </div>
     );
-    
+
     const isLoading = appState.stage === 'generating';
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
-             <AnimatePresence>
-                {(appState.stage === 'idle' || appState.stage === 'configuring') && (
-                    <AppScreenHeader {...headerProps} />
-                )}
+            <AnimatePresence>
+                {(appState.stage === 'idle' || appState.stage === 'configuring') && (<AppScreenHeader {...headerProps} />)}
             </AnimatePresence>
 
             {appState.stage === 'idle' && (
-                <motion.div
-                    className="flex flex-col md:flex-row items-start justify-center gap-8"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <Uploader 
-                        id="model-upload"
-                        onUpload={handleModelImageUpload}
-                        caption={uploaderCaptionModel}
-                        description={uploaderDescriptionModel}
-                        currentImage={appState.modelImage}
-                        placeholderType="person"
-                    />
-                     <Uploader 
-                        id="clothing-upload"
-                        onUpload={handleClothingImageUpload}
-                        caption={uploaderCaptionClothing}
-                        description={uploaderDescriptionClothing}
-                        currentImage={appState.clothingImage}
-                        placeholderType="clothing"
-                    />
+                <motion.div className="flex flex-col md:flex-row items-start justify-center gap-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    <Uploader id="model-upload" onUpload={handleModelImageUpload} onImageChange={handleModelImageChange} caption={uploaderCaptionModel} description={uploaderDescriptionModel} currentImage={appState.modelImage} placeholderType="person" />
+                    <Uploader id="clothing-upload" onUpload={handleClothingImageUpload} onImageChange={handleClothingImageChange} caption={uploaderCaptionClothing} description={uploaderDescriptionClothing} currentImage={appState.clothingImage} placeholderType="clothing" />
                 </motion.div>
             )}
 
             {appState.stage === 'configuring' && appState.modelImage && appState.clothingImage && (
-                <motion.div
-                    className="flex flex-col items-center gap-8 w-full max-w-7xl py-6 overflow-y-auto"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
+                <motion.div className="flex flex-col items-center gap-8 w-full max-w-7xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <ActionablePolaroidCard imageUrl={appState.modelImage} caption="Ảnh người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleModelImageChange} />
-                        <ActionablePolaroidCard imageUrl={appState.clothingImage} caption="Ảnh trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
+                        <ActionablePolaroidCard mediaUrl={appState.modelImage} caption="Người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleModelImageChange} />
+                        <ActionablePolaroidCard mediaUrl={appState.clothingImage} caption="Trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
                     </div>
 
-                    <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
+                    <OptionsPanel className="max-w-4xl">
                         <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {renderSelect('background', 'Bối cảnh (Background)', BACKGROUND_OPTIONS)}
-                            {renderSelect('pose', 'Tư thế (Pose)', POSE_OPTIONS)}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           {renderSelect('style', 'Phong cách ảnh', PHOTO_STYLE_OPTIONS)}
-                           {renderSelect('aspectRatio', 'Tỉ lệ khung ảnh', ASPECT_RATIO_OPTIONS)}
+                            <div ref={backgroundDropdownRef} className="searchable-dropdown-container">
+                                <label htmlFor="background-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Bối cảnh</label>
+                                <input type="text" id="background-search" value={backgroundSearch}
+                                    onChange={(e) => { setBackgroundSearch(e.target.value); handleOptionChange('background', e.target.value); setIsBackgroundDropdownOpen(true); }}
+                                    onFocus={() => setIsBackgroundDropdownOpen(true)}
+                                    onBlur={() => setTimeout(() => setIsBackgroundDropdownOpen(false), 200)}
+                                    className="form-input" placeholder="Tìm hoặc nhập bối cảnh..." autoComplete="off" />
+                                {isBackgroundDropdownOpen && (
+                                    <ul className="searchable-dropdown-list">
+                                        {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(opt => (
+                                            <li key={opt} onMouseDown={() => handleSelectOption('background', opt)} className="searchable-dropdown-item">{opt}</li>
+                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                    </ul>
+                                )}
+                            </div>
+                            <div ref={poseDropdownRef} className="searchable-dropdown-container">
+                                <label htmlFor="pose-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tư thế</label>
+                                <input type="text" id="pose-search" value={poseSearch}
+                                    onChange={(e) => { setPoseSearch(e.target.value); handleOptionChange('pose', e.target.value); setIsPoseDropdownOpen(true); }}
+                                    onFocus={() => setIsPoseDropdownOpen(true)}
+                                    onBlur={() => setTimeout(() => setIsPoseDropdownOpen(false), 200)}
+                                    className="form-input" placeholder="Tìm hoặc nhập tư thế..." autoComplete="off" />
+                                {isPoseDropdownOpen && (
+                                    <ul className="searchable-dropdown-list">
+                                        {filteredPoses.length > 0 ? filteredPoses.map(opt => (
+                                            <li key={opt} onMouseDown={() => handleSelectOption('pose', opt)} className="searchable-dropdown-item">{opt}</li>
+                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                    </ul>
+                                )}
+                            </div>
+                            <div ref={styleDropdownRef} className="searchable-dropdown-container">
+                                <label htmlFor="style-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Phong cách ảnh</label>
+                                <input type="text" id="style-search" value={styleSearch}
+                                    onChange={(e) => { setStyleSearch(e.target.value); handleOptionChange('style', e.target.value); setIsStyleDropdownOpen(true); }}
+                                    onFocus={() => setIsStyleDropdownOpen(true)}
+                                    onBlur={() => setTimeout(() => setIsStyleDropdownOpen(false), 200)}
+                                    className="form-input" placeholder="Tìm hoặc nhập phong cách..." autoComplete="off" />
+                                {isStyleDropdownOpen && (
+                                    <ul className="searchable-dropdown-list">
+                                        {filteredStyles.length > 0 ? filteredStyles.map(opt => (
+                                            <li key={opt} onMouseDown={() => handleSelectOption('style', opt)} className="searchable-dropdown-item">{opt}</li>
+                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
+                                    </ul>
+                                )}
+                            </div>
+                             <div>
+                                <label htmlFor="aspect-ratio-dress" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỷ lệ khung ảnh</label>
+                                <select id="aspect-ratio-dress" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
+                                    {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
-                            <textarea
-                                id="notes"
-                                value={appState.options.notes}
-                                onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                placeholder="Ví dụ: thêm phụ kiện như túi xách, kính râm..."
-                                className="form-input h-24"
-                                rows={3}
-                            />
+                            <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)} placeholder="Ví dụ: thêm phụ kiện vòng cổ, ánh sáng ban đêm..." className="form-input h-24" rows={3} />
                         </div>
                         <div className="flex items-center pt-2">
-                            <input
-                                type="checkbox"
-                                id="remove-watermark-dress"
-                                checked={appState.options.removeWatermark}
-                                onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
-                                className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                aria-label="Xóa watermark nếu có"
-                            />
-                            <label htmlFor="remove-watermark-dress" className="ml-3 block text-sm font-medium text-neutral-300">
-                                Xóa watermark (nếu có)
-                            </label>
+                            <input type="checkbox" id="remove-watermark-dress" checked={appState.options.removeWatermark} onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" aria-label="Xóa watermark nếu có" />
+                            <label htmlFor="remove-watermark-dress" className="ml-3 block text-sm font-medium text-neutral-300">Xóa watermark (nếu có)</label>
                         </div>
                         <div className="flex items-center justify-end gap-4 pt-4">
-                            <button onClick={onReset} className="btn btn-secondary">
-                                Đổi ảnh khác
-                            </button>
-                            <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>
-                                {isLoading ? 'Đang mặc đồ...' : 'Mặc đồ cho mẫu'}
-                            </button>
+                            <button onClick={onReset} className="btn btn-secondary">Đổi ảnh khác</button>
+                            <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? 'Đang thử đồ...' : 'Thử đồ'}</button>
                         </div>
-                    </div>
+                    </OptionsPanel>
                 </motion.div>
             )}
-
+            
             {(appState.stage === 'generating' || appState.stage === 'results') && (
-                <ResultsView
-                    stage={appState.stage}
-                    originalImage={appState.modelImage}
-                    onOriginalClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))}
-                    error={appState.error}
-                    isMobile={isMobile}
-                    actions={(
-                        <>
-                            {appState.generatedImage && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>
-                            )}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa tùy chọn</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
-                        </>
-                    )}
-                >
+                <ResultsView stage={appState.stage} originalImage={appState.modelImage} onOriginalClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} error={appState.error} isMobile={isMobile} actions={
+                    <>
+                        {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>)}
+                        <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa tùy chọn</button>
+                        <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                    </>
+                }>
                     {appState.clothingImage && (
-                         <motion.div key="clothing-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                             <ActionablePolaroidCard caption="Ảnh trang phục" status="done" imageUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} onImageChange={handleClothingImageChange} />
+                        <motion.div key="clothing" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
+                            <ActionablePolaroidCard caption="Trang phục" status="done" mediaUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
                         </motion.div>
                     )}
-                    <motion.div
-                        className="w-full md:w-auto flex-shrink-0"
-                        key="generated"
-                        initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}
-                        whileHover={{ scale: 1.05, zIndex: 10 }}
-                    >
+                    <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-dress" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }} whileHover={{ scale: 1.05, zIndex: 10 }}>
                         <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined}
-                            error={appState.error ?? undefined}
-                            isDownloadable={true}
-                            isEditable={true}
-                            isRegeneratable={true}
+                            mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            isDownloadable={true} isEditable={true} isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle="Tinh chỉnh ảnh"
                             regenerationDescription="Thêm ghi chú để cải thiện ảnh"
-                            regenerationPlaceholder="Ví dụ: thay đổi màu nền thành xanh dương..."
+                            regenerationPlaceholder="Ví dụ: thay đổi kiểu tóc, thêm một chiếc túi xách..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             isMobile={isMobile}
                         />
                     </motion.div>
+                    {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                    isMobile={isMobile}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
-            <Lightbox
-                images={lightboxImages}
-                selectedIndex={lightboxIndex}
-                onClose={closeLightbox}
-                onNavigate={navigateLightbox}
-            />
+
+            <Lightbox images={lightboxImages} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
         </div>
     );
 };
-
-export default DressTheModel;

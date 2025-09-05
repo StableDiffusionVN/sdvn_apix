@@ -11,13 +11,13 @@ import {
     AppScreenHeader,
     ImageUploader,
     ResultsView,
-    downloadAllImagesAsZip,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
     type PhotoRestorationState,
     handleFileUpload,
     useLightbox,
+    processAndDownloadAll,
 } from './uiUtils';
 import { COUNTRIES } from '../lib/countries';
 
@@ -158,24 +158,21 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     };
 
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-
-        const imagesToZip: ImageForZip[] = [];
+        const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            imagesToZip.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
-        }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `anh-phuc-che-${index + 1}`,
-                folder: 'output',
+            inputImages.push({
+                url: appState.uploadedImage,
+                filename: 'anh-goc',
+                folder: 'input',
             });
-        });
+        }
         
-        downloadAllImagesAsZip(imagesToZip, 'anh-phuc-che.zip');
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            zipFilename: 'anh-phuc-che.zip',
+            baseOutputFilename: 'anh-phuc-che',
+        });
     };
     
     const renderSelect = (id: keyof PhotoRestorationState['options'], label: string, optionList: string[]) => (
@@ -210,7 +207,8 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <ActionablePolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
+                            {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
+                            <ActionablePolaroidCard mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Thông tin bổ sung</h2>
@@ -311,8 +309,9 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
+                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
                         <ActionablePolaroidCard caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             isDownloadable={true}
                             isEditable={true}
                             isRegeneratable={true}

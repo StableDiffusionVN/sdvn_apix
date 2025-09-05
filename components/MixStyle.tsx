@@ -11,12 +11,13 @@ import {
     AppScreenHeader,
     handleFileUpload,
     useMediaQuery,
-    downloadAllImagesAsZip,
     ImageForZip,
     Slider,
     ResultsView,
     type MixStyleState,
-    useLightbox
+    useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface MixStyleProps {
@@ -47,6 +48,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     } = props;
 
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const lightboxImages = [appState.contentImage, appState.styleImage, ...appState.historicalImages].filter((img): img is string => !!img);
@@ -80,11 +82,19 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     };
     
     const handleContentImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, contentImage: newUrl });
+        onStateChange({
+            ...appState,
+            stage: appState.styleImage ? 'configuring' : 'idle',
+            contentImage: newUrl,
+        });
         addImagesToGallery([newUrl]);
     };
     const handleStyleImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, styleImage: newUrl });
+        onStateChange({
+            ...appState,
+            stage: appState.contentImage ? 'configuring' : 'idle',
+            styleImage: newUrl,
+        });
         addImagesToGallery([newUrl]);
     };
     const handleGeneratedImageChange = (newUrl: string) => {
@@ -145,41 +155,37 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     };
 
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-
-        const imagesToZip: ImageForZip[] = [];
+        const inputImages: ImageForZip[] = [];
         if (appState.contentImage) {
-            imagesToZip.push({ url: appState.contentImage, filename: 'anh-noi-dung-goc', folder: 'input' });
+            inputImages.push({ url: appState.contentImage, filename: 'anh-noi-dung-goc', folder: 'input' });
         }
         if (appState.styleImage) {
-            imagesToZip.push({ url: appState.styleImage, filename: 'anh-style-goc', folder: 'input' });
+            inputImages.push({ url: appState.styleImage, filename: 'anh-style-goc', folder: 'input' });
         }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `ket-qua-tron-style-${index + 1}`,
-                folder: 'output'
-            });
+
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'ket-qua-tron-style.zip',
+            baseOutputFilename: 'ket-qua-tron-style',
         });
-        downloadAllImagesAsZip(imagesToZip, 'ket-qua-tron-style.zip');
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType, onImageChange }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
+                {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
                 <ActionablePolaroidCard
                     caption={caption}
                     status="done"
-                    imageUrl={currentImage || undefined}
+                    mediaUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
                     isEditable={!!currentImage}
                     isSwappable={true}
                     isGallerySelectable={true}
-                    onImageChange={id === 'content-upload' ? handleContentImageChange : handleStyleImageChange}
+                    onImageChange={onImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -209,6 +215,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     <Uploader 
                         id="content-upload"
                         onUpload={handleContentImageUpload}
+                        onImageChange={handleContentImageChange}
                         caption={uploaderCaptionContent}
                         description={uploaderDescriptionContent}
                         currentImage={appState.contentImage}
@@ -217,6 +224,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                      <Uploader 
                         id="style-upload"
                         onUpload={handleStyleImageUpload}
+                        onImageChange={handleStyleImageChange}
                         caption={uploaderCaptionStyle}
                         description={uploaderDescriptionStyle}
                         currentImage={appState.styleImage}
@@ -233,8 +241,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <ActionablePolaroidCard imageUrl={appState.contentImage} caption="Ảnh nội dung" status="done" onClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleContentImageChange} />
-                        <ActionablePolaroidCard imageUrl={appState.styleImage} caption="Ảnh phong cách" status="done" onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleStyleImageChange} />
+                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
+                        <ActionablePolaroidCard mediaUrl={appState.contentImage} caption="Ảnh nội dung" status="done" onClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleContentImageChange} />
+                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
+                        <ActionablePolaroidCard mediaUrl={appState.styleImage} caption="Ảnh phong cách" status="done" onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleStyleImageChange} />
                     </div>
 
                     <div className="w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4">
@@ -300,7 +310,8 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 >
                     {appState.styleImage && (
                         <motion.div key="style" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard caption="Ảnh phong cách" status="done" imageUrl={appState.styleImage} isMobile={isMobile} onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} onImageChange={handleStyleImageChange} />
+                            {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
+                            <ActionablePolaroidCard caption="Ảnh phong cách" status="done" mediaUrl={appState.styleImage} isMobile={isMobile} onClick={() => appState.styleImage && openLightbox(lightboxImages.indexOf(appState.styleImage))} isEditable={true} onImageChange={handleStyleImageChange} />
                         </motion.div>
                     )}
                     <motion.div
@@ -311,16 +322,18 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}
                         whileHover={{ scale: 1.05, zIndex: 10 }}
                     >
+                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
                         <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined}
+                            mediaUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
                             isDownloadable={true}
                             isEditable={true}
                             isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle="Tinh chỉnh ảnh"
                             regenerationDescription="Thêm ghi chú để cải thiện ảnh"
                             regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn, ít chi tiết hơn..."
@@ -328,6 +341,29 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                             isMobile={isMobile}
                         />
                     </motion.div>
+                     {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                    isMobile={isMobile}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
 

@@ -15,7 +15,7 @@ import {
 
 interface ActionablePolaroidCardProps {
     // Core PolaroidCard props
-    imageUrl?: string;
+    mediaUrl?: string;
     caption: string;
     status: 'pending' | 'done' | 'error';
     error?: string;
@@ -33,6 +33,7 @@ interface ActionablePolaroidCardProps {
     // Callbacks for actions
     onImageChange?: (imageDataUrl: string) => void;
     onRegenerate?: (prompt: string) => void;
+    onGenerateVideoFromPrompt?: (prompt: string) => void;
     
     // Props for modals
     regenerationTitle?: string;
@@ -42,7 +43,7 @@ interface ActionablePolaroidCardProps {
 
 
 const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
-    imageUrl,
+    mediaUrl,
     caption,
     status,
     error,
@@ -56,9 +57,10 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     isGallerySelectable = false,
     onImageChange,
     onRegenerate,
-    regenerationTitle = "Tinh chỉnh ảnh",
-    regenerationDescription = "Thêm ghi chú để cải thiện ảnh",
-    regenerationPlaceholder = "Ví dụ: tông màu ấm, phong cách phim xưa..."
+    onGenerateVideoFromPrompt,
+    regenerationTitle,
+    regenerationDescription,
+    regenerationPlaceholder,
 }) => {
     const { openImageEditor } = useImageEditor();
     const { sessionGalleryImages } = useAppControls();
@@ -77,28 +79,37 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     }, []);
 
     const handleEditClick = useCallback(() => {
-        if (imageUrl && onImageChange) {
-            openImageEditor(imageUrl, onImageChange);
+        if (mediaUrl && onImageChange) {
+            openImageEditor(mediaUrl, onImageChange);
         }
-    }, [imageUrl, onImageChange, openImageEditor]);
+    }, [mediaUrl, onImageChange, openImageEditor]);
     
     const handleRegenerateClick = useCallback(() => {
         setIsRegenModalOpen(true);
     }, []);
 
-    const handleConfirmRegeneration = useCallback((prompt: string) => {
+    const handleConfirmImage = useCallback((prompt: string) => {
         setIsRegenModalOpen(false);
         if (onRegenerate) {
             onRegenerate(prompt);
         }
     }, [onRegenerate]);
 
-    const handleDownloadClick = useCallback(() => {
-        if (imageUrl) {
-            const filename = `${caption.replace(/[\s()]/g, '-')}.jpg`;
-            downloadImage(imageUrl, filename);
+    const handleConfirmVideo = useCallback((prompt: string) => {
+        setIsRegenModalOpen(false);
+        if (onGenerateVideoFromPrompt) {
+            onGenerateVideoFromPrompt(prompt);
         }
-    }, [imageUrl, caption]);
+    }, [onGenerateVideoFromPrompt]);
+
+    const handleDownloadClick = useCallback(() => {
+        if (mediaUrl) {
+            const isVideo = mediaUrl.startsWith('blob:');
+            const extension = isVideo ? 'mp4' : 'jpg';
+            const filename = `${caption.replace(/[\s()]/g, '-')}.${extension}`;
+            downloadImage(mediaUrl, filename);
+        }
+    }, [mediaUrl, caption]);
 
     const handleOpenGalleryPicker = useCallback(() => {
         setGalleryPickerOpen(true);
@@ -112,7 +123,8 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     };
 
 
-    const showButtons = status === 'done' && imageUrl;
+    const showButtons = status === 'done' && mediaUrl;
+    const canDoSomething = isRegeneratable || !!onGenerateVideoFromPrompt;
 
     return (
         <>
@@ -128,7 +140,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 />
             )}
             <PolaroidCard
-                imageUrl={imageUrl}
+                mediaUrl={mediaUrl}
                 caption={caption}
                 status={status}
                 error={error}
@@ -139,13 +151,14 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 onEdit={showButtons && isEditable ? handleEditClick : undefined}
                 onSwapImage={showButtons && isSwappable ? handleSwapClick : undefined}
                 onSelectFromGallery={isGallerySelectable ? handleOpenGalleryPicker : undefined}
-                onShake={showButtons && isRegeneratable ? handleRegenerateClick : undefined}
+                onShake={showButtons && canDoSomething ? handleRegenerateClick : undefined}
             />
-            {isRegeneratable && (
+            {canDoSomething && (
                 <RegenerationModal
                     isOpen={isRegenModalOpen}
                     onClose={() => setIsRegenModalOpen(false)}
-                    onConfirm={handleConfirmRegeneration}
+                    onConfirmImage={handleConfirmImage}
+                    onConfirmVideo={onGenerateVideoFromPrompt ? handleConfirmVideo : undefined}
                     itemToModify={caption}
                     title={regenerationTitle}
                     description={regenerationDescription}

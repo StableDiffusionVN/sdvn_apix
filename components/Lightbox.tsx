@@ -38,7 +38,9 @@ const Lightbox: React.FC<LightboxProps> = ({ images, selectedIndex, onClose, onN
 
     const handleDownloadCurrent = () => {
         if (selectedIndex !== null && images[selectedIndex]) {
-            downloadImage(images[selectedIndex], `aPix-image-${selectedIndex + 1}.jpg`);
+            const url = images[selectedIndex];
+            const extension = url.startsWith('blob:') ? 'mp4' : 'jpg';
+            downloadImage(url, `aPix-image-${selectedIndex + 1}.${extension}`);
         }
     };
 
@@ -59,11 +61,20 @@ const Lightbox: React.FC<LightboxProps> = ({ images, selectedIndex, onClose, onN
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.2, ease: "easeInOut" }}
                             >
-                                <img
-                                    src={images[selectedIndex]}
-                                    alt={`Generated image ${selectedIndex + 1}`}
-                                    className="gallery-lightbox-img"
-                                />
+                                {images[selectedIndex].startsWith('blob:') ? (
+                                    <video
+                                        src={images[selectedIndex]}
+                                        controls
+                                        autoPlay
+                                        className="gallery-lightbox-img"
+                                    />
+                                ) : (
+                                    <img
+                                        src={images[selectedIndex]}
+                                        alt={`Generated image ${selectedIndex + 1}`}
+                                        className="gallery-lightbox-img"
+                                    />
+                                )}
                                 <button 
                                     className="lightbox-action-btn"
                                     onClick={handleDownloadCurrent}

@@ -8,7 +8,7 @@ import { cn } from '../lib/utils';
 type ImageStatus = 'pending' | 'done' | 'error';
 
 interface PolaroidCardProps {
-    imageUrl?: string;
+    mediaUrl?: string;
     caption: string;
     status: ImageStatus;
     error?: string;
@@ -77,8 +77,9 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isMobile, placeholderType = 'person', onClick }) => {
-    const hasImage = status === 'done' && imageUrl;
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isMobile, placeholderType = 'person', onClick }) => {
+    const hasMedia = status === 'done' && mediaUrl;
+    const isVideo = hasMedia && mediaUrl!.startsWith('blob:');
     const isClickable = !!onClick;
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -93,12 +94,12 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
         <div className={cn("polaroid-card", isClickable && "cursor-pointer")} onClick={handleClick}>
             <div className={cn(
                 "polaroid-image-container group",
-                !hasImage && 'aspect-square',
-                hasImage && 'has-image'
+                !hasMedia && 'aspect-square',
+                hasMedia && 'has-image'
             )}>
                 {status === 'pending' && <LoadingSpinner />}
                 {status === 'error' && <ErrorDisplay message={error} />}
-                {hasImage && (
+                {hasMedia && (
                     <>
                         {isClickable && (
                             <div className="absolute inset-0 z-10 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -107,22 +108,34 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                                 </svg>
                             </div>
                         )}
-                        <img
-                            key={imageUrl}
-                            src={imageUrl}
-                            alt={caption}
-                            className="w-full h-auto md:w-auto md:h-full block"
-                        />
+                        {isVideo ? (
+                            <video
+                                key={mediaUrl}
+                                src={mediaUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full h-auto md:w-auto md:h-full block"
+                            />
+                        ) : (
+                            <img
+                                key={mediaUrl}
+                                src={mediaUrl}
+                                alt={caption}
+                                className="w-full h-auto md:w-auto md:h-full block"
+                            />
+                        )}
                     </>
                 )}
-                {status === 'done' && !imageUrl && <Placeholder type={placeholderType} />}
+                {status === 'done' && !mediaUrl && <Placeholder type={placeholderType} />}
 
                 {/* --- BUTTON CONTAINER --- */}
                 <div className={cn(
                     "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
-                    (hasImage || onSelectFromGallery) ? (!isMobile ? 'opacity-0 group-hover:opacity-100' : '') : 'opacity-0 pointer-events-none'
+                    (hasMedia || onSelectFromGallery) ? (!isMobile ? 'opacity-0 group-hover:opacity-100' : '') : 'opacity-0 pointer-events-none'
                 )}>
-                     {hasImage && onEdit && (
+                     {hasMedia && onEdit && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -136,7 +149,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                             </svg>
                         </button>
                     )}
-                     {hasImage && onSwapImage && (
+                     {hasMedia && onSwapImage && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -164,7 +177,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                             </svg>
                         </button>
                     )}
-                     {hasImage && onShake && (
+                     {hasMedia && onShake && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -178,7 +191,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                             </svg>
                         </button>
                     )}
-                    {hasImage && onDownload && (
+                    {hasMedia && onDownload && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -197,7 +210,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
             <div className="absolute bottom-4 left-4 right-4 text-center px-2">
                 <p className={cn(
                     "polaroid-caption",
-                    status === 'done' && imageUrl ? 'text-black' : 'text-neutral-800'
+                    status === 'done' && mediaUrl ? 'text-black' : 'text-neutral-800'
                 )}>
                     {caption}
                 </p>

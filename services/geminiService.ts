@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { GoogleGenAI, Modality, Type } from "@google/genai";
+// FIX: Module '"@google/genai"' has no exported member 'VideosOperationResponse'.
 import type { GenerateContentResponse } from "@google/genai";
 
 // --- NEW: Centralized Error Processor ---
@@ -12,16 +13,23 @@ function processApiError(error: unknown): Error {
     if (errorMessage.includes('ReadableStream uploading is not supported')) {
         return new Error("Ứng dụng tạm thời chưa tương thích ứng dụng di động, mong mọi người thông cảm");
     }
+    if (errorMessage.toLowerCase().includes('api key not valid')) {
+        return new Error("API Key không hợp lệ. Vui lòng kiểm tra lại cấu hình môi trường.");
+    }
     if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate limit') || errorMessage.toLowerCase().includes('resource_exhausted')) {
         return new Error("Ứng dụng tạm thời đạt giới hạn sử dụng trong ngày, hãy quay trở lại vào ngày tiếp theo.");
+    }
+    if (errorMessage.toLowerCase().includes('safety') || errorMessage.toLowerCase().includes('blocked')) {
+        return new Error("Yêu cầu của bạn đã bị chặn vì lý do an toàn. Vui lòng thử với một hình ảnh hoặc prompt khác.");
     }
     
     // Return original Error object or a new one for other cases
     if (error instanceof Error) {
         return error; 
     }
-    return new Error(errorMessage);
+    return new Error("Đã có lỗi xảy ra từ phía AI: " + errorMessage);
 }
+
 
 /**
  * Edits an image based on a text prompt.
@@ -84,7 +92,7 @@ export async function editImageWithPrompt(
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during image editing.", processedError);
+        console.error("Error during image editing:", processedError);
         throw processedError;
     }
 }
@@ -330,7 +338,7 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
             }
         } else {
             // This is for other errors, like a final internal server error after retries.
-            console.error("An unrecoverable error occurred during image generation.", processedError);
+            console.error("Error during image generation:", processedError);
             throw new Error(`The AI model failed to generate an image. Details: ${errorMessage}`);
         }
     }
@@ -404,7 +412,7 @@ export async function generateArchitecturalImage(imageDataUrl: string, options: 
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during architectural image generation.", processedError);
+        console.error("Error during architectural image generation:", processedError);
         throw processedError;
     }
 }
@@ -502,7 +510,7 @@ export async function generateDressedModelImage(
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during dressed model image generation.", processedError);
+        console.error("Error during dressed model image generation:", processedError);
         throw processedError;
     }
 }
@@ -573,7 +581,7 @@ export async function restoreOldPhoto(imageDataUrl: string, options: PhotoRestor
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during photo restoration.", processedError);
+        console.error("Error during photo restoration:", processedError);
         throw processedError;
     }
 }
@@ -634,7 +642,7 @@ export async function convertImageToRealistic(imageDataUrl: string, options: Ima
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during image to real conversion.", processedError);
+        console.error("Error during image to real conversion:", processedError);
         throw processedError;
     }
 }
@@ -693,7 +701,7 @@ export async function swapImageStyle(imageDataUrl: string, options: SwapStyleOpt
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during style swap.", processedError);
+        console.error("Error during style swap:", processedError);
         throw processedError;
     }
 }
@@ -758,7 +766,7 @@ export async function mixImageStyle(contentImageDataUrl: string, styleImageDataU
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during style mix.", processedError);
+        console.error("Error during style mix:", processedError);
         throw processedError;
     }
 }
@@ -875,7 +883,7 @@ export async function generateFreeImage(
         return [resultUrl]; // Return as an array with one item
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during free image generation.", processedError);
+        console.error("Error during free image generation:", processedError);
         throw processedError;
     }
 }
@@ -967,7 +975,7 @@ export async function generateToyModelImage(imageDataUrl: string, options: ToyMo
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during toy model image generation.", processedError);
+        console.error("Error during toy model image generation:", processedError);
         throw processedError;
     }
 }
@@ -996,7 +1004,7 @@ export async function removeImageBackground(imageDataUrl: string): Promise<strin
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during background removal.", processedError);
+        console.error("Error during background removal:", processedError);
         throw processedError;
     }
 }
@@ -1072,7 +1080,7 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
 
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during prompt generation.", processedError);
+        console.error("Error during prompt generation from image pair:", processedError);
         throw processedError;
     }
 }
@@ -1127,7 +1135,7 @@ export async function interpolatePrompts(basePrompt: string, userNotes: string):
 
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during prompt interpolation.", processedError);
+        console.error("Error during prompt interpolation:", processedError);
         throw processedError;
     }
 }
@@ -1163,7 +1171,54 @@ export async function adaptPromptToContext(imageDataUrl: string, basePrompt: str
 
     } catch (error) {
         const processedError = processApiError(error);
-        console.error("An unrecoverable error occurred during prompt adaptation. Falling back to base prompt.", processedError);
+        console.error("Error during prompt context adaptation. Falling back to base prompt.", processedError);
         return basePrompt;
+    }
+}
+
+
+// --- NEW: Video Generation ---
+export async function startVideoGenerationFromImage(
+    imageDataUrl: string,
+    prompt: string
+): Promise<any> {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+
+        console.log("Starting video generation...");
+        
+        const operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt,
+            image: {
+                imageBytes: base64Data,
+                mimeType,
+            },
+            config: {
+                numberOfVideos: 1
+            }
+        });
+
+        return operation;
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error starting video generation:", processedError);
+        throw processedError;
+    }
+}
+
+export async function pollVideoOperation(
+    operation: any
+): Promise<any> {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        console.log("Polling video operation status...");
+        return await ai.operations.getVideosOperation({ operation });
+    } catch (error) {
+         const processedError = processApiError(error);
+        console.error("Error polling video operation:", processedError);
+        throw processedError;
     }
 }

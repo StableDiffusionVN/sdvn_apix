@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { COUNTRIES } from '../lib/countries';
 import { STYLE_OPTIONS_LIST } from '../lib/styles';
+import { startVideoGenerationFromImage, pollVideoOperation } from '../services/geminiService';
 // FIX: Import PolaroidCard to be used in ImageUploader and break circular dependency.
 import PolaroidCard from './PolaroidCard';
 
@@ -88,7 +89,13 @@ export const downloadImage = (url: string, filename: string) => {
  * @param dataurl The data URL to convert.
  * @returns A Blob object.
  */
-export const dataURLtoBlob = (dataurl: string): Blob => {
+export const dataURLtoBlob = async (dataurl: string): Promise<Blob> => {
+    // Handle blob URLs directly
+    if (dataurl.startsWith('blob:')) {
+        const response = await fetch(dataurl);
+        return await response.blob();
+    }
+    
     const arr = dataurl.split(',');
     const mimeMatch = arr[0].match(/:(.*?);/);
     if (!mimeMatch) {
@@ -109,6 +116,7 @@ export interface ImageForZip {
     url: string;
     filename: string;
     folder?: string;
+    extension?: string;
 }
 
 /**
@@ -128,13 +136,13 @@ export const downloadAllImagesAsZip = async (images: ImageForZip[], zipFilename:
         for (const img of images) {
             if (!img.url) continue;
 
-            const blob = dataURLtoBlob(img.url);
+            const blob = await dataURLtoBlob(img.url);
             let targetFolder = zip;
             if (img.folder) {
                 targetFolder = zip.folder(img.folder) || zip;
             }
             
-            const fileExtension = (blob.type.split('/')[1] || 'jpg').toLowerCase();
+            const fileExtension = img.extension || (blob.type.split('/')[1] || 'jpg').toLowerCase();
             const baseFileName = img.filename.replace(/\s+/g, '-').toLowerCase();
 
             // Handle duplicates by appending a number
@@ -170,13 +178,83 @@ export const downloadAllImagesAsZip = async (images: ImageForZip[], zipFilename:
     }
 };
 
+/**
+ * A centralized utility to process and download all generated assets (images and videos) as a zip file.
+ * @param inputImages Array of input images for the zip.
+ * @param historicalImages Array of generated images/videos. Can be simple URLs or objects with details for naming.
+ * @param videoTasks The video generation task object to find completed videos.
+ * @param zipFilename The final name for the downloaded zip file.
+ * @param baseOutputFilename A base prefix for all generated output files.
+ */
+export const processAndDownloadAll = async ({
+    inputImages = [],
+    historicalImages = [],
+    videoTasks = {},
+    zipFilename,
+    baseOutputFilename,
+}: {
+    inputImages?: ImageForZip[];
+    historicalImages?: Array<string | { url: string; idea?: string; prompt?: string; }>;
+    videoTasks?: Record<string, VideoTask>;
+    zipFilename: string;
+    baseOutputFilename: string;
+}) => {
+    const allItemsToZip: ImageForZip[] = [...inputImages];
+    const processedUrls = new Set<string>();
+
+    // Add historical images first
+    historicalImages.forEach((item, index) => {
+        const url = typeof item === 'string' ? item : item.url;
+        if (processedUrls.has(url)) return;
+
+        // Generate a descriptive filename part
+        const namePartRaw = (typeof item !== 'string' && (item.idea || item.prompt))
+            ? (item.idea || item.prompt!)
+            : `${index + 1}`;
+        
+        // Sanitize the filename part
+        const namePart = namePartRaw.substring(0, 30).replace(/[\s()]/g, '_').replace(/[^\w-]/g, '');
+        
+        const isVideo = url.startsWith('blob:');
+
+        allItemsToZip.push({
+            url,
+            filename: `${baseOutputFilename}-${namePart}`,
+            folder: 'output',
+            extension: isVideo ? 'mp4' : undefined,
+        });
+        processedUrls.add(url);
+    });
+
+    // Add any completed videos from videoTasks that weren't already in historicalImages
+    Object.values(videoTasks).forEach((task, index) => {
+        if (task.status === 'done' && task.resultUrl && !processedUrls.has(task.resultUrl)) {
+            allItemsToZip.push({
+                url: task.resultUrl,
+                filename: `${baseOutputFilename}-video-${index + 1}`,
+                folder: 'output',
+                extension: 'mp4',
+            });
+            processedUrls.add(task.resultUrl);
+        }
+    });
+
+    if (allItemsToZip.length === inputImages.length) {
+        alert('Không có ảnh hoặc video nào đã tạo để tải về.');
+        return;
+    }
+
+    await downloadAllImagesAsZip(allItemsToZip, zipFilename);
+};
+
 
 // --- Reusable Modal Component ---
 
 interface RegenerationModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (prompt: string) => void;
+    onConfirmImage: (prompt: string) => void;
+    onConfirmVideo?: (prompt: string) => void;
     itemToModify: string | null;
     title?: string;
     description?: string;
@@ -186,10 +264,11 @@ interface RegenerationModalProps {
 export const RegenerationModal: React.FC<RegenerationModalProps> = ({
     isOpen,
     onClose,
-    onConfirm,
+    onConfirmImage,
+    onConfirmVideo,
     itemToModify,
-    title = "Chỉnh sửa ảnh",
-    description = "Thêm yêu cầu để tinh chỉnh ảnh",
+    title = "Tinh chỉnh hoặc Tạo video",
+    description = "Thêm yêu cầu để tinh chỉnh ảnh, hoặc dùng nó để tạo video cho",
     placeholder = "Ví dụ: tông màu ấm, phong cách phim xưa..."
 }) => {
     const [customPrompt, setCustomPrompt] = useState('');
@@ -201,11 +280,21 @@ export const RegenerationModal: React.FC<RegenerationModalProps> = ({
         }
     }, [isOpen]);
 
-    const handleConfirm = () => {
-        onConfirm(customPrompt);
+    const handleConfirmImage = () => {
+        onConfirmImage(customPrompt);
     };
 
-    return (
+    const handleConfirmVideo = () => {
+        if (onConfirmVideo) {
+            onConfirmVideo(customPrompt);
+        }
+    };
+
+    if (!isOpen) {
+        return null;
+    }
+
+    return ReactDOM.createPortal(
         <AnimatePresence>
             {isOpen && itemToModify && (
                 <motion.div
@@ -240,14 +329,20 @@ export const RegenerationModal: React.FC<RegenerationModalProps> = ({
                             <button onClick={onClose} className="btn btn-secondary btn-sm">
                                 Hủy
                             </button>
-                            <button onClick={handleConfirm} className="btn btn-primary btn-sm">
-                                Tạo lại
+                            {onConfirmVideo && (
+                                <button onClick={handleConfirmVideo} className="btn btn-secondary btn-sm">
+                                    Tạo video
+                                </button>
+                            )}
+                            <button onClick={handleConfirmImage} className="btn btn-primary btn-sm">
+                                Tạo lại ảnh
                             </button>
                         </div>
                     </motion.div>
                 </motion.div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };
 
@@ -590,11 +685,11 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'home':
             return { stage: 'home' };
         case 'architecture-ideator':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { context: 'Tự động', style: 'Tự động', color: 'Tự động', lighting: 'Tự động', notes: '', removeWatermark: false }, error: null };
+            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { context: '', style: '', color: '', lighting: '', notes: '', removeWatermark: false }, error: null };
         case 'avatar-creator':
             return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'dress-the-model':
-            return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: 'Tự động', pose: 'Tự động', style: 'Tự động', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
+            return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: '', pose: '', style: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'photo-restoration':
             return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { type: 'Chân dung', gender: 'Tự động', age: '', nationality: COUNTRIES[0], notes: '', removeWatermark: false, removeStains: true }, error: null };
         case 'image-to-real':
@@ -606,7 +701,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'free-generation':
             return { stage: 'configuring', image1: null, image2: null, generatedImages: [], historicalImages: [], options: { prompt: '', removeWatermark: false, numberOfImages: 1, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'toy-model-creator':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { computerType: 'Tự động', softwareType: 'Tự động', boxType: 'Tự động', background: 'Tự động', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
+            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { computerType: 'Tự động', softwareType: 'Tự động', boxType: '', background: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'image-interpolation':
              return { stage: 'idle', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', promptSuggestions: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         default:
@@ -876,7 +971,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onI
                         <PolaroidCard
                             caption={uploaderCaption}
                             status="done"
-                            imageUrl={undefined}
+                            mediaUrl={undefined}
                             placeholderType={placeholderType}
                             onSelectFromGallery={handleOpenGalleryPicker}
                         />
@@ -1301,4 +1396,90 @@ export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promp
             </div>
         </div>
     );
+};
+
+// --- NEW: Video Generation Hook ---
+export interface VideoTask {
+    status: 'pending' | 'done' | 'error';
+    resultUrl?: string;
+    error?: string;
+    operation?: any;
+}
+
+export const useVideoGeneration = () => {
+    const { addImagesToGallery } = useAppControls();
+    const [videoTasks, setVideoTasks] = useState<Record<string, VideoTask>>({});
+
+    const generateVideo = useCallback(async (sourceUrl: string, prompt: string) => {
+        const finalPrompt = prompt.trim() || "Animate this image, bringing it to life with subtle, cinematic motion.";
+        setVideoTasks(prev => ({ ...prev, [sourceUrl]: { status: 'pending' } }));
+        try {
+            const op = await startVideoGenerationFromImage(sourceUrl, finalPrompt);
+            setVideoTasks(prev => ({ ...prev, [sourceUrl]: { status: 'pending', operation: op } }));
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+            setVideoTasks(prev => ({ ...prev, [sourceUrl]: { status: 'error', error: errorMessage } }));
+        }
+    }, []);
+
+    useEffect(() => {
+        const tasksToPoll = Object.entries(videoTasks).filter(([, task]) => task.status === 'pending' && task.operation);
+        if (tasksToPoll.length === 0) return;
+    
+        let isCancelled = false;
+    
+        const poll = async () => {
+            if (isCancelled) return;
+    
+            const newTasks = { ...videoTasks };
+            let tasksUpdated = false;
+    
+            await Promise.all(tasksToPoll.map(async ([sourceUrl, task]) => {
+                if (!task.operation) return;
+                try {
+                    const updatedOp = await pollVideoOperation(task.operation);
+                    if (isCancelled) return;
+    
+                    if (updatedOp.done) {
+                        if (updatedOp.response?.generatedVideos?.[0]?.video?.uri) {
+                            const downloadLink = updatedOp.response.generatedVideos[0].video.uri;
+                            const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+                            if (!response.ok) throw new Error(`Failed to fetch video: ${response.statusText}`);
+                            const blob = await response.blob();
+                            const blobUrl = URL.createObjectURL(blob);
+                            newTasks[sourceUrl] = { status: 'done', resultUrl: blobUrl };
+                            addImagesToGallery([blobUrl]);
+                        } else {
+                            throw new Error(updatedOp.error?.message || "Video generation finished but no URI was found.");
+                        }
+                    } else {
+                        newTasks[sourceUrl] = { ...task, operation: updatedOp };
+                    }
+                    tasksUpdated = true;
+                } catch (err) {
+                    const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+                    newTasks[sourceUrl] = { status: 'error', error: errorMessage };
+                    tasksUpdated = true;
+                }
+            }));
+    
+            if (!isCancelled && tasksUpdated) {
+                setVideoTasks(newTasks);
+            }
+    
+            const stillPending = Object.values(newTasks).some(t => t.status === 'pending');
+            if (!isCancelled && stillPending) {
+                setTimeout(poll, 10000);
+            }
+        };
+    
+        const timeoutId = setTimeout(poll, 5000);
+    
+        return () => {
+            isCancelled = true;
+            clearTimeout(timeoutId);
+        };
+    }, [videoTasks, addImagesToGallery]);
+
+    return { videoTasks, generateVideo };
 };

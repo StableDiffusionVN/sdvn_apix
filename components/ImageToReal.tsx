@@ -11,7 +11,6 @@ import {
     AppScreenHeader,
     ImageUploader,
     ResultsView,
-    downloadAllImagesAsZip,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
@@ -19,6 +18,8 @@ import {
     type ImageToRealState,
     handleFileUpload,
     useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface ImageToRealProps {
@@ -45,6 +46,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
     } = props;
     
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
@@ -127,22 +129,18 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
     };
 
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-        const imagesToZip: ImageForZip[] = [];
+        const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            imagesToZip.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
+            inputImages.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
         }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `anh-chuyen-doi-${index + 1}`,
-                folder: 'output'
-            });
+        
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'anh-chuyen-doi.zip',
+            baseOutputFilename: 'anh-chuyen-doi',
         });
-        downloadAllImagesAsZip(imagesToZip, 'anh-chuyen-doi.zip');
     };
     
     const isLoading = appState.stage === 'generating';
@@ -168,7 +166,8 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <ActionablePolaroidCard imageUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
+                            {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
+                            <ActionablePolaroidCard mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
@@ -217,18 +216,42 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
+                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
                         <ActionablePolaroidCard caption="Ảnh thật" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             isDownloadable={true}
                             isEditable={true}
                             isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle="Tinh chỉnh ảnh"
                             regenerationDescription="Thêm ghi chú để cải thiện ảnh"
                             regenerationPlaceholder="Ví dụ: thêm hiệu ứng bokeh, chụp bằng ống kính góc rộng..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
+                     {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
             

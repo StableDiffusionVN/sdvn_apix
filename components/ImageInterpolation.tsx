@@ -10,13 +10,14 @@ import Lightbox from './Lightbox';
 import { 
     AppScreenHeader,
     handleFileUpload,
-    downloadAllImagesAsZip,
     ImageForZip,
     ResultsView,
     type ImageInterpolationState,
     useLightbox,
     OptionsPanel,
-    PromptResultCard
+    PromptResultCard,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface ImageInterpolationProps {
@@ -39,7 +40,8 @@ interface ImageInterpolationProps {
 
 const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
 
-const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
+// FIX: Added 'export' to the component and implemented the JSX return to fix type errors.
+export const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     const { 
         uploaderCaptionInput, uploaderDescriptionInput,
         uploaderCaptionOutput, uploaderDescriptionOutput,
@@ -49,6 +51,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     } = props;
 
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
     const lightboxImages = [appState.inputImage, appState.outputImage, appState.referenceImage, ...appState.historicalImages.map(h => h.url)].filter((img): img is string => !!img);
     
     const appStateRef = useRef(appState);
@@ -204,30 +207,26 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         }
     };
 
-    const handleBackToOptions = () => onStateChange({ ...appState, stage: 'configuring' });
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-
-        const imagesToZip: ImageForZip[] = [];
-        if (appState.inputImage) imagesToZip.push({ url: appState.inputImage, filename: 'input-image', folder: 'input' });
-        if (appState.outputImage) imagesToZip.push({ url: appState.outputImage, filename: 'output-image', folder: 'input' });
-        if (appState.referenceImage) imagesToZip.push({ url: appState.referenceImage, filename: 'reference-image', folder: 'input' });
+        const inputImages: ImageForZip[] = [];
+        if (appState.inputImage) inputImages.push({ url: appState.inputImage, filename: 'anh-truoc', folder: 'input' });
+        if (appState.outputImage) inputImages.push({ url: appState.outputImage, filename: 'anh-sau', folder: 'input' });
+        if (appState.referenceImage) inputImages.push({ url: appState.referenceImage, filename: 'anh-tham-chieu', folder: 'input' });
         
-        appState.historicalImages.forEach((item, index) => {
-            imagesToZip.push({ url: item.url, filename: `result-${index + 1}`, folder: 'output' });
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'ket-qua-noi-suy-anh.zip',
+            baseOutputFilename: 'ket-qua-noi-suy',
         });
-        
-        downloadAllImagesAsZip(imagesToZip, 'image-interpolation-results.zip');
     };
-    
-    const Uploader = ({ id, onUpload, caption, description, currentImage, onImageChange, placeholderType }: any) => (
+
+    const Uploader = ({ id, onUpload, onImageChange, caption, description, currentImage, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <ActionablePolaroidCard
-                    caption={caption} status="done" imageUrl={currentImage || undefined} placeholderType={placeholderType}
+                    caption={caption} status="done" mediaUrl={currentImage || undefined} placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
                     isEditable={!!currentImage} isSwappable={true} isGallerySelectable={true} onImageChange={onImageChange}
                 />
@@ -236,177 +235,124 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
             {description && <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">{description}</p>}
         </div>
     );
-    
-    const isLoading = appState.stage === 'generating' || appState.stage === 'prompting';
-    const showRefUploader = appState.stage === 'configuring' || appState.stage === 'prompting';
+
+    const isLoading = appState.stage === 'prompting' || appState.stage === 'generating';
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
             <AnimatePresence>
-                {(appState.stage !== 'generating' && appState.stage !== 'results') && <AppScreenHeader {...headerProps} />}
+                {appState.stage !== 'results' && appState.stage !== 'generating' && (
+                    <AppScreenHeader {...headerProps} />
+                )}
             </AnimatePresence>
 
             {appState.stage === 'idle' && (
-                <>
-                    <motion.div className="flex flex-col md:flex-row items-start justify-center gap-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                        <Uploader id="input-upload" onUpload={handleImageUpload(handleInputImageChange)} onImageChange={handleInputImageChange} caption={uploaderCaptionInput} description={uploaderDescriptionInput} currentImage={appState.inputImage} placeholderType="magic" />
-                        <Uploader id="output-upload" onUpload={handleImageUpload(handleOutputImageChange)} onImageChange={handleOutputImageChange} caption={uploaderCaptionOutput} description={uploaderDescriptionOutput} currentImage={appState.outputImage} placeholderType="magic" />
-                    </motion.div>
-
-                    {appState.inputImage && appState.outputImage && (
-                        <motion.div 
-                            className="mt-8 text-center"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            {appState.error && <p className="text-red-400 mb-4">{appState.error}</p>}
-                            <button 
-                                onClick={handleAnalyzeClick} 
-                                className="btn btn-primary"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Đang phân tích...' : 'Phân tích & Tạo Prompt'}
-                            </button>
-                        </motion.div>
-                    )}
-                </>
-            )}
-
-            {(appState.stage === 'prompting' || appState.stage === 'configuring') && (
-                 <motion.div className="flex flex-col items-center gap-8 w-full max-w-7xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <ActionablePolaroidCard imageUrl={appState.inputImage!} caption="Ảnh Input" status="done" onClick={() => appState.inputImage && openLightbox(lightboxImages.indexOf(appState.inputImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleInputImageChange} />
-                        <ActionablePolaroidCard imageUrl={appState.outputImage!} caption="Ảnh Output" status="done" onClick={() => appState.outputImage && openLightbox(lightboxImages.indexOf(appState.outputImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleOutputImageChange} />
-                        <AnimatePresence>
-                            {showRefUploader && (
-                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                                    <Uploader id="ref-upload" onUpload={handleImageUpload(handleReferenceImageChange)} onImageChange={handleReferenceImageChange} caption={uploaderCaptionReference} currentImage={appState.referenceImage} placeholderType="magic" />
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                <motion.div className="flex flex-col items-center gap-8 w-full max-w-5xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    <div className="flex flex-col md:flex-row items-start justify-center gap-8">
+                        <Uploader id="interp-input-upload" onUpload={handleImageUpload(handleInputImageChange)} onImageChange={handleInputImageChange} caption={uploaderCaptionInput} description={uploaderDescriptionInput} currentImage={appState.inputImage} placeholderType="magic" />
+                        <Uploader id="interp-output-upload" onUpload={handleImageUpload(handleOutputImageChange)} onImageChange={handleOutputImageChange} caption={uploaderCaptionOutput} description={uploaderDescriptionOutput} currentImage={appState.outputImage} placeholderType="magic" />
                     </div>
-
-                    <OptionsPanel>
-                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Câu lệnh gợi ý (Prompt)</h2>
-                        <div>
-                            <label htmlFor="generated-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Prompt được AI phân tích (có thể sửa)</label>
-                            <textarea
-                                id="generated-prompt"
-                                value={appState.generatedPrompt}
-                                onChange={(e) => onStateChange({...appState, generatedPrompt: e.target.value})}
-                                className="form-input !h-28"
-                                placeholder={appState.stage === 'prompting' ? 'Đang phân tích cặp ảnh...' : ''}
-                                disabled={appState.stage === 'prompting'}
-                            />
-                        </div>
-
-                        {appState.promptSuggestions && (
-                            <div className="space-y-2">
-                                <label className="block text-left base-font font-bold text-lg text-neutral-200">Gợi ý chỉnh sửa</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {appState.promptSuggestions.split('\n').map(s => s.replace(/^- /, '').trim()).filter(s => s).map((s, i) => (
-                                        <button 
-                                            key={i} 
-                                            onClick={() => onStateChange({ ...appState, additionalNotes: `${appState.additionalNotes}${appState.additionalNotes ? '\n' : ''}- ${s}` })}
-                                            className="bg-neutral-800/80 border border-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-full hover:bg-neutral-700/80 transition-colors"
-                                            title={`Thêm: ${s}`}
-                                        >
-                                            + {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Yêu cầu chỉnh sửa prompt (tùy chọn)</label>
-                            <textarea
-                                id="additional-notes"
-                                value={appState.additionalNotes}
-                                onChange={(e) => onStateChange({...appState, additionalNotes: e.target.value})}
-                                placeholder="Ví dụ: thay đổi nhân vật chính thành một con chó, tông màu cyberpunk..."
-                                className="form-input !h-24"
-                            />
-                        </div>
-
-                        <div className="space-y-4 pt-2">
-                            <div>
-                                <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ khung ảnh</label>
-                                <select
-                                    id="aspect-ratio"
-                                    value={appState.options.aspectRatio}
-                                    onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
-                                    className="form-input"
-                                >
-                                    {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="remove-watermark-interp"
-                                    checked={appState.options.removeWatermark}
-                                    onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
-                                    className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                    aria-label="Xóa watermark nếu có"
-                                />
-                                <label htmlFor="remove-watermark-interp" className="ml-3 block text-sm font-medium text-neutral-300">
-                                    Xóa watermark (nếu có)
-                                </label>
-                            </div>
-                        </div>
-
-
-                        <div className="flex items-center justify-end gap-4 pt-4">
-                            <button onClick={onReset} className="btn btn-secondary">Bắt đầu lại</button>
-                            <button onClick={handleGenerate} className="btn btn-primary" disabled={isLoading || !appState.referenceImage || !appState.generatedPrompt.trim()}>
-                                {isLoading ? 'Đang tạo...' : 'Tạo ảnh'}
-                            </button>
-                        </div>
-                    </OptionsPanel>
+                    {appState.error && <p className="text-red-400 mt-4">{appState.error}</p>}
+                    <button onClick={handleAnalyzeClick} className="btn btn-primary mt-4" disabled={!appState.inputImage || !appState.outputImage || isLoading}>
+                        {isLoading ? 'Đang phân tích...' : 'Phân tích sự biến đổi'}
+                    </button>
                 </motion.div>
             )}
 
+            {(appState.stage === 'prompting' || appState.stage === 'configuring') && (
+                 <motion.div className="flex flex-col items-stretch gap-6 w-full max-w-7xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                     <div className="flex flex-col md:flex-row items-center justify-center gap-6 flex-shrink-0">
+                         <ActionablePolaroidCard mediaUrl={appState.inputImage!} caption="Ảnh Trước" status="done" onClick={() => openLightbox(lightboxImages.indexOf(appState.inputImage!))} />
+                         <div className="text-4xl font-bold text-yellow-400">→</div>
+                         <ActionablePolaroidCard mediaUrl={appState.outputImage!} caption="Ảnh Sau" status="done" onClick={() => openLightbox(lightboxImages.indexOf(appState.outputImage!))} />
+                     </div>
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                         <OptionsPanel>
+                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Prompt được tạo ra</h2>
+                             {isLoading && appState.stage === 'prompting' ? (
+                                <div className="flex items-center justify-center h-48"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div></div>
+                             ) : (
+                                <>
+                                    <PromptResultCard title="Prompt chính" promptText={appState.generatedPrompt} />
+                                    <PromptResultCard title="Gợi ý sáng tạo" promptText={appState.promptSuggestions} />
+                                </>
+                             )}
+                         </OptionsPanel>
+                         <OptionsPanel>
+                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Áp dụng cho ảnh mới</h2>
+                             <Uploader id="interp-ref-upload" onUpload={handleImageUpload((url) => onStateChange({...appState, referenceImage: url}))} onImageChange={handleReferenceImageChange} caption={uploaderCaptionReference} description={uploaderDescriptionReference} currentImage={appState.referenceImage} placeholderType="magic" />
+                             <div className="mt-4 space-y-4">
+                                <div>
+                                    <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú (Tùy chỉnh Prompt)</label>
+                                    <textarea id="additional-notes" value={appState.additionalNotes} onChange={(e) => onStateChange({...appState, additionalNotes: e.target.value})} placeholder="Ví dụ: thay đổi tông màu thành xanh dương..." className="form-input h-20" rows={2} />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <label htmlFor="aspect-ratio-interp" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ khung ảnh</label>
+                                        <select id="aspect-ratio-interp" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
+                                            {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center pt-8">
+                                        <input type="checkbox" id="remove-watermark-interp" checked={appState.options.removeWatermark} onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
+                                        <label htmlFor="remove-watermark-interp" className="ml-3 block text-sm font-medium text-neutral-300">Xóa watermark (nếu có)</label>
+                                    </div>
+                                </div>
+                                 <div className="flex items-center justify-end gap-4 pt-4">
+                                     <button onClick={onReset} className="btn btn-secondary">Bắt đầu lại</button>
+                                     <button onClick={handleGenerate} className="btn btn-primary" disabled={!appState.referenceImage || isLoading}>{isLoading ? 'Đang tạo...' : 'Tạo ảnh'}</button>
+                                 </div>
+                             </div>
+                         </OptionsPanel>
+                     </div>
+                 </motion.div>
+            )}
+            
             {(appState.stage === 'generating' || appState.stage === 'results') && (
-                <ResultsView stage={appState.stage} originalImage={appState.referenceImage} onOriginalClick={() => appState.referenceImage && openLightbox(lightboxImages.indexOf(appState.referenceImage))} error={appState.error}
+                <ResultsView
+                    stage={appState.stage}
+                    originalImage={appState.referenceImage}
+                    onOriginalClick={() => openLightbox(lightboxImages.indexOf(appState.referenceImage!))}
+                    error={appState.error}
                     actions={(
                         <>
                             {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>)}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa</button>
+                            <button onClick={() => onStateChange({...appState, stage: 'configuring'})} className="btn btn-secondary">Chỉnh sửa</button>
                             <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
                         </>
-                    )}>
-                    <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-interpolation" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }} whileHover={{ scale: 1.05, zIndex: 10 }}>
+                    )}
+                >
+                     <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-interp" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}>
                         <ActionablePolaroidCard
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined}
-                            error={appState.error ?? undefined}
-                            isDownloadable={true}
-                            isEditable={true}
-                            isRegeneratable={true}
-                            onRegenerate={handleRegeneration}
-                            regenerationTitle="Tinh chỉnh ảnh nội suy"
-                            regenerationDescription="Thêm yêu cầu để cải thiện ảnh kết quả."
-                            regenerationPlaceholder="Ví dụ: làm cho màu sắc rực rỡ hơn, thêm các ngôi sao..."
+                            mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            isDownloadable={true} isEditable={true} isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
+                            onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
+                            regenerationTitle="Tinh chỉnh ảnh"
+                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
+                            regenerationPlaceholder="Ví dụ: thêm hiệu ứng ánh sáng..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                         />
                     </motion.div>
-                    <motion.div
-                        className="w-full md:w-auto flex-shrink-0 flex self-stretch"
-                        key="final-prompt-card"
-                        initial={{ opacity: 0, scale: 0.5, y: 100 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.3 }}
-                    >
-                        <PromptResultCard 
-                            title="Prompt cuối cùng đã sử dụng"
-                            promptText={appState.finalPrompt}
-                            className="md:max-w-xs"
-                        />
-                    </motion.div>
+                    {appState.historicalImages.map(({ url: sourceUrl }) => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div className="w-full md:w-auto flex-shrink-0" key={`${sourceUrl}-video`} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
 
@@ -414,5 +360,3 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         </div>
     );
 };
-
-export default ImageInterpolation;

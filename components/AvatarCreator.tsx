@@ -12,11 +12,12 @@ import {
     AppScreenHeader,
     ImageUploader,
     ResultsView,
-    downloadAllImagesAsZip,
     ImageForZip,
     type AvatarCreatorState,
     handleFileUpload,
     useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 const IDEAS_BY_CATEGORY = [
@@ -97,6 +98,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     } = props;
     
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const outputLightboxImages = appState.selectedIdeas
@@ -254,30 +256,23 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         onStateChange({ ...appState, stage: 'configuring' });
     };
 
-    const handleDownloadAll = async () => {
-        const imagesToZip: ImageForZip[] = [];
-        
+    const handleDownloadAll = () => {
+        const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            imagesToZip.push({
+            inputImages.push({
                 url: appState.uploadedImage,
                 filename: 'anh-goc',
                 folder: 'input',
             });
         }
-    
-        appState.historicalImages.forEach(img => {
-            imagesToZip.push({
-                url: img.url,
-                filename: `vietnamtrongtoi-${img.idea}`,
-                folder: 'output',
-            });
-        });
         
-        if (imagesToZip.length > 0) {
-            await downloadAllImagesAsZip(imagesToZip, 'vietnamtrongtoi-results.zip');
-        } else {
-            alert('Không có ảnh nào để tải về.');
-        }
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'vietnamtrongtoi-results.zip',
+            baseOutputFilename: 'vietnamtrongtoi',
+        });
     };
 
     const getButtonText = () => {
@@ -316,7 +311,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     transition={{ duration: 0.5 }}
                 >
                     <ActionablePolaroidCard 
-                        imageUrl={appState.uploadedImage} 
+                        mediaUrl={appState.uploadedImage} 
                         caption="Ảnh của bạn" 
                         status="done"
                         onClick={() => openLightbox(0)}
@@ -452,15 +447,39 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 <ActionablePolaroidCard
                                     caption={idea}
                                     status={imageState?.status || 'pending'}
-                                    imageUrl={imageState?.url}
+                                    mediaUrl={imageState?.url}
                                     error={imageState?.error}
                                     isDownloadable={true}
                                     isEditable={true}
                                     isRegeneratable={true}
                                     onImageChange={handleGeneratedImageChange(idea)}
                                     onRegenerate={(prompt) => handleRegenerateIdea(idea, prompt)}
+                                    onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
                                     regenerationPlaceholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh..."
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
+                                    isMobile={isMobile}
+                                />
+                            </motion.div>
+                        );
+                    })}
+                     {appState.historicalImages.map(({ url: sourceUrl }) => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
                                     isMobile={isMobile}
                                 />
                             </motion.div>

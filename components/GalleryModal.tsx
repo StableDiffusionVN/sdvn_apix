@@ -34,7 +34,8 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
         const imagesToZip: ImageForZip[] = images.map((url, index) => ({
             url,
             filename: `aPix-gallery-image-${index + 1}`,
-            folder: 'gallery'
+            folder: 'gallery',
+            extension: url.startsWith('blob:') ? 'mp4' : undefined,
         }));
         downloadAllImagesAsZip(imagesToZip, 'aPix-gallery.zip');
     };
@@ -127,30 +128,37 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
                             </div>
                             {images.length > 0 ? (
                                 <div className="gallery-grid">
-                                    {images.map((img, index) => (
-                                        <motion.div 
-                                            key={`${img.slice(-20)}-${index}`} 
-                                            className="gallery-grid-item group relative" 
-                                            onClick={() => openLightbox(index)}
-                                            initial={{ opacity: 0, scale: 0.8 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ delay: index * 0.03 }}
-                                        >
-                                            <img src={img} alt={`Generated image ${index + 1}`} loading="lazy" />
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemoveClick(index);
-                                                }}
-                                                className="absolute bottom-2 right-2 z-10 p-2 bg-black/60 rounded-full text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                                                aria-label={`Xóa ảnh ${index + 1}`}
+                                    {images.map((img, index) => {
+                                        const isVideo = img.startsWith('blob:');
+                                        return (
+                                            <motion.div 
+                                                key={`${img.slice(-20)}-${index}`} 
+                                                className="gallery-grid-item group relative" 
+                                                onClick={() => openLightbox(index)}
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                transition={{ delay: index * 0.03 }}
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </motion.div>
-                                    ))}
+                                                {isVideo ? (
+                                                    <video src={img} autoPlay loop muted playsInline className="w-full h-auto block" />
+                                                ) : (
+                                                    <img src={img} alt={`Generated image ${index + 1}`} loading="lazy" />
+                                                )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRemoveClick(index);
+                                                    }}
+                                                    className="absolute bottom-2 right-2 z-10 p-2 bg-black/60 rounded-full text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                                    aria-label={`Xóa ảnh ${index + 1}`}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
+                                            </motion.div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="text-center text-neutral-400 py-8 flex-1 flex items-center justify-center">

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { ChangeEvent, useCallback, useEffect } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateToyModelImage, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -11,13 +11,14 @@ import {
     AppScreenHeader,
     ImageUploader,
     ResultsView,
-    downloadAllImagesAsZip,
     ImageForZip,
     AppOptionsLayout,
     OptionsPanel,
     type ToyModelCreatorState,
     handleFileUpload,
     useLightbox,
+    useVideoGeneration,
+    processAndDownloadAll,
 } from './uiUtils';
 
 interface ToyModelCreatorProps {
@@ -49,8 +50,45 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     } = props;
     
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
+    const { videoTasks, generateVideo } = useVideoGeneration();
+
+    const [boxTypeSearch, setBoxTypeSearch] = useState(appState.options.boxType);
+    const [isBoxTypeDropdownOpen, setIsBoxTypeDropdownOpen] = useState(false);
+    const boxTypeDropdownRef = useRef<HTMLDivElement>(null);
+
+    const [backgroundSearch, setBackgroundSearch] = useState(appState.options.background);
+    const [isBackgroundDropdownOpen, setIsBackgroundDropdownOpen] = useState(false);
+    const backgroundDropdownRef = useRef<HTMLDivElement>(null);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
+
+    const filteredBoxTypes = BOX_OPTIONS.filter(opt =>
+        opt.toLowerCase().includes(boxTypeSearch.toLowerCase())
+    );
+    const filteredBackgrounds = BACKGROUND_OPTIONS.filter(opt =>
+        opt.toLowerCase().includes(backgroundSearch.toLowerCase())
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (boxTypeDropdownRef.current && !boxTypeDropdownRef.current.contains(event.target as Node)) {
+                setIsBoxTypeDropdownOpen(false);
+            }
+            if (backgroundDropdownRef.current && !backgroundDropdownRef.current.contains(event.target as Node)) {
+                setIsBackgroundDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        setBoxTypeSearch(appState.options.boxType);
+    }, [appState.options.boxType]);
+
+    useEffect(() => {
+        setBackgroundSearch(appState.options.background);
+    }, [appState.options.background]);
 
     const handleImageSelectedForUploader = (imageDataUrl: string) => {
         onStateChange({
@@ -92,6 +130,18 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         }
         
         onStateChange(newState);
+    };
+
+    const handleBoxTypeSelect = (option: string) => {
+        handleOptionChange('boxType', option);
+        setBoxTypeSearch(option);
+        setIsBoxTypeDropdownOpen(false);
+    };
+
+    const handleBackgroundSelect = (option: string) => {
+        handleOptionChange('background', option);
+        setBackgroundSearch(option);
+        setIsBackgroundDropdownOpen(false);
     };
 
     const executeInitialGeneration = async () => {
@@ -139,22 +189,18 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     };
 
     const handleDownloadAll = () => {
-        if (appState.historicalImages.length === 0) {
-            alert('Không có ảnh nào đã tạo để tải về.');
-            return;
-        }
-        const imagesToZip: ImageForZip[] = [];
+        const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            imagesToZip.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
+            inputImages.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
         }
-        appState.historicalImages.forEach((imageUrl, index) => {
-            imagesToZip.push({
-                url: imageUrl,
-                filename: `mo-hinh-do-choi-${index + 1}`,
-                folder: 'output'
-            });
+        
+        processAndDownloadAll({
+            inputImages,
+            historicalImages: appState.historicalImages,
+            videoTasks,
+            zipFilename: 'mo-hinh-do-choi.zip',
+            baseOutputFilename: 'mo-hinh-do-choi',
         });
-        downloadAllImagesAsZip(imagesToZip, 'mo-hinh-do-choi.zip');
     };
     
     const renderSelect = (id: keyof ToyModelCreatorState['options'], label: string, optionList: readonly string[]) => (
@@ -197,7 +243,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
                             <ActionablePolaroidCard 
-                                imageUrl={appState.uploadedImage} 
+                                mediaUrl={appState.uploadedImage} 
                                 caption="Ảnh gốc" 
                                 status="done" 
                                 onClick={() => openLightbox(0)} 
@@ -212,8 +258,66 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {renderSelect('computerType', 'Loại máy tính', COMPUTER_OPTIONS)}
                                 {renderSelect('softwareType', 'Phần mềm trên màn hình', currentSoftwareOptions)}
-                                {renderSelect('boxType', 'Loại hộp đồ chơi', BOX_OPTIONS)}
-                                {renderSelect('background', 'Phông nền', BACKGROUND_OPTIONS)}
+                                
+                                <div ref={boxTypeDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="boxType-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Loại hộp đồ chơi</label>
+                                    <input
+                                        type="text"
+                                        id="boxType-search"
+                                        value={boxTypeSearch}
+                                        onChange={(e) => {
+                                            setBoxTypeSearch(e.target.value);
+                                            handleOptionChange('boxType', e.target.value);
+                                            setIsBoxTypeDropdownOpen(true);
+                                        }}
+                                        onFocus={() => setIsBoxTypeDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsBoxTypeDropdownOpen(false), 200)}
+                                        className="form-input"
+                                        placeholder="Tìm hoặc nhập loại hộp..."
+                                        autoComplete="off"
+                                    />
+                                    {isBoxTypeDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredBoxTypes.length > 0 ? filteredBoxTypes.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleBoxTypeSelect(opt)} className="searchable-dropdown-item">
+                                                    {opt}
+                                                </li>
+                                            )) : (
+                                                <li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
+                                
+                                <div ref={backgroundDropdownRef} className="searchable-dropdown-container">
+                                    <label htmlFor="background-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Phông nền</label>
+                                    <input
+                                        type="text"
+                                        id="background-search"
+                                        value={backgroundSearch}
+                                        onChange={(e) => {
+                                            setBackgroundSearch(e.target.value);
+                                            handleOptionChange('background', e.target.value);
+                                            setIsBackgroundDropdownOpen(true);
+                                        }}
+                                        onFocus={() => setIsBackgroundDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsBackgroundDropdownOpen(false), 200)}
+                                        className="form-input"
+                                        placeholder="Tìm hoặc nhập phông nền..."
+                                        autoComplete="off"
+                                    />
+                                    {isBackgroundDropdownOpen && (
+                                        <ul className="searchable-dropdown-list">
+                                            {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(opt => (
+                                                <li key={opt} onMouseDown={() => handleBackgroundSelect(opt)} className="searchable-dropdown-item">
+                                                    {opt}
+                                                </li>
+                                            )) : (
+                                                <li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>
+                                            )}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
                             <div>
                                 {renderSelect('aspectRatio', 'Tỉ lệ khung ảnh', ASPECT_RATIO_OPTIONS)}
@@ -260,17 +364,40 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                         <ActionablePolaroidCard 
                             caption="Mô hình đồ chơi" 
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
-                            imageUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             isDownloadable={true}
                             isEditable={true}
                             isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
+                            onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle="Tinh chỉnh mô hình"
                             regenerationDescription="Thêm ghi chú để cải thiện ảnh"
                             regenerationPlaceholder="Ví dụ: thêm hiệu ứng ánh sáng neon, ..."
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
+                     {appState.historicalImages.map(sourceUrl => {
+                        const videoTask = videoTasks[sourceUrl];
+                        if (!videoTask) return null;
+                        return (
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
+                                <ActionablePolaroidCard
+                                    caption="Video"
+                                    status={videoTask.status}
+                                    mediaUrl={videoTask.resultUrl}
+                                    error={videoTask.error}
+                                    isDownloadable={videoTask.status === 'done'}
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                />
+                            </motion.div>
+                        );
+                    })}
                 </ResultsView>
             )}
 
