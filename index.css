@@ -95,7 +95,7 @@ body {
   font-family: 'Asimovian', sans-serif;
 }
 .sub-title-font {
-  font-family: 'Playwrite CA', cursive;
+  font-family: 'Playwrite AU SA', cursive;
 }
 .base-font {
   font-family: "Be Vietnam Pro", sans-serif;
@@ -331,7 +331,7 @@ body {
 }
 
 .polaroid-caption {
-  font-family: 'Playwrite CA', cursive;
+  font-family: 'Playwrite AU SA', cursive;
   font-weight: 700;
   font-size: 1.125rem; /* text-lg */
   white-space: nowrap;

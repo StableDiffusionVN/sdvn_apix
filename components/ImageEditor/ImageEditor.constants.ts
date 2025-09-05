@@ -24,13 +24,13 @@ export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
     colorSwatch: { name: 'Màu cọ vẽ', description: 'Nhấn để chọn màu cho cọ vẽ của bạn.' },
 };
 
-export const COLOR_CHANNELS: { id: ColorChannel, name: string, hueRange: [number, number], color: string }[] = [
-    { id: 'reds',     name: 'Reds',     hueRange: [330, 30],  color: '#ef4444' },
-    { id: 'yellows',  name: 'Yellows',  hueRange: [30, 90],   color: '#f59e0b' },
-    { id: 'greens',   name: 'Greens',   hueRange: [90, 150],  color: '#22c55e' },
-    { id: 'aquas',    name: 'Aquas',    hueRange: [150, 210], color: '#22d3ee' },
-    { id: 'blues',    name: 'Blues',    hueRange: [210, 270], color: '#3b82f6' },
-    { id: 'magentas', name: 'Magentas', hueRange: [270, 330], color: '#d946ef' },
+export const COLOR_CHANNELS: { id: ColorChannel, name: string, center: number, color: string }[] = [
+    { id: 'reds',     name: 'Reds',     center: 0,    color: '#ef4444' },
+    { id: 'yellows',  name: 'Yellows',  center: 60,   color: '#f59e0b' },
+    { id: 'greens',   name: 'Greens',   center: 120,  color: '#22c55e' },
+    { id: 'aquas',    name: 'Aquas',    center: 180,  color: '#22d3ee' },
+    { id: 'blues',    name: 'Blues',    center: 240,  color: '#3b82f6' },
+    { id: 'magentas', name: 'Magentas', center: 300,  color: '#d946ef' },
 ];
 
 export const INITIAL_COLOR_ADJUSTMENTS = Object.fromEntries(

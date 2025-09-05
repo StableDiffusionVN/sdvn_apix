@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 
 // --- NEW: Centralized Error Processor ---
@@ -1009,7 +1009,8 @@ export async function removeImageBackground(imageDataUrl: string): Promise<strin
  * @param outputImageDataUrl Data URL of the "after" image.
  * @returns A promise resolving to the generated text prompt.
  */
-export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outputImageDataUrl: string): Promise<string> {
+export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
     const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
 
@@ -1017,43 +1018,57 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
     const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
 
     const prompt = `
-        Bạn là một kỹ sư prompt chuyên nghiệp cho một AI tạo ảnh tiên tiến. Nhiệm vụ của bạn là phân tích hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và viết một câu lệnh (prompt) chi tiết, chính xác và có tính nghệ thuật bằng tiếng Việt để mô tả sự biến đổi cần thiết để biến Ảnh 1 thành Ảnh 2.
+        Bạn là một chuyên gia phân tích hệ thống biến đổi hình ảnh. Nhiệm vụ của bạn là phân tích hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và tạo ra một câu lệnh (prompt) **TỔNG QUÁT** và **CÓ HỆ THỐNG** bằng tiếng Việt. Prompt này phải nắm bắt được **bản chất của sự biến đổi** để có thể áp dụng cho các hình ảnh khác.
 
-        Phân tích của bạn phải toàn diện. Hãy xem xét các khía cạnh sau:
-        1.  **Phong cách nghệ thuật & Chất liệu:** Xác định sự thay đổi phong cách nghệ thuật cốt lõi. Có phải là ảnh chụp trở thành tranh sơn dầu, hoạt hình 2D trở thành 3D, hay từ hiện thực sang cyberpunk? Mô tả kết cấu, nét cọ, hoặc phong cách render.
-        2.  **Nội dung & Chủ thể:** Có gì đã được thêm, bớt, hoặc thay đổi? Hãy cụ thể. "Thêm một con rồng" là tốt, nhưng "Thêm một con rồng đỏ hùng vĩ đang phun lửa bay trên trời" thì tốt hơn.
-        3.  **Ánh sáng & Bảng màu:** Mô tả sự thay đổi về ánh sáng (ví dụ: "thay đổi từ ánh sáng ban ngày sang ánh sáng ban đêm đầy kịch tính với ánh đèn neon"). Mô tả bảng màu mới (ví dụ: "sử dụng bảng màu hoàng hôn ấm áp gồm các màu cam, hồng và tím").
-        4.  **Bố cục & Không khí:** Góc máy có thay đổi không? Không khí hoặc cảm xúc mới là gì (ví dụ: "tạo ra một không khí huyền ảo và sương mù")?
+        **TƯ DUY CỐT LÕI:**
+        - **Không mô tả chi tiết:** Tránh mô tả các chi tiết cụ thể của Ảnh 2. Thay vào đó, hãy xác định các **quy tắc** hoặc **khái niệm** biến đổi.
+        - **Tập trung vào "CÁCH LÀM" chứ không phải "KẾT QUẢ":** Prompt của bạn là một chỉ dẫn về *cách* biến đổi, không phải là một bản mô tả của hình ảnh kết quả.
+        - **Tính ứng dụng cao:** Prompt phải đủ tổng quát để khi áp dụng vào một ảnh tham chiếu khác, nó sẽ tạo ra một sự thay đổi tương tự về mặt phong cách hoặc khái niệm.
 
-        **HƯỚNG DẪN QUAN TRỌNG:**
-        - Prompt phải là một lệnh để *biến đổi* Ảnh 1, không phải là mô tả về Ảnh 2.
-        - Ngắn gọn nhưng giàu mô tả. Tập trung vào các *hành động* biến đổi.
-        - Đầu ra CHỈ LÀ văn bản prompt tiếng Việt. Không bao gồm bất kỳ cụm từ giới thiệu nào như "Đây là prompt:".
+        **CÁC KHÍA CẠNH CẦN PHÂN TÍCH (dưới góc độ hệ thống):**
+        1.  **Biến đổi Phong cách (Style Transformation):** Phong cách nghệ thuật tổng thể đã thay đổi như thế nào? (ví dụ: "chuyển thành tranh màu nước", "áp dụng phong cách anime thập niên 90", "biến đổi thành ảnh chụp phim cổ điển").
+        2.  **Biến đổi Màu sắc & Ánh sáng (Color & Light Transformation):** Quy tắc chung về màu sắc và ánh sáng là gì? (ví dụ: "thay đổi bảng màu thành tông màu lạnh và tương phản cao", "chuyển thời gian trong ngày sang hoàng hôn với ánh sáng vàng ấm").
+        3.  **Biến đổi Nội dung (Content Transformation):** Có quy tắc chung nào về việc thêm/bớt/thay đổi đối tượng không? (ví dụ: "thêm các yếu tố huyền ảo như sương mù và ánh sáng lung linh", "thay thế bầu trời bằng một dải ngân hà").
+        4.  **Biến đổi Không khí (Atmosphere Transformation):** Cảm xúc hoặc không khí chung đã thay đổi như thế nào? (ví dụ: "tạo ra một không khí u tối và bí ẩn", "làm cho cảnh vật trở nên vui tươi và rực rỡ").
+        
+        **ĐẦU RA (JSON):**
+        - Bắt buộc trả về một đối tượng JSON hợp lệ.
+        - **mainPrompt**: Câu lệnh TỔNG QUÁT bằng tiếng Việt, nắm bắt bản chất của sự biến đổi đã phân tích.
+        - **suggestions**: Một chuỗi văn bản chứa các gợi ý sáng tạo để chỉnh sửa hoặc mở rộng 'mainPrompt'. Mỗi gợi ý bắt đầu bằng một gạch đầu dòng và dấu cách "- ". Cung cấp ít nhất 3 gợi ý về các khía cạnh khác nhau như:
+            - Thay đổi bối cảnh chi tiết.
+            - Điều chỉnh bảng màu hoặc ánh sáng.
+            - Thêm thắt các yếu tố nghệ thuật hoặc cảm xúc (mood).
+        - Ví dụ về chuỗi suggestions: "- Thêm vào các chi tiết máy móc và đèn neon rực rỡ\\n- Sử dụng tông màu xanh dương và tím làm chủ đạo\\n- Tạo không khí u tối, mưa bụi của một đêm trong tương lai"
 
-        **VÍ DỤ NÂNG CAO:**
-        - **Trước:** Ảnh chụp một con phố hiện đại.
-        - **Sau:** Cùng con phố đó, nhưng trông như cảnh trong phim Blade Runner.
-        - **Prompt Tốt:** "Biến đổi thành một con phố cyberpunk tương lai, thêm vào những ánh đèn neon rực rỡ, những chiếc xe bay lơ lửng, và một bầu không khí mưa bụi ẩm ướt."
-
-        - **Trước:** Một bức vẽ kỹ thuật số về một hiệp sĩ.
-        - **Sau:** Hiệp sĩ trông như được vẽ bởi Rembrandt.
-        - **Prompt Tốt:** "Vẽ lại hiệp sĩ theo phong cách tranh sơn dầu Baroque của Rembrandt, sử dụng kỹ thuật tương phản sáng tối (chiaroscuro) để tạo chiều sâu và kịch tính, với các nét cọ thô và kết cấu."
-
-        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra prompt.
+        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra đối tượng JSON theo yêu cầu.
     `;
     const textPart = { text: prompt };
     
     try {
         console.log("Attempting to analyze image pair for prompt...");
-        const response = await callGeminiWithRetry([textPart, inputImagePart, outputImagePart]);
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [textPart, inputImagePart, outputImagePart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        mainPrompt: { type: Type.STRING, description: "Câu lệnh tổng quát mô tả sự biến đổi." },
+                        suggestions: { type: Type.STRING, description: "Các gợi ý để mở rộng prompt, mỗi gợi ý trên một dòng và bắt đầu bằng '- '." },
+                    },
+                    required: ["mainPrompt", "suggestions"],
+                }
+            }
+        });
         
-        const text = response.text;
-        if (text) {
-            return text.trim();
+        const jsonText = response.text.trim();
+        if (jsonText) {
+            return JSON.parse(jsonText);
         }
 
         console.error("API did not return text. Response:", response);
-        throw new Error("The AI model did not return a valid text prompt.");
+        throw new Error("The AI model did not return a valid JSON response.");
 
     } catch (error) {
         const processedError = processApiError(error);

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useEffect, ChangeEvent, useCallback, useState } from 'react';
+import React, { useEffect, ChangeEvent, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analyzeImagePairForPrompt, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -15,7 +15,8 @@ import {
     ResultsView,
     type ImageInterpolationState,
     useLightbox,
-    OptionsPanel
+    OptionsPanel,
+    PromptResultCard
 } from './uiUtils';
 
 interface ImageInterpolationProps {
@@ -49,9 +50,12 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
 
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const lightboxImages = [appState.inputImage, appState.outputImage, appState.referenceImage, ...appState.historicalImages.map(h => h.url)].filter((img): img is string => !!img);
-    const [isCopied, setIsCopied] = useState(false);
+    
+    const appStateRef = useRef(appState);
+    useEffect(() => {
+        appStateRef.current = appState;
+    });
 
-    // --- Image Upload Handlers ---
     const handleImageUpload = (
         imageSetter: (url: string) => void
     ) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -62,11 +66,35 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     };
 
     const handleInputImageChange = (url: string) => {
-        onStateChange({ ...appState, inputImage: url, stage: 'idle', generatedPrompt: '' });
+        onStateChange({ 
+            ...appState, 
+            inputImage: url, 
+            stage: 'idle', 
+            generatedPrompt: '',
+            promptSuggestions: '',
+            additionalNotes: '',
+            referenceImage: null,
+            generatedImage: null,
+            finalPrompt: null,
+            historicalImages: [],
+            error: null,
+        });
         addImagesToGallery([url]);
     };
     const handleOutputImageChange = (url: string) => {
-        onStateChange({ ...appState, outputImage: url, stage: 'idle', generatedPrompt: '' });
+        onStateChange({ 
+            ...appState, 
+            outputImage: url, 
+            stage: 'idle', 
+            generatedPrompt: '',
+            promptSuggestions: '',
+            additionalNotes: '',
+            referenceImage: null,
+            generatedImage: null,
+            finalPrompt: null,
+            historicalImages: [],
+            error: null,
+        });
         addImagesToGallery([url]);
     };
     const handleReferenceImageChange = (url: string) => {
@@ -87,22 +115,18 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         });
     };
 
-    // --- Main Logic ---
-    useEffect(() => {
-        const generatePrompt = async () => {
-            if (appState.inputImage && appState.outputImage && appState.stage === 'idle' && !appState.generatedPrompt) {
-                onStateChange({ ...appState, stage: 'prompting', error: null });
-                try {
-                    const prompt = await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
-                    onStateChange({ ...appState, stage: 'configuring', generatedPrompt: prompt });
-                } catch (err) {
-                    const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-                    onStateChange({ ...appState, stage: 'idle', generatedPrompt: '', error: `Lỗi phân tích ảnh: ${errorMessage}` });
-                }
-            }
-        };
-        generatePrompt();
-    }, [appState.inputImage, appState.outputImage, appState.stage, appState.generatedPrompt, onStateChange]);
+    const handleAnalyzeClick = async () => {
+        if (!appState.inputImage || !appState.outputImage) return;
+
+        onStateChange({ ...appStateRef.current, stage: 'prompting', error: null });
+        try {
+            const result = await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
+            onStateChange({ ...appStateRef.current, stage: 'configuring', generatedPrompt: result.mainPrompt, promptSuggestions: result.suggestions || '' });
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+            onStateChange({ ...appStateRef.current, stage: 'idle', generatedPrompt: '', promptSuggestions: '', error: `Lỗi phân tích ảnh: ${errorMessage}` });
+        }
+    };
 
     const handleGenerate = async () => {
         if (!appState.referenceImage || !appState.generatedPrompt) return;
@@ -180,7 +204,6 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         }
     };
 
-    // --- UI Handlers ---
     const handleBackToOptions = () => onStateChange({ ...appState, stage: 'configuring' });
     const handleDownloadAll = () => {
         if (appState.historicalImages.length === 0) {
@@ -199,20 +222,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         
         downloadAllImagesAsZip(imagesToZip, 'image-interpolation-results.zip');
     };
-
-    const handleCopyPrompt = useCallback(() => {
-        if (appState.finalPrompt) {
-            navigator.clipboard.writeText(appState.finalPrompt).then(() => {
-                setIsCopied(true);
-                setTimeout(() => setIsCopied(false), 2000);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-                alert('Không thể sao chép prompt.');
-            });
-        }
-    }, [appState.finalPrompt]);
-
-    // --- Render Helpers ---
+    
     const Uploader = ({ id, onUpload, caption, description, currentImage, onImageChange, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
@@ -228,7 +238,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     );
     
     const isLoading = appState.stage === 'generating' || appState.stage === 'prompting';
-    const showRefUploader = appState.inputImage && appState.outputImage;
+    const showRefUploader = appState.stage === 'configuring' || appState.stage === 'prompting';
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -237,10 +247,30 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
             </AnimatePresence>
 
             {appState.stage === 'idle' && (
-                <motion.div className="flex flex-col md:flex-row items-start justify-center gap-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <Uploader id="input-upload" onUpload={handleImageUpload(handleInputImageChange)} onImageChange={handleInputImageChange} caption={uploaderCaptionInput} description={uploaderDescriptionInput} currentImage={appState.inputImage} placeholderType="magic" />
-                    <Uploader id="output-upload" onUpload={handleImageUpload(handleOutputImageChange)} onImageChange={handleOutputImageChange} caption={uploaderCaptionOutput} description={uploaderDescriptionOutput} currentImage={appState.outputImage} placeholderType="magic" />
-                </motion.div>
+                <>
+                    <motion.div className="flex flex-col md:flex-row items-start justify-center gap-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                        <Uploader id="input-upload" onUpload={handleImageUpload(handleInputImageChange)} onImageChange={handleInputImageChange} caption={uploaderCaptionInput} description={uploaderDescriptionInput} currentImage={appState.inputImage} placeholderType="magic" />
+                        <Uploader id="output-upload" onUpload={handleImageUpload(handleOutputImageChange)} onImageChange={handleOutputImageChange} caption={uploaderCaptionOutput} description={uploaderDescriptionOutput} currentImage={appState.outputImage} placeholderType="magic" />
+                    </motion.div>
+
+                    {appState.inputImage && appState.outputImage && (
+                        <motion.div 
+                            className="mt-8 text-center"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            {appState.error && <p className="text-red-400 mb-4">{appState.error}</p>}
+                            <button 
+                                onClick={handleAnalyzeClick} 
+                                className="btn btn-primary"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Đang phân tích...' : 'Phân tích & Tạo Prompt'}
+                            </button>
+                        </motion.div>
+                    )}
+                </>
             )}
 
             {(appState.stage === 'prompting' || appState.stage === 'configuring') && (
@@ -267,8 +297,28 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                 onChange={(e) => onStateChange({...appState, generatedPrompt: e.target.value})}
                                 className="form-input !h-28"
                                 placeholder={appState.stage === 'prompting' ? 'Đang phân tích cặp ảnh...' : ''}
+                                disabled={appState.stage === 'prompting'}
                             />
                         </div>
+
+                        {appState.promptSuggestions && (
+                            <div className="space-y-2">
+                                <label className="block text-left base-font font-bold text-lg text-neutral-200">Gợi ý chỉnh sửa</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {appState.promptSuggestions.split('\n').map(s => s.replace(/^- /, '').trim()).filter(s => s).map((s, i) => (
+                                        <button 
+                                            key={i} 
+                                            onClick={() => onStateChange({ ...appState, additionalNotes: `${appState.additionalNotes}${appState.additionalNotes ? '\n' : ''}- ${s}` })}
+                                            className="bg-neutral-800/80 border border-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-full hover:bg-neutral-700/80 transition-colors"
+                                            title={`Thêm: ${s}`}
+                                        >
+                                            + {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Yêu cầu chỉnh sửa prompt (tùy chọn)</label>
                             <textarea
@@ -351,34 +401,11 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.3 }}
                     >
-                        <div className="bg-neutral-100 p-4 flex flex-col w-full md:max-w-xs rounded-md shadow-lg relative">
-                            {appState.finalPrompt && (
-                                <button
-                                    onClick={handleCopyPrompt}
-                                    className="absolute top-3 right-3 p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 rounded-full transition-colors"
-                                    aria-label="Sao chép prompt"
-                                    title="Sao chép prompt"
-                                >
-                                    {isCopied ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    )}
-                                </button>
-                            )}
-                            <h4 className="polaroid-caption !text-left !text-lg !text-black !pb-2 border-b border-neutral-300 mb-2 !p-0 pr-8">
-                                Prompt cuối cùng đã sử dụng
-                            </h4>
-                            <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
-                                <p className="text-sm whitespace-pre-wrap text-neutral-700 base-font">
-                                    {appState.finalPrompt}
-                                </p>
-                            </div>
-                        </div>
+                        <PromptResultCard 
+                            title="Prompt cuối cùng đã sử dụng"
+                            promptText={appState.finalPrompt}
+                            className="md:max-w-xs"
+                        />
                     </motion.div>
                 </ResultsView>
             )}

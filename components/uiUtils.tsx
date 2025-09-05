@@ -521,6 +521,7 @@ export interface ImageInterpolationState {
     outputImage: string | null;
     referenceImage: string | null;
     generatedPrompt: string;
+    promptSuggestions: string;
     additionalNotes: string;
     finalPrompt: string | null;
     generatedImage: string | null;
@@ -607,7 +608,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'toy-model-creator':
             return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { computerType: 'Tự động', softwareType: 'Tự động', boxType: 'Tự động', background: 'Tự động', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'image-interpolation':
-             return { stage: 'idle', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+             return { stage: 'idle', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', promptSuggestions: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         default:
             return { stage: 'home' };
     }
@@ -1244,5 +1245,60 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
             )}
         </AnimatePresence>,
         document.body
+    );
+};
+
+// --- NEW: Reusable Prompt Result Card ---
+
+interface PromptResultCardProps {
+    title: string;
+    promptText: string | null;
+    className?: string;
+}
+
+export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promptText, className }) => {
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleCopyPrompt = useCallback(() => {
+        if (promptText) {
+            navigator.clipboard.writeText(promptText).then(() => {
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert('Không thể sao chép prompt.');
+            });
+        }
+    }, [promptText]);
+
+    return (
+        <div className={cn("bg-neutral-100 p-4 flex flex-col w-full rounded-md shadow-lg relative", className)}>
+            {promptText && (
+                <button
+                    onClick={handleCopyPrompt}
+                    className="absolute top-3 right-3 p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 rounded-full transition-colors"
+                    aria-label="Sao chép prompt"
+                    title="Sao chép prompt"
+                >
+                    {isCopied ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    )}
+                </button>
+            )}
+            <h4 className="polaroid-caption !text-left !text-lg !text-black !pb-2 border-b border-neutral-300 mb-2 !p-0 pr-8">
+                {title}
+            </h4>
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
+                <p className="text-sm whitespace-pre-wrap text-neutral-700 base-font">
+                    {promptText || '...'}
+                </p>
+            </div>
+        </div>
     );
 };

@@ -307,23 +307,50 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             r = (r - 127.5) * contrastFactor + 127.5; g = (g - 127.5) * contrastFactor + 127.5; b = (b - 127.5) * contrastFactor + 127.5;
             r += temp / 2.5; g += tint / 2.5; b -= temp / 2.5;
             let [h, s, l] = rgbToHsl(r, g, b);
-            h = (h + hue) % 360; l += luminance / 2; s += saturation;
+            
             const vibranceAmount = vibrance / 100;
             if (vibranceAmount !== 0) {
-                 const max_rgb = Math.max(r, g, b); const avg_rgb = (r + g + b) / 3; const sat_delta = max_rgb - avg_rgb;
-                 const vibrance_mult = Math.abs(sat_delta * 2 / 255);
-                 s += (vibranceAmount > 0) ? (vibranceAmount * (100 - s) * vibrance_mult) : (vibranceAmount * s * vibrance_mult);
+                 const max_rgb = Math.max(r, g, b); 
+                 const avg_rgb = (r + g + b) / 3;
+                 const sat_delta = max_rgb - avg_rgb;
+                 // Vibrance should have less effect on saturated colors.
+                 // We create a multiplier that is close to 1 for low saturation and close to 0 for high saturation.
+                 // sat_delta is a proxy for saturation, ranging roughly from 0 to 170.
+                 const vibrance_mult = 1 - (sat_delta / 200); // Normalize roughly to 0-1 range and invert
+                 s += (vibranceAmount * 100) * vibrance_mult;
             }
+
+            h = (h + hue) % 360; l += luminance / 2; s += saturation;
+
             if (clarity !== 0) l += (l - 50) * clarityFactor;
             if (dehaze !== 0) { l = l - (50 - l) * dehazeFactor; s = s + s * (1 - s/100) * dehazeFactor * 0.5; }
+
+            // --- NEW: Smooth HSL color adjustments ---
+            let totalHueAdj = 0, totalSatAdj = 0, totalLumAdj = 0;
+            // The influence of a color channel extends 60 degrees on either side of its center.
+            const HUE_RANGE_WIDTH = 60; 
+
             for (const channel of COLOR_CHANNELS) {
-                const [start, end] = channel.hueRange;
-                if (start > end ? (h >= start || h < end) : (h >= start && h < end)) {
+                const center = channel.center;
+                // Calculate the shortest distance on the color wheel (0-360 degrees)
+                const dist = Math.min(Math.abs(h - center), 360 - Math.abs(h - center));
+                
+                // If the hue is within the influence range...
+                if (dist < HUE_RANGE_WIDTH) {
+                    // Calculate the influence factor (1 at center, 0 at edge)
+                    const influence = 1 - (dist / HUE_RANGE_WIDTH);
                     const adj = colorAdjustments[channel.id];
-                    h = (h + adj.h) % 360; s += adj.s; l += adj.l;
-                    break;
+                    
+                    // Add the weighted adjustment to the totals
+                    totalHueAdj += adj.h * influence;
+                    totalSatAdj += adj.s * influence;
+                    totalLumAdj += adj.l * influence;
                 }
             }
+            h += totalHueAdj;
+            s += totalSatAdj;
+            l += totalLumAdj;
+
             if (h < 0) h += 360;
             s = Math.max(0, Math.min(100, s)); l = Math.max(0, Math.min(100, l));
             [r, g, b] = hslToRgb(h, s, l);
@@ -1046,14 +1073,16 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
             image.onload = () => { originalImageRef.current = image; };
             const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
-            setHistory([initialSnapshot]); setHistoryIndex(0);
+            setHistory([initialSnapshot]);
+            setHistoryIndex(0);
         }),
         handleGallerySelect: (newUrl: string) => {
             resetAll(false); setInternalImageUrl(newUrl); setIsGalleryPickerOpen(false);
             const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
             image.onload = () => { originalImageRef.current = image; };
             const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
-            setHistory([initialSnapshot]); setHistoryIndex(0);
+            setHistory([initialSnapshot]);
+            setHistoryIndex(0);
         },
         handleClearDrawings: () => {
             const canvas = drawingCanvasRef.current; if (!canvas) return;
