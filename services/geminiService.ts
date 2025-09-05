@@ -942,3 +942,32 @@ export async function generateToyModelImage(imageDataUrl: string, options: ToyMo
         throw processedError;
     }
 }
+
+
+// --- NEW: Remove Background ---
+export async function removeImageBackground(imageDataUrl: string): Promise<string> {
+    try {
+        const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+        const imagePart = {
+            inlineData: { mimeType, data: base64Data },
+        };
+        
+        const prompt = [
+            '**YÊU CẦU CỰC KỲ QUAN TRỌNG:**',
+            'Xóa toàn bộ nền của hình ảnh này. Nền mới phải hoàn toàn TRONG SUỐT.',
+            'Giữ nguyên chủ thể ở tiền cảnh một cách chính xác, không làm mất chi tiết.',
+            'Trả về kết quả dưới dạng ảnh PNG có kênh alpha trong suốt.',
+            'Chỉ trả về hình ảnh đã xử lý, không kèm theo bất kỳ văn bản nào.'
+        ].join('\n');
+        
+        const textPart = { text: prompt };
+
+        console.log("Attempting to remove image background...");
+        const response = await callGeminiWithRetry([imagePart, textPart]);
+        return processGeminiResponse(response);
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("An unrecoverable error occurred during background removal.", processedError);
+        throw processedError;
+    }
+}

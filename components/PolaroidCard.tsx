@@ -17,7 +17,6 @@ interface PolaroidCardProps {
     onEdit?: (caption: string) => void;
     onSwapImage?: () => void;
     onSelectFromGallery?: () => void;
-    isGalleryDisabled?: boolean;
     isMobile?: boolean;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
     onClick?: () => void;
@@ -78,7 +77,7 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isGalleryDisabled = false, isMobile, placeholderType = 'person', onClick }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isMobile, placeholderType = 'person', onClick }) => {
     const hasImage = status === 'done' && imageUrl;
     const isClickable = !!onClick;
 
@@ -155,13 +154,9 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ imageUrl, caption, status, 
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (!isGalleryDisabled) onSelectFromGallery();
+                                onSelectFromGallery();
                             }}
-                            disabled={isGalleryDisabled}
-                            className={cn(
-                                "p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white",
-                                isGalleryDisabled && "opacity-50 cursor-not-allowed hover:bg-black/50"
-                            )}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
                             aria-label={`Chọn ảnh từ thư viện`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

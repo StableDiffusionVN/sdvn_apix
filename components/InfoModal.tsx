@@ -39,7 +39,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.9, opacity: 0, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="modal-content !max-w-xl"
+                        className="modal-content !max-w-4xl"
                     >
                         <div className="flex justify-between items-center mb-4">
                              <h3 className="base-font font-bold text-2xl text-yellow-400">Hướng dẫn & Phím tắt</h3>
@@ -48,28 +48,66 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                              </button>
                         </div>
                         
-                        <div className="space-y-6 text-neutral-300">
-                            <div>
-                                <h4 className="font-bold text-lg text-yellow-400/90 mb-2">Phím tắt</h4>
-                                <ul className="space-y-2">
-                                    <li className="flex justify-between items-center"><span>Về trang chủ</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
-                                    <li className="flex justify-between items-center"><span>Quay lại (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
-                                    <li className="flex justify-between items-center"><span>Tiến lên (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
-                                    <li className="flex justify-between items-center"><span>Tìm kiếm ứng dụng</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
-                                    <li className="flex justify-between items-center"><span>Mở thư viện ảnh</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
-                                    <li className="flex justify-between items-center"><span>Mở Trình chỉnh sửa ảnh</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
-                                    <li className="flex justify-between items-center"><span>Mở bảng hướng dẫn này</span> <Shortcut keys="Cmd/Ctrl + I" /></li>
-                                </ul>
+                        <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 text-neutral-300 max-h-[65vh] overflow-y-auto pr-4 -mr-4">
+                            {/* Column 1 */}
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Phím tắt chung</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">Hoạt động ở mọi nơi trong ứng dụng.</p>
+                                    <ul className="space-y-2">
+                                        <li className="flex justify-between items-center"><span>Về trang chủ</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
+                                        <li className="flex justify-between items-center"><span>Tìm kiếm ứng dụng</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
+                                        <li className="flex justify-between items-center"><span>Mở thư viện ảnh</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
+                                        <li className="flex justify-between items-center"><span>Mở Trình chỉnh sửa ảnh</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
+                                        <li className="flex justify-between items-center"><span>Mở bảng hướng dẫn này</span> <Shortcut keys="Cmd/Ctrl + /" /></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Điều hướng Ứng dụng</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">Chỉ hoạt động khi Trình chỉnh sửa ảnh đang đóng.</p>
+                                    <ul className="space-y-2">
+                                        <li className="flex justify-between items-center"><span>Quay lại (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
+                                        <li className="flex justify-between items-center"><span>Tiến lên (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Hoàn tác</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">Chỉ hoạt động khi Trình chỉnh sửa ảnh đang mở.</p>
+                                    <ul className="space-y-2">
+                                        <li className="flex justify-between items-center"><span>Hoàn tác (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
+                                        <li className="flex justify-between items-center"><span>Làm lại (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
+                                    </ul>
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="font-bold text-lg text-yellow-400/90 mb-2">Hướng dẫn nhanh</h4>
-                                 <ol className="list-decimal list-inside space-y-2 text-neutral-300">
-                                    <li><strong>Chọn ứng dụng:</strong> Bắt đầu bằng cách chọn một trong các ứng dụng sáng tạo từ màn hình chính.</li>
-                                    <li><strong>Tải ảnh lên:</strong> Nhấn vào khung ảnh để tải lên (các) ảnh cần thiết cho ứng dụng bạn đã chọn.</li>
-                                    <li><strong>Tùy chỉnh:</strong> Sử dụng các tùy chọn có sẵn để tinh chỉnh kết quả theo ý muốn của bạn.</li>
-                                    <li><strong>Tạo ảnh:</strong> Nhấn nút "Tạo ảnh" (hoặc tương tự) và chờ AI thực hiện phép màu!</li>
-                                    <li><strong>Quản lý kết quả:</strong> Bạn có thể tải ảnh về, chỉnh sửa thêm, hoặc tạo lại với các yêu cầu khác. Các ảnh đã tạo sẽ được lưu tạm trong Thư viện ảnh (góc trên bên phải).</li>
-                                </ol>
+
+                            {/* Column 2 */}
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Công cụ</h4>
+                                    <ul className="space-y-2">
+                                        <li className="flex justify-between items-center"><span>Cắt ảnh (Crop)</span> <Shortcut keys="C" /></li>
+                                        <li className="flex justify-between items-center"><span>Chọn vùng (Lasso)</span> <Shortcut keys="L" /></li>
+                                        <li className="flex justify-between items-center"><span>Chọn vùng Chữ nhật (Marquee)</span> <Shortcut keys="M" /></li>
+                                        <li className="flex justify-between items-center"><span>Công cụ Bút (Pen)</span> <Shortcut keys="P" /></li>
+                                        <li className="flex justify-between items-center"><span>Cọ vẽ (Brush)</span> <Shortcut keys="B" /></li>
+                                        <li className="flex justify-between items-center"><span>Tẩy (Eraser)</span> <Shortcut keys="E" /></li>
+                                        <li className="flex justify-between items-center"><span>Chấm màu (Color Picker)</span> <Shortcut keys="I" /></li>
+                                        <li className="flex justify-between items-center"><span>Tăng/Giảm kích thước cọ</span> <Shortcut keys="] / [" /></li>
+                                        <li className="flex justify-between items-center"><span>Chấm màu tạm thời</span> <Shortcut keys="Giữ Alt" /></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Vùng chọn & Bút</h4>
+                                    <ul className="space-y-2">
+                                        <li className="flex justify-between items-center"><span>Thêm vào vùng chọn</span> <Shortcut keys="Giữ Shift + Vẽ" /></li>
+                                        <li className="flex justify-between items-center"><span>Trừ khỏi vùng chọn</span> <Shortcut keys="Giữ Alt + Vẽ" /></li>
+                                        <li className="flex justify-between items-center"><span>Xóa nội dung trong vùng chọn</span> <Shortcut keys="Delete / Backspace" /></li>
+                                        <li className="flex justify-between items-center"><span>Tô màu vào vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Delete" /></li>
+                                        <li className="flex justify-between items-center"><span>Bỏ chọn</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
+                                        <li className="flex justify-between items-center"><span>Nghịch đảo vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Shift + I" /></li>
+                                        <li className="flex justify-between items-center"><span>Hủy đường Bút (Pen)</span> <Shortcut keys="Esc" /></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
 

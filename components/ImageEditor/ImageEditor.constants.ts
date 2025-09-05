@@ -1,0 +1,37 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+import { type ColorChannel, type ToolId } from './ImageEditor.types';
+
+export const CROP_ASPECT_RATIO_OPTIONS = ['Free', 'Original', '1:1', '2:3', '3:2', '4:5', '5:4', '3:4', '4:3', '9:16', '16:9'];
+export const HANDLE_SIZE = 10;
+
+export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
+    rotate: { name: 'Xoay ảnh', description: 'Xoay ảnh 90 độ theo chiều kim đồng hồ.' },
+    flipH: { name: 'Lật ngang', description: 'Lật ảnh theo chiều ngang.' },
+    flipV: { name: 'Lật dọc', description: 'Lật ảnh theo chiều dọc.' },
+    crop: { name: 'Cắt ảnh (C)', description: 'Chọn một vùng để cắt ảnh.' },
+    selection: { name: 'Chọn vùng (L)', description: 'Vẽ tự do để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
+    marquee: { name: 'Chọn vùng Chữ nhật (M)', description: 'Vẽ một hình chữ nhật để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
+    pen: { name: 'Bút (P)', description: 'Tạo vùng chọn chính xác bằng cách nhấp hoặc nhấp-và-kéo để tạo đường cong.' },
+    colorpicker: { name: 'Chấm màu (I)', description: 'Chọn một màu từ ảnh để sử dụng cho cọ vẽ.' },
+    brush: { name: 'Cọ vẽ (B)', description: 'Vẽ lên ảnh bằng màu đã chọn.' },
+    eraser: { name: 'Tẩy (E)', description: 'Xóa các nét đã vẽ.' },
+    undo: { name: 'Hoàn tác (Undo)', description: 'Quay lại hành động cuối cùng.' },
+    redo: { name: 'Làm lại (Redo)', description: 'Thực hiện lại hành động đã hoàn tác.' },
+    colorSwatch: { name: 'Màu cọ vẽ', description: 'Nhấn để chọn màu cho cọ vẽ của bạn.' },
+};
+
+export const COLOR_CHANNELS: { id: ColorChannel, name: string, hueRange: [number, number], color: string }[] = [
+    { id: 'reds',     name: 'Reds',     hueRange: [330, 30],  color: '#ef4444' },
+    { id: 'yellows',  name: 'Yellows',  hueRange: [30, 90],   color: '#f59e0b' },
+    { id: 'greens',   name: 'Greens',   hueRange: [90, 150],  color: '#22c55e' },
+    { id: 'aquas',    name: 'Aquas',    hueRange: [150, 210], color: '#22d3ee' },
+    { id: 'blues',    name: 'Blues',    hueRange: [210, 270], color: '#3b82f6' },
+    { id: 'magentas', name: 'Magentas', hueRange: [270, 330], color: '#d946ef' },
+];
+
+export const INITIAL_COLOR_ADJUSTMENTS = Object.fromEntries(
+    COLOR_CHANNELS.map(channel => [channel.id, { h: 0, s: 0, l: 0 }])
+) as Record<ColorChannel, { h: number; s: number; l: number }>;

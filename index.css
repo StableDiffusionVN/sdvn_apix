@@ -17,44 +17,77 @@ body {
 }
 
 .theme-vietnam {
-  background-color: #8C1B17;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M50,5 L61.8,38.2 L98.2,38.2 L68.2,59.8 L79.6,92.7 L50,71.5 L20.4,92.7 L31.8,59.8 L1.8,38.2 L38.2,38.2 Z' fill='%23FFFF00' fill-opacity='0.15'/%3e%3c/svg%3e");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 80vmin;
-  background-attachment: fixed;
+  /* UPDATE: Replaced solid color with a gradient + star SVG */
+  background-image: 
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M50,5 L61.8,38.2 L98.2,38.2 L68.2,59.8 L79.6,92.7 L50,71.5 L20.4,92.7 L31.8,59.8 L1.8,38.2 L38.2,38.2 Z' fill='%23FFFF00' fill-opacity='0.15'/%3e%3c/svg%3e"),
+    radial-gradient(ellipse at bottom, #DA251D, #a21a14);
+  background-position: center, 0 0;
+  background-repeat: no-repeat, no-repeat;
+  background-size: 80vmin, cover;
+  background-attachment: fixed, fixed;
+
   /* OVERRIDE: Polaroid theme variables */
   --polaroid-bg-color: #450A0A; /* bg-red-950 */
   --polaroid-placeholder-color: #b45309; /* text-yellow-700 */
-  --footer-bg-color: rgba(69, 10, 10, 0.8);
+  --footer-bg-color: rgba(69, 10, 10, 0.5); /* UPDATED: Increased transparency */
 }
 
-.theme-dark {
-  background-color: #111111;
-  background-image: none;
-  /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #262626; /* neutral-800 */
-  --polaroid-placeholder-color: #a3a3a3; /* neutral-400 */
-  --footer-bg-color: rgba(20, 20, 20, 0.8);
+/* NEW: Add a blurred pseudo-element for depth in the Vietnam theme */
+.theme-vietnam main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0; /* Position it behind content (z-10) but with the black overlay (z-0) */
+    background: inherit; /* Inherit the gradient and star from the body */
+    filter: blur(96px);
+    transform: scale(1.05); /* Scale to avoid blurry edges showing */
 }
 
-.theme-dark-green {
-  background-color: #0c3b2e;
-  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.03) 75%, transparent 75%, transparent);
-  background-size: 20px 20px;
+.theme-black-night {
+  background-color: #090a0f;
+  background-image: radial-gradient(ellipse at bottom, #222222 0%, #3d3d3d 100%);
   /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #062f23; /* A very dark, deep green */
-  --polaroid-placeholder-color: #6ee7b7; /* A contrasting minty green */
-  --footer-bg-color: rgba(6, 47, 35, 0.8);
+  --polaroid-bg-color: #1f2129; /* Deep navy */
+  --polaroid-placeholder-color: #696d6f; /* A brighter blue */
+  --footer-bg-color: rgba(9, 10, 15, 0.5); /* UPDATED: Increased transparency */
 }
 
-.theme-dark-blue {
-  background-color: #192A4C;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cg fill='%23ffffff' fill-opacity='0.1'%3e%3ccircle cx='10' cy='10' r='1'/%3e%3ccircle cx='30' cy='40' r='1'/%3e%3ccircle cx='50' cy='80' r='1'/%3e%3ccircle cx='70' cy='20' r='1'/%3e%3ccircle cx='90' cy='60' r='1'/%3e%3c/g%3e%3c/svg%3e");
+.theme-clear-sky {
+  background-color: #005C97; /* Fallback color */
+  background-image: linear-gradient(to right, #363795, #005C97);
   /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #172554; /* A deep navy blue */
+  --polaroid-bg-color: #052b82; /* A deep indigo/purple */
   --polaroid-placeholder-color: #93c5fd; /* A soft, light blue */
-  --footer-bg-color: rgba(23, 37, 84, 0.8);
+  --footer-bg-color: rgba(0, 67, 108, 0.5); /* UPDATED: Increased transparency */
+}
+
+.theme-skyline {
+  background-color: #0052D4; /* Fallback color */
+  background-image: linear-gradient(to right, #6FB1FC, #4364F7, #0052D4);
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #052e6c; /* A deep, rich blue */
+  --polaroid-placeholder-color: #a7cffd; /* A soft, sky blue */
+  --footer-bg-color: rgba(0, 82, 212, 0.5); /* UPDATED: Increased transparency */
+}
+
+.theme-blulagoo {
+  background: #0052D4;  /* fallback for old browsers */
+  background: -webkit-linear-gradient(to right, #6FB1FC, #4364F7, #0052D4);  /* Chrome 10-25, Safari 5.1-6 */
+  background: linear-gradient(to right, #6FB1FC, #4364F7, #0052D4); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #052e6c; /* A deep, rich blue */
+  --polaroid-placeholder-color: #a7cffd; /* A soft, sky blue */
+  --footer-bg-color: rgba(0, 82, 212, 0.5); /* UPDATED: Increased transparency */
+}
+
+.theme-life {
+  background: #ADD100;  /* fallback for old browsers */
+  background: -webkit-linear-gradient(to right, #7B920A, #ADD100);  /* Chrome 10-25, Safari 5.1-6 */
+  background: linear-gradient(to right, #7B920A, #ADD100); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #365314; /* A deep, rich green */
+  --polaroid-placeholder-color: #a3e635; /* A soft, lime green */
+  --footer-bg-color: rgba(123, 146, 10, 0.5); /* UPDATED: Increased transparency */
 }
 
 
@@ -467,12 +500,12 @@ body {
 .slider-track::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 1.5rem; /* w-6 */
-  height: 1.5rem; /* h-6 */
+  width: 1rem; /* w-4 */
+  height: 1rem; /* h-4 */
   background-color: #FBBF24; /* bg-yellow-400 */
   border-radius: 9999px; /* rounded-full */
-  border: 3px solid #171717; /* border-neutral-900 */
-  box-shadow: 0 0 0 2px #FBBF24; /* ring-2 ring-yellow-400 */
+  border: 2px solid #171717; /* border-neutral-900 */
+  box-shadow: 0 0 0 1px #FBBF24; /* ring-1 ring-yellow-400 */
   cursor: pointer;
   transition: transform 0.2s ease-in-out;
 }
@@ -481,12 +514,12 @@ body {
 }
 
 .slider-track::-moz-range-thumb {
-  width: 1.5rem; /* w-6 */
-  height: 1.5rem; /* h-6 */
+  width: 1rem; /* w-4 */
+  height: 1rem; /* h-4 */
   background-color: #FBBF24; /* bg-yellow-400 */
   border-radius: 9999px; /* rounded-full */
-  border: 3px solid #171717; /* border-neutral-900 */
-  box-shadow: 0 0 0 2px #FBBF24; /* ring-2 ring-yellow-400 */
+  border: 2px solid #171717; /* border-neutral-900 */
+  box-shadow: 0 0 0 1px #FBBF24; /* ring-1 ring-yellow-400 */
   cursor: pointer;
   transition: transform 0.2s ease-in-out;
 }
