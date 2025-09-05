@@ -14,6 +14,7 @@ export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
     crop: { name: 'Cắt ảnh (C)', description: 'Chọn một vùng để cắt ảnh.' },
     selection: { name: 'Chọn vùng (L)', description: 'Vẽ tự do để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     marquee: { name: 'Chọn vùng Chữ nhật (M)', description: 'Vẽ một hình chữ nhật để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
+    ellipse: { name: 'Chọn vùng Elip', description: 'Vẽ một hình elip để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     pen: { name: 'Bút (P)', description: 'Tạo vùng chọn chính xác bằng cách nhấp hoặc nhấp-và-kéo để tạo đường cong.' },
     colorpicker: { name: 'Chấm màu (I)', description: 'Chọn một màu từ ảnh để sử dụng cho cọ vẽ.' },
     brush: { name: 'Cọ vẽ (B)', description: 'Vẽ lên ảnh bằng màu đã chọn.' },

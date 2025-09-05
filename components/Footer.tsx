@@ -4,7 +4,7 @@
 */
 import React from 'react';
 
-type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'blulagoo' | 'life';
+type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life';
 
 interface FooterProps {
     theme: Theme;
@@ -40,7 +40,7 @@ const Footer: React.FC<FooterProps> = ({ theme, onThemeChange }) => {
                             <option value="black-night">Black Night</option>
                             <option value="clear-sky">Clear Sky</option>
                             <option value="skyline">Skyline</option>
-                            <option value="blulagoo">Blulagoo</option>
+                            <option value="emerald-water">Emerald Water</option>
                             <option value="life">Life</option>
                         </select>
                     </div>

@@ -45,8 +45,18 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = (props) => 
             </div>
             <div className="w-full h-[1px] bg-neutral-700 my-1 hidden md:block"></div><div className="h-full w-[1px] bg-neutral-700 mx-1 block md:hidden"></div>
             <div className='flex flex-col gap-2'>
-                <button onMouseEnter={(e) => showTooltip('selection', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('selection')} className={cn(toolButtonClasses, activeTool === 'selection' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Selection Tool"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 4" d="M12 21a9 9 0 110-18 9 9 0 010 18z" /></svg></button>
+                <button onMouseEnter={(e) => showTooltip('selection', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('selection')} className={cn(toolButtonClasses, activeTool === 'selection' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Selection Tool">
+                    <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                        <path d="M4.495 11.05a8.186 8.186 0 0 0 .695-3.067c.001-.027.006-.052.007-.078l.965.41a9.254 9.254 0 0 1-.648 2.888zm14.087-5.128l-.81.61a12.73 12.73 0 0 1 1.272 1.98l1-.307a13.602 13.602 0 0 0-1.462-2.283zm-4.224-2.13a8.128 8.128 0 0 1 2.02 1.285l.825-.62a9.226 9.226 0 0 0-2.6-1.648zm-4.541-.355a6.581 6.581 0 0 1 1.748-.237 6.919 6.919 0 0 1 .864.063l.245-.985a7.967 7.967 0 0 0-1.109-.078 7.501 7.501 0 0 0-2.023.276zM5.873 18.574a3.676 3.676 0 0 1-2.13-1.012L2.66 17.8a4.49 4.49 0 0 0 3.103 1.776zm-2.861-2.9c-.003-.058-.012-.11-.012-.17 0-.594.314-1.01.917-1.756.168-.208.349-.438.53-.682l-1.13-.169A4.135 4.135 0 0 0 2 15.504c0 .136.012.261.022.389zM6.534 6.3a4.422 4.422 0 0 1 1.458-1.97l-.29-1.016a5.53 5.53 0 0 0-2.078 2.599zm15.084 7.022a16.977 16.977 0 0 0-.788-3.266l-.974.299a16.1 16.1 0 0 1 .587 2.11zM18.757 17l2.189 4.515-2.894 1.456-2.266-4.621L13 22.17V9.51L23.266 17zm-1.597-1h3.038L14 11.478v7.624l1.954-2.68 2.552 5.201 1.11-.559zM11 18.854a8.011 8.011 0 0 0-2.454-.391c-.229 0-.444.011-.651.026l-.111 1.013c.243-.022.493-.039.763-.039a7.2 7.2 0 0 1 2.453.453z"/>
+                        <path fill="none" d="M0 0h24v24H0z"/>
+                    </svg>
+                </button>
                 <button onMouseEnter={(e) => showTooltip('marquee', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('marquee')} className={cn(toolButtonClasses, activeTool === 'marquee' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Rectangular Marquee Tool"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 4" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" /></svg></button>
+                <button onMouseEnter={(e) => showTooltip('ellipse', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('ellipse')} className={cn(toolButtonClasses, activeTool === 'ellipse' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Elliptical Marquee Tool">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <ellipse cx="12" cy="12" rx="10" ry="7" strokeDasharray="2 4" />
+                    </svg>
+                </button>
                 <button onMouseEnter={(e) => showTooltip('pen', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('pen')} className={cn(toolButtonClasses, activeTool === 'pen' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Pen Tool">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10.75 22.5001H13.27C14.23 22.5001 14.85 21.8201 14.67 20.9901L14.26 19.1802H9.75999L9.35 20.9901C9.17 21.7701 9.85 22.5001 10.75 22.5001Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -59,6 +69,9 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = (props) => 
                         <path d="M20.25 11.17C20.25 7.25004 17.31 4.03006 13.52 3.56006" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </button>
+            </div>
+            <div className="w-full h-[1px] bg-neutral-700 my-1 hidden md:block"></div><div className="h-full w-[1px] bg-neutral-700 mx-1 block md:hidden"></div>
+            <div className='flex flex-col gap-2'>
                 <button onMouseEnter={(e) => showTooltip('brush', e)} onMouseLeave={hideTooltip} onClick={() => handleToolSelect('brush')} className={cn(toolButtonClasses, activeTool === 'brush' ? activeToolButtonClasses : inactiveToolButtonClasses)} aria-label="Brush Tool">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path d="M21.8098 3.93814C20.4998 7.20814 17.5098 11.4781 14.6598 14.2681C14.2498 11.6881 12.1898 9.66814 9.58984 9.30814C12.3898 6.44814 16.6898 3.41814 19.9698 2.09814C20.5498 1.87814 21.1298 2.04814 21.4898 2.40814C21.8698 2.78814 22.0498 3.35814 21.8098 3.93814Z"/>
@@ -80,7 +93,10 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = (props) => 
                 <button onMouseEnter={(e) => showTooltip('undo', e)} onMouseLeave={hideTooltip} onClick={handleUndo} disabled={historyIndex <= 0} className={cn(toolButtonClasses, inactiveToolButtonClasses, "disabled:opacity-50 disabled:cursor-not-allowed")} aria-label="Undo"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
                 <button onMouseEnter={(e) => showTooltip('redo', e)} onMouseLeave={hideTooltip} onClick={handleRedo} disabled={historyIndex >= history.length - 1} className={cn(toolButtonClasses, inactiveToolButtonClasses, "disabled:opacity-50 disabled:cursor-not-allowed")} aria-label="Redo"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" /></svg></button>
                 <div className="relative" onMouseEnter={(e) => showTooltip('colorSwatch', e)} onMouseLeave={hideTooltip}>
-                    <label htmlFor="editor-color-picker" className="cursor-pointer block p-2 rounded-lg hover:bg-neutral-700 transition-colors" title="Chọn màu"><div className="w-5 h-5 rounded-full border-2 border-neutral-500" style={{ backgroundColor: brushColor }} /><input id="editor-color-picker" type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" /></label>
+                    <label htmlFor="editor-color-picker" className="cursor-pointer block p-1 rounded-lg hover:bg-neutral-700 transition-colors" title="Chọn màu">
+                        <div className="w-8 h-8 rounded-full border-2 border-white/50 shadow-lg" style={{ backgroundColor: brushColor }} />
+                        <input id="editor-color-picker" type="color" value={brushColor} onChange={(e) => setBrushColor(e.target.value)} className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" />
+                    </label>
                 </div>
             </div>
         </div>

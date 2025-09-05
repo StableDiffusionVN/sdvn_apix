@@ -13,6 +13,12 @@
       "icon": "🚀"
     },
     {
+      "id": "image-interpolation",
+      "title": "Nội suy hình ảnh",
+      "description": "Phân tích cặp ảnh để tạo prompt, sau đó áp dụng prompt đó cho một ảnh tham chiếu.",
+      "icon": "⚗️"
+    },
+    {
       "id": "toy-model-creator",
       "title": "Tạo mô hình đồ chơi",
       "description": "Biến đối tượng trong ảnh của bạn thành một mô hình đồ chơi đặt trên bàn làm việc.",
@@ -140,5 +146,17 @@
     "smartTitleWrapWords": 2,
     "uploaderCaption": "Tải ảnh gốc",
     "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh nhân vật, vật thể..."
+  },
+  "imageInterpolation": {
+    "mainTitle": "Nội suy hình ảnh",
+    "subtitle": "Tải lên cặp ảnh và ảnh tham chiếu để bắt đầu",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 3,
+    "uploaderCaptionInput": "Ảnh Input",
+    "uploaderDescriptionInput": "Hình ảnh bắt đầu",
+    "uploaderCaptionOutput": "Ảnh Output",
+    "uploaderDescriptionOutput": "Hình ảnh mong muốn",
+    "uploaderCaptionReference": "Ảnh Tham chiếu",
+    "uploaderDescriptionReference": "Ảnh để áp dụng thay đổi"
   }
 }

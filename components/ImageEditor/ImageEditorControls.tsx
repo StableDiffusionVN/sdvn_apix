@@ -11,17 +11,45 @@ import { HslAdjustments } from './components/HslAdjustments';
 import { EffectsAdjustments } from './components/EffectsAdjustments';
 import { MagicTools } from './components/MagicTools';
 import { BrushEraserSettings } from './components/BrushEraserSettings';
+import { RangeSlider } from './components/RangeSlider';
 import { type ImageEditorState } from './useImageEditorState';
 
 type ImageEditorControlsProps = ImageEditorState;
 
+const SelectionControls: React.FC<ImageEditorControlsProps> = (props) => {
+    const {
+        featherAmount, setFeatherAmount, commitState,
+        invertSelection, deselect, deleteImageContentInSelection, fillSelection,
+    } = props;
+
+    const buttonClasses = "btn btn-secondary btn-sm !text-xs !py-1 !px-3 flex-1";
+
+    return (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">
+            <div className="p-3 space-y-3">
+                <h4 className="base-font font-bold text-neutral-200">Selection</h4>
+                <RangeSlider id="feather" label="Feather" value={featherAmount} min={0} max={50} step={1} onChange={setFeatherAmount} onReset={() => setFeatherAmount(0)} onCommit={() => {}} />
+                <div className="flex gap-2 justify-between pt-2 border-t border-neutral-700/50">
+                    <button onClick={invertSelection} className={buttonClasses} aria-label="Invert Selection (Cmd/Ctrl+Shift+I)">Invert</button>
+                    <button onClick={deselect} className={buttonClasses} aria-label="Deselect (Cmd/Ctrl+D)">Deselect</button>
+                    <button onClick={deleteImageContentInSelection} className={buttonClasses} aria-label="Delete content in selection (Delete/Backspace)">Delete</button>
+                    <button onClick={fillSelection} className={buttonClasses} aria-label="Fill selection (Cmd/Ctrl+Delete)">Fill</button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
 export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) => {
-    const { activeTool, openSection, setOpenSection, cropAspectRatio, setCropAspectRatio, handleCancelCrop, handleApplyCrop, cropSelection } = props;
+    const { activeTool, openSection, setOpenSection, cropAspectRatio, setCropAspectRatio, handleCancelCrop, handleApplyCrop, cropSelection, isSelectionActive } = props;
 
     const accordionHeaderClasses = "w-full flex justify-between items-center p-3 bg-neutral-700 hover:bg-neutral-600 transition-colors";
 
     return (
         <div className="flex-grow overflow-y-auto space-y-2 pr-2 -mr-2">
+            <AnimatePresence>
+                {isSelectionActive && <SelectionControls {...props} />}
+            </AnimatePresence>
             <AnimatePresence>
                 {activeTool === 'crop' && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">

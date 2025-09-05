@@ -36,6 +36,7 @@ interface ImageEditorCanvasProps {
     interactionState: string;
     currentDrawingPointsRef: React.RefObject<Point[]>;
     marqueeRect: Rect | null;
+    ellipseRect: Rect | null;
     penPathPoints: { anchor: Point, outHandle: Point, inHandle: Point }[];
     currentPenDrag: { start: Point, current: Point } | null;
 }
@@ -48,7 +49,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         activeTool, isDrawing, isCursorOverCanvas, cursorPosition, cropSelection, hoveredCropHandle,
         brushSize, brushHardness, brushOpacity, brushColor,
         isSelectionActive, selectionPath, interactionState, currentDrawingPointsRef, marqueeRect,
-        penPathPoints, currentPenDrag
+        ellipseRect, penPathPoints, currentPenDrag
     } = props;
     
     const marchingAntsOffsetRef = useRef(0);
@@ -62,7 +63,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
             if (cropSelection && cursorPosition && isPointInRect(cursorPosition, cropSelection)) return 'move';
             return 'crosshair';
         }
-        if (activeTool === 'selection' || activeTool === 'pen' || activeTool === 'marquee') return 'crosshair';
+        if (activeTool === 'selection' || activeTool === 'pen' || activeTool === 'marquee' || activeTool === 'ellipse') return 'crosshair';
         return 'default';
     };
 
@@ -137,6 +138,22 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                         ctx.save(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
                         ctx.strokeRect(marqueeRect.x, marqueeRect.y, marqueeRect.width, marqueeRect.height); ctx.restore();
                     }
+                    if (interactionState === 'drawingEllipse' && ellipseRect) {
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([3, 3]);
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            ellipseRect.x + ellipseRect.width / 2,
+                            ellipseRect.y + ellipseRect.height / 2,
+                            ellipseRect.width / 2,
+                            ellipseRect.height / 2,
+                            0, 0, 2 * Math.PI
+                        );
+                        ctx.stroke();
+                        ctx.restore();
+                    }
                     if (activeTool === 'pen') {
                         if (penPathPoints.length > 0) {
                             ctx.save(); ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -194,7 +211,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         };
         animId = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(animId);
-    }, [isSelectionActive, selectionPath, interactionState, activeTool, penPathPoints, cursorPosition, currentPenDrag, isCursorOverCanvas, marqueeRect, isDrawing, brushOpacity]);
+    }, [isSelectionActive, selectionPath, interactionState, activeTool, penPathPoints, cursorPosition, currentPenDrag, isCursorOverCanvas, marqueeRect, ellipseRect, isDrawing, brushOpacity]);
 
     return (
         <div className="image-editor-preview-container w-full h-full">

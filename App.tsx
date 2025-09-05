@@ -16,6 +16,7 @@ import SwapStyle from './components/SwapStyle';
 import MixStyle from './components/MixStyle';
 import FreeGeneration from './components/FreeGeneration';
 import ToyModelCreator from './components/ToyModelCreator';
+import ImageInterpolation from './components/ImageInterpolation';
 import SearchModal from './components/SearchModal';
 import GalleryModal from './components/GalleryModal';
 import InfoModal from './components/InfoModal';
@@ -162,6 +163,16 @@ function App() {
                     <motion.div key="avatar-creator" {...motionProps}>
                         <AvatarCreator 
                             {...settings.avatarCreator} 
+                            {...commonProps}
+                            appState={currentView.state} 
+                        />
+                    </motion.div>
+                 );
+            case 'image-interpolation':
+                 return (
+                    <motion.div key="image-interpolation" {...motionProps}>
+                        <ImageInterpolation 
+                            {...settings.imageInterpolation} 
                             {...commonProps}
                             appState={currentView.state} 
                         />

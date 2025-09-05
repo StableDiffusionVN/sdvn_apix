@@ -15,6 +15,65 @@ import {
     getCursorForHandle, approximateCubicBezier 
 } from './ImageEditor.utils';
 
+/**
+ * Creates a canvas with a feathered (blurred) selection mask.
+ * @param selectionPath The Path2D of the selection.
+ * @param width The width of the canvas.
+ * @param height The height of the canvas.
+ * @param featherAmount The blur radius for the feathering effect.
+ * @returns An HTMLCanvasElement containing the feathered mask.
+ */
+const createFeatheredMask = (
+    selectionPath: Path2D,
+    width: number,
+    height: number,
+    featherAmount: number
+): HTMLCanvasElement => {
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = width;
+    maskCanvas.height = height;
+    const maskCtx = maskCanvas.getContext('2d');
+
+    if (!maskCtx) return maskCanvas;
+
+    // If no feathering, just draw the sharp mask directly.
+    if (featherAmount <= 0) {
+        maskCtx.fillStyle = 'white';
+        maskCtx.fill(selectionPath);
+        return maskCanvas;
+    }
+
+    // --- NEW LOGIC for smooth edge feathering ---
+    // The padding should be large enough to contain the full blur effect.
+    // A blur radius corresponds to the standard deviation of the Gaussian function.
+    // 3 * radius covers ~99.7% of the effect. Let's use 2x for safety and performance.
+    const padding = Math.ceil(featherAmount * 2);
+
+    // Create a temporary canvas that is larger than the original
+    // to give the blur effect space to render without being clipped at the edges.
+    const sharpCanvas = document.createElement('canvas');
+    sharpCanvas.width = width + padding * 2;
+    sharpCanvas.height = height + padding * 2;
+    const sharpCtx = sharpCanvas.getContext('2d');
+    if (!sharpCtx) return maskCanvas; // Fallback to an empty mask if context fails
+
+    // Draw the selection shape onto the padded canvas, offset by the padding amount.
+    sharpCtx.translate(padding, padding);
+    sharpCtx.fillStyle = 'white';
+    sharpCtx.fill(selectionPath);
+    sharpCtx.translate(-padding, -padding); // Reset transform
+
+    // Now, draw the padded, sharp-edged canvas onto the final mask canvas.
+    // Apply the blur filter *here*. The blur will have space to expand into the padding
+    // and then we crop it back to the original size by drawing with a negative offset.
+    maskCtx.filter = `blur(${featherAmount}px)`;
+    maskCtx.drawImage(sharpCanvas, -padding, -padding);
+    maskCtx.filter = 'none'; // Always clean up the filter.
+    
+    return maskCanvas;
+};
+
+
 export const useImageEditorState = (imageToEdit: { url: string | null } | null) => {
     // --- State & Refs ---
     const [internalImageUrl, setInternalImageUrl] = useState<string | null>(null);
@@ -47,6 +106,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
     // FIX: Explicitly type the state to ColorChannel to avoid it being inferred as a generic string.
     const [activeColorTab, setActiveColorTab] = useState<ColorChannel>(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as ColorChannel);
+    const [isShowingOriginal, setIsShowingOriginal] = useState(false);
 
     // Tool states
     const [activeTool, setActiveTool] = useState<Tool | null>(null);
@@ -71,9 +131,12 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     const [penPathPoints, setPenPathPoints] = useState<PenNode[]>([]);
     const [currentPenDrag, setCurrentPenDrag] = useState<{start: Point, current: Point} | null>(null);
     const [marqueeRect, setMarqueeRect] = useState<Rect | null>(null);
+    const [ellipseRect, setEllipseRect] = useState<Rect | null>(null);
+    const [featherAmount, setFeatherAmount] = useState(0);
 
     // Refs
     const sourceImageRef = useRef<HTMLImageElement | null>(null);
+    const originalImageRef = useRef<HTMLImageElement | null>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const drawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -114,6 +177,8 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setSelectionStrokes([]);
         setIsSelectionInverted(false);
         setPenPathPoints([]);
+        setMarqueeRect(null);
+        setEllipseRect(null);
     }, []);
 
     const captureState = useCallback((): EditorStateSnapshot => ({
@@ -168,53 +233,75 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     }, [captureState, pushHistory, internalImageUrl]);
 
     const resetAll = useCallback((keepImage = false) => {
+        // Reset all adjustments and tool states
         setLuminance(0); setContrast(0); setTemp(0); setTint(0); setSaturation(0); setVibrance(0); setHue(0);
         setRotation(0); setFlipHorizontal(false); setFlipVertical(false); setIsInverted(false); setGrain(0); setClarity(0); setDehaze(0); setBlur(0);
         setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS); setActiveColorTab(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as keyof typeof INITIAL_COLOR_ADJUSTMENTS); setOpenSection('adj');
         setActiveTool(null); setBrushSize(20); setBrushHardness(100); setBrushOpacity(100); setBrushColor('#ffffff');
         setCropSelection(null); setCropAspectRatio('Free'); setCropAction(null);
-        deselect(); setInteractionState('none');
+        deselect(); setInteractionState('none'); setFeatherAmount(0);
+        
+        // Clear drawing canvas
         if (drawingCanvasRef.current) {
             const ctx = drawingCanvasRef.current.getContext('2d');
             ctx?.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
         }
-        if (!keepImage) {
+
+        // Logic for handling image and history reset
+        if (keepImage) {
+            // This case is for the "Reset All" button in the UI.
+            // Restore the original image and reset history to its initial state.
+            if (originalImageRef.current?.src) {
+                const originalUrl = originalImageRef.current.src;
+                setInternalImageUrl(originalUrl);
+
+                const initialSnapshot: EditorStateSnapshot = {
+                    imageUrl: originalUrl,
+                    luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
+                    grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false,
+                    isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS,
+                    drawingCanvasDataUrl: null,
+                };
+                setHistory([initialSnapshot]);
+                setHistoryIndex(0);
+            }
+        } else {
+            // This case is for when the modal is opened, to clear previous state.
             setInternalImageUrl(null);
+            setHistory([]);
+            setHistoryIndex(-1);
         }
-        setHistory([]); setHistoryIndex(-1);
     }, [deselect]);
     
     // --- Canvas & Drawing Logic ---
     const applyPixelAdjustments = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number, options: { ignoreSelection?: boolean } = {}) => {
         const sourceImageData = ctx.getImageData(0, 0, width, height);
+        const originalData = new Uint8ClampedArray(sourceImageData.data);
         const data = sourceImageData.data;
-
+    
         // Create a selection mask if a selection is active
         let selectionMask: Uint8ClampedArray | null = null;
         if (!options.ignoreSelection && isSelectionActive && selectionPath) {
-            const maskCanvas = document.createElement('canvas');
-            maskCanvas.width = width;
-            maskCanvas.height = height;
+            const maskCanvas = createFeatheredMask(selectionPath, width, height, featherAmount);
             const maskCtx = maskCanvas.getContext('2d');
             if (maskCtx) {
-                maskCtx.fillStyle = 'white';
-                maskCtx.fill(selectionPath);
                 selectionMask = maskCtx.getImageData(0, 0, width, height).data;
             }
         }
-
+    
         const contrastFactor = (100 + contrast) / 100;
         const clarityFactor = clarity / 200;
         const dehazeFactor = dehaze / 100;
         const grainAmount = grain * 2.55;
-
+    
         for (let i = 0; i < data.length; i += 4) {
-             // If we have a mask and the current pixel is outside the selection, skip it.
-            if (!options.ignoreSelection && selectionMask && selectionMask[i + 3] === 0) {
+            const blendFactor = selectionMask ? (selectionMask[i + 3] / 255) : 1;
+            
+            if (blendFactor < 0.001 && !options.ignoreSelection) {
                 continue;
             }
-
-            let r = data[i], g = data[i + 1], b = data[i + 2];
+    
+            let r = originalData[i], g = originalData[i + 1], b = originalData[i + 2];
             
             if (isInverted) { r = 255 - r; g = 255 - g; b = 255 - b; }
             r = (r - 127.5) * contrastFactor + 127.5; g = (g - 127.5) * contrastFactor + 127.5; b = (b - 127.5) * contrastFactor + 127.5;
@@ -241,23 +328,35 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             s = Math.max(0, Math.min(100, s)); l = Math.max(0, Math.min(100, l));
             [r, g, b] = hslToRgb(h, s, l);
             if (grain > 0) { const noise = (Math.random() - 0.5) * grainAmount; r += noise; g += noise; b += noise; }
-            data[i] = r; data[i+1] = g; data[i+2] = b;
+    
+            data[i] = originalData[i] * (1 - blendFactor) + r * blendFactor;
+            data[i+1] = originalData[i+1] * (1 - blendFactor) + g * blendFactor;
+            data[i+2] = originalData[i+2] * (1 - blendFactor) + b * blendFactor;
         }
         ctx.putImageData(sourceImageData, 0, 0);
-    }, [luminance, contrast, temp, tint, saturation, vibrance, hue, colorAdjustments, grain, clarity, dehaze, isInverted, isSelectionActive, selectionPath]);
+    }, [luminance, contrast, temp, tint, saturation, vibrance, hue, colorAdjustments, grain, clarity, dehaze, isInverted, isSelectionActive, selectionPath, featherAmount]);
 
     const drawAdjustedImage = useCallback(() => {
-        if (!sourceImageRef.current || !previewCanvasRef.current) return;
+        if (!previewCanvasRef.current) return;
         const canvas = previewCanvasRef.current;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        const image = sourceImageRef.current;
+
+        const image = isShowingOriginal ? originalImageRef.current : sourceImageRef.current;
+        if (!image) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // If showing original, just draw it and return. No transforms/adjustments.
+        if (isShowingOriginal) {
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            return;
+        }
+    
+        // --- Draw transformed image without any filters ---
         const isSwapped = rotation === 90 || rotation === 270;
         const drawWidth = isSwapped ? canvas.height : canvas.width;
         const drawHeight = isSwapped ? canvas.width : canvas.height;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-        // --- Draw transformed image without any filters ---
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.rotate(rotation * Math.PI / 180);
@@ -297,7 +396,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             }
             ctx.restore();
         }
-    }, [rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur, isSelectionActive, selectionPath]);
+    }, [rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur, isSelectionActive, selectionPath, isShowingOriginal]);
     
     // --- Canvas & Event Handlers ---
     const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent<HTMLCanvasElement>) => {
@@ -313,6 +412,11 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         e.preventDefault();
         const coords = getCanvasCoords(e); if (!coords) return;
         const nativeEvent = e.nativeEvent as MouseEvent;
+
+        if (activeTool === null) {
+            setIsShowingOriginal(true);
+            return;
+        }
 
         if (activeTool === 'colorpicker') {
             const previewCtx = previewCanvasRef.current?.getContext('2d', { willReadFrequently: true });
@@ -360,6 +464,12 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             selectionModifierRef.current = nativeEvent.altKey ? 'subtract' : nativeEvent.shiftKey ? 'add' : 'new';
             if (selectionModifierRef.current === 'new') deselect();
             setInteractionState('drawingMarquee');
+            interactionStartRef.current = { mouse: coords };
+        } else if (activeTool === 'ellipse') {
+            setIsDrawing(false);
+            selectionModifierRef.current = nativeEvent.altKey ? 'subtract' : nativeEvent.shiftKey ? 'add' : 'new';
+            if (selectionModifierRef.current === 'new') deselect();
+            setInteractionState('drawingEllipse');
             interactionStartRef.current = { mouse: coords };
         } else if (activeTool === 'pen') {
             setIsDrawing(false);
@@ -440,6 +550,16 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         } else if (activeTool === 'marquee' && interactionState === 'drawingMarquee' && interactionStartRef.current) {
             const startPoint = interactionStartRef.current.mouse; const rectWidth = coords.x - startPoint.x; const rectHeight = coords.y - startPoint.y;
             setMarqueeRect({ x: rectWidth > 0 ? startPoint.x : coords.x, y: rectHeight > 0 ? startPoint.y : coords.y, width: Math.abs(rectWidth), height: Math.abs(rectHeight), });
+        } else if (activeTool === 'ellipse' && interactionState === 'drawingEllipse' && interactionStartRef.current) {
+            const startPoint = interactionStartRef.current.mouse;
+            const rectWidth = coords.x - startPoint.x;
+            const rectHeight = coords.y - startPoint.y;
+            setEllipseRect({
+                x: rectWidth > 0 ? startPoint.x : coords.x,
+                y: rectHeight > 0 ? startPoint.y : coords.y,
+                width: Math.abs(rectWidth),
+                height: Math.abs(rectHeight),
+            });
         } else if (activeTool === 'pen' && interactionState === 'drawingPen' && currentPenDrag) {
             setCurrentPenDrag(p => ({ ...p!, current: coords }));
         }
@@ -447,6 +567,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
 
     const handleActionEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         e.preventDefault();
+        setIsShowingOriginal(false);
         if (isDrawing) {
             setIsDrawing(false); lastPointRef.current = null;
             if ((activeTool === 'brush' || activeTool === 'eraser') && tempDrawingCanvasRef.current) {
@@ -480,6 +601,26 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 setSelectionStrokes(prev => [...prev, { points, op }]);
             }
             setMarqueeRect(null);
+        } else if (interactionState === 'drawingEllipse' && ellipseRect) {
+            if (ellipseRect.width > 1 && ellipseRect.height > 1) {
+                const { x, y, width, height } = ellipseRect;
+                const cx = x + width / 2;
+                const cy = y + height / 2;
+                const rx = width / 2;
+                const ry = height / 2;
+                const points: Point[] = [];
+                const steps = Math.max(30, Math.floor(width + height) / 4);
+                for (let i = 0; i < steps; i++) {
+                    const angle = (i / steps) * 2 * Math.PI;
+                    points.push({
+                        x: cx + rx * Math.cos(angle),
+                        y: cy + ry * Math.sin(angle),
+                    });
+                }
+                const op = selectionModifierRef.current === 'subtract' ? 'subtract' : 'add';
+                setSelectionStrokes(prev => [...prev, { points, op }]);
+            }
+            setEllipseRect(null);
         } else if (interactionState === 'drawingPen' && currentPenDrag) {
             const { start, current } = currentPenDrag; const dragDistance = Math.hypot(current.x - start.x, current.y - start.y);
             let newNode: PenNode;
@@ -501,11 +642,14 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             if (url) {
                 const image = new Image(); image.crossOrigin = "anonymous"; image.src = url;
                 image.onload = () => {
+                    originalImageRef.current = image;
                     const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: url };
                     setHistory([initialSnapshot]);
                     setHistoryIndex(0);
                 };
             }
+        } else {
+            originalImageRef.current = null;
         }
     }, [isOpen, imageToEdit?.url, resetAll]);
     
@@ -683,6 +827,8 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 bakeCanvas.height = previewCanvas.height;
                 const bakeCtx = bakeCanvas.getContext('2d');
                 if (!bakeCtx) throw new Error("Could not create bake canvas context");
+
+                // 1. Draw the "before" state (current image + drawings).
                 bakeCtx.save();
                 bakeCtx.translate(bakeCanvas.width / 2, bakeCanvas.height / 2);
                 bakeCtx.rotate(rotation * Math.PI / 180);
@@ -693,10 +839,27 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 bakeCtx.drawImage(sourceImage, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
                 bakeCtx.restore();
                 bakeCtx.drawImage(drawingCanvas, 0, 0);
-                bakeCtx.save();
-                bakeCtx.clip(selectionPath);
-                bakeCtx.drawImage(previewCanvas, 0, 0);
-                bakeCtx.restore();
+
+                // 2. Create the feathered mask.
+                const maskCanvas = createFeatheredMask(selectionPath, bakeCanvas.width, bakeCanvas.height, featherAmount);
+
+                // 3. Create a temporary canvas for the "after" state (the adjusted image).
+                const adjustedLayerCanvas = document.createElement('canvas');
+                adjustedLayerCanvas.width = bakeCanvas.width;
+                adjustedLayerCanvas.height = bakeCanvas.height;
+                const adjustedLayerCtx = adjustedLayerCanvas.getContext('2d');
+                if (!adjustedLayerCtx) throw new Error("Could not create adjusted layer context");
+
+                // 4. Draw the adjusted image (from the live preview) onto this temporary layer.
+                adjustedLayerCtx.drawImage(previewCanvas, 0, 0);
+
+                // 5. Use the mask to "cut out" the adjusted parts.
+                adjustedLayerCtx.globalCompositeOperation = 'destination-in';
+                adjustedLayerCtx.drawImage(maskCanvas, 0, 0);
+
+                // 6. Draw the masked adjusted layer on top of the "before" state.
+                bakeCtx.drawImage(adjustedLayerCanvas, 0, 0);
+                
                 const newDataUrl = bakeCanvas.toDataURL('image/png');
     
                 const resetAndBake = () => {
@@ -719,13 +882,13 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 newImage.onload = () => requestAnimationFrame(resetAndBake);
                 newImage.src = newDataUrl;
             } catch (error) {
-                console.error("Error applying adjustments:", error);
+                console.error("Error applying adjustments to selection:", error);
             } finally {
                 setIsLoading(false);
             }
         }, 50);
-    }, [isSelectionActive, selectionPath, previewCanvasRef, drawingCanvasRef, sourceImageRef, rotation, flipHorizontal, flipVertical, pushHistory, brushHardness, brushOpacity]);
-
+    }, [isSelectionActive, selectionPath, previewCanvasRef, drawingCanvasRef, sourceImageRef, rotation, flipHorizontal, flipVertical, pushHistory, brushHardness, brushOpacity, featherAmount]);
+    
     const handleToolSelect = useCallback((tool: Tool) => { if (activeTool === 'pen' && tool !== 'pen') { setPenPathPoints([]); setCurrentPenDrag(null); } setActiveTool(prev => (prev === tool ? null : tool)); }, [activeTool]);
     const handleCancelCrop = useCallback(() => { setCropSelection(null); setActiveTool(null); }, []);
     const handleApplyCrop = useCallback(() => {
@@ -745,35 +908,64 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         pushHistory(postCropState);
         restoreState(postCropState); setCropSelection(null); setActiveTool(null);
     }, [cropSelection, commitState, handleCancelCrop, pushHistory, restoreState]);
+    
     const deleteImageContentInSelection = useCallback(() => {
         if (!selectionPath || !previewCanvasRef.current || !drawingCanvasRef.current) return;
         setIsLoading(true);
         setTimeout(() => {
             try {
-                const previewCanvas = previewCanvasRef.current!; const drawingCanvas = drawingCanvasRef.current!;
-                const combinedCanvas = document.createElement('canvas'); combinedCanvas.width = previewCanvas.width; combinedCanvas.height = previewCanvas.height;
-                const ctx = combinedCanvas.getContext('2d'); if (!ctx) throw new Error("Could not create combined canvas context");
-                ctx.drawImage(previewCanvas, 0, 0); ctx.drawImage(drawingCanvas, 0, 0);
-                ctx.save(); ctx.clip(selectionPath!, 'nonzero'); ctx.clearRect(0, 0, combinedCanvas.width, combinedCanvas.height); ctx.restore();
+                const previewCanvas = previewCanvasRef.current!;
+                const drawingCanvas = drawingCanvasRef.current!;
+                const combinedCanvas = document.createElement('canvas');
+                combinedCanvas.width = previewCanvas.width;
+                combinedCanvas.height = previewCanvas.height;
+                const ctx = combinedCanvas.getContext('2d');
+                if (!ctx) throw new Error("Could not create combined canvas context");
+                ctx.drawImage(previewCanvas, 0, 0);
+                ctx.drawImage(drawingCanvas, 0, 0);
+
+                const maskCanvas = createFeatheredMask(selectionPath!, combinedCanvas.width, combinedCanvas.height, featherAmount);
+                
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.drawImage(maskCanvas, 0, 0);
+
                 const newDataUrl = combinedCanvas.toDataURL('image/png');
                 const bakedState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
                 pushHistory(bakedState); restoreState(bakedState); deselect();
             } catch (error) { console.error("Error deleting content:", error); alert("An error occurred while deleting the selected content."); } 
             finally { setIsLoading(false); }
         }, 50);
-    }, [selectionPath, pushHistory, restoreState, deselect]);
+    }, [selectionPath, featherAmount, pushHistory, restoreState, deselect, previewCanvasRef, drawingCanvasRef]);
+    
     const fillSelection = useCallback(() => {
         if (!selectionPath || !drawingCanvasRef.current) return;
         const ctx = drawingCanvasRef.current.getContext('2d'); if (!ctx) return;
-        ctx.save(); if(isSelectionActive) ctx.clip(selectionPath, 'nonzero');
-        ctx.fillStyle = brushColor; ctx.fillRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height); ctx.restore();
+        
+        const maskCanvas = createFeatheredMask(selectionPath, drawingCanvasRef.current.width, drawingCanvasRef.current.height, featherAmount);
+        
+        const fillCanvas = document.createElement('canvas');
+        fillCanvas.width = drawingCanvasRef.current.width;
+        fillCanvas.height = drawingCanvasRef.current.height;
+        const fillCtx = fillCanvas.getContext('2d');
+        if (fillCtx) {
+            fillCtx.fillStyle = brushColor;
+            fillCtx.fillRect(0, 0, fillCanvas.width, fillCanvas.height);
+            fillCtx.globalCompositeOperation = 'destination-in';
+            fillCtx.drawImage(maskCanvas, 0, 0);
+        }
+        
+        ctx.drawImage(fillCanvas, 0, 0);
         commitState();
-    }, [selectionPath, brushColor, commitState, isSelectionActive]);
+    }, [selectionPath, brushColor, featherAmount, commitState]);
+
     const invertSelection = useCallback(() => setIsSelectionInverted(prev => !prev), []);
     
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isOpen) return;
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
             const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
             const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
             if (isUndo) { e.preventDefault(); handleUndo(); return; }
@@ -783,6 +975,11 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 if (activeTool === 'crop' && cropSelection) handleCancelCrop();
                 else if (activeTool === 'pen' && penPathPoints.length > 0) { setPenPathPoints([]); setCurrentPenDrag(null); } 
                 else if (isSelectionActive) deselect();
+                return;
+            }
+            if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'm') {
+                e.preventDefault();
+                handleToolSelect('ellipse');
                 return;
             }
             const isPickerEligible = activeTool === 'brush' || activeTool === 'eraser';
@@ -825,7 +1022,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         // State
         internalImageUrl, isLoading, openSection, activeTool, brushSize, brushColor, brushHardness, brushOpacity, cropSelection, cropAspectRatio,
         cursorPosition, isCursorOverCanvas, isDrawing, isSelectionActive, isSelectionInverted, penPathPoints, currentPenDrag, marqueeRect,
-        interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen,
+        ellipseRect, interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen, featherAmount,
         selectionPath,
         
         // Filters & Adjustments
@@ -840,17 +1037,21 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setHoveredCropHandle,
         setLuminance, setContrast, setTemp, setTint, setSaturation, setVibrance, setHue, setGrain, setClarity, setDehaze, setBlur, setRotation, setFlipHorizontal, setFlipVertical, setIsInverted,
         setColorAdjustments, setActiveColorTab,
-        setIsGalleryPickerOpen,
+        setIsGalleryPickerOpen, setFeatherAmount,
         handleActionStart, handleCanvasMouseMove, handleActionEnd,
         handleUndo, handleRedo, commitState, resetAll, getFinalImage,
         handleToolSelect, handleCancelCrop, handleApplyCrop,
         handleFileSelected: (e: ChangeEvent<HTMLInputElement>) => handleFileUpload(e, (newUrl) => { 
             resetAll(false); setInternalImageUrl(newUrl);
+            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
+            image.onload = () => { originalImageRef.current = image; };
             const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
             setHistory([initialSnapshot]); setHistoryIndex(0);
         }),
         handleGallerySelect: (newUrl: string) => {
             resetAll(false); setInternalImageUrl(newUrl); setIsGalleryPickerOpen(false);
+            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
+            image.onload = () => { originalImageRef.current = image; };
             const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
             setHistory([initialSnapshot]); setHistoryIndex(0);
         },
@@ -871,6 +1072,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         handleInvertColors: () => { const snapshot = captureState(); const newSnapshot = { ...snapshot, isInverted: !snapshot.isInverted }; pushHistory(newSnapshot); restoreState(newSnapshot); },
         handleApplyAllAdjustments,
         handleApplyAdjustmentsToSelection,
+        invertSelection, deselect, deleteImageContentInSelection, fillSelection,
     };
 };
 

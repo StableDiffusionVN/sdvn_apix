@@ -27,30 +27,59 @@ function processApiError(error: unknown): Error {
  * Edits an image based on a text prompt.
  * @param imageDataUrl A data URL string of the source image to edit.
  * @param prompt The text prompt with editing instructions.
+ * @param aspectRatio Optional target aspect ratio.
+ * @param removeWatermark Optional boolean to request watermark removal.
  * @returns A promise that resolves to a base64-encoded image data URL of the edited image.
  */
-export async function editImageWithPrompt(imageDataUrl: string, prompt: string): Promise<string> {
+export async function editImageWithPrompt(
+    imageDataUrl: string,
+    prompt: string,
+    aspectRatio?: string,
+    removeWatermark?: boolean
+): Promise<string> {
     try {
-        const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+        const imageToProcess = await padImageToAspectRatio(imageDataUrl, aspectRatio ?? 'Giữ nguyên');
+        const { mimeType, data: base64Data } = parseDataUrl(imageToProcess);
         const imagePart = {
             inlineData: { mimeType, data: base64Data },
         };
         
-        // Wrap the user's prompt in a more forceful template to improve AI adherence.
-        const fullPrompt = [
-            '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN CAO NHẤT:**',
-            'Thực hiện chính xác và duy nhất chỉ một yêu cầu sau đây trên bức ảnh được cung cấp:',
-            `"${prompt}"`,
-            '**LƯU Ý QUAN TRỌNG:**',
-            '- Không thực hiện bất kỳ thay đổi nào khác ngoài yêu cầu đã nêu.',
-            '- Giữ nguyên các phần còn lại của bức ảnh.',
-            '- Chỉ trả về hình ảnh đã được chỉnh sửa.'
-        ].join('\n');
+        const hasAspectRatioChange = aspectRatio && aspectRatio !== 'Giữ nguyên';
         
+        const promptParts = [
+            ...getAspectRatioPromptInstruction(aspectRatio, 1),
+        ];
+
+        if (hasAspectRatioChange) {
+            promptParts.push(
+                '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN CAO:**',
+                'Sau khi đã lấp đầy các vùng trắng theo yêu cầu về bố cục ở trên, hãy thực hiện thêm yêu cầu chỉnh sửa sau đây trên nội dung của bức ảnh:',
+                `"${prompt}"`,
+                '**LƯU Ý QUAN TRỌNG:**',
+                '- Kết hợp hài hòa giữa việc mở rộng bối cảnh (lấp viền trắng) và việc thực hiện yêu cầu chỉnh sửa.',
+                '- Giữ nguyên các phần còn lại của bức ảnh không liên quan đến yêu cầu chỉnh sửa và việc mở rộng bối cảnh.',
+                '- Chỉ trả về một hình ảnh duy nhất đã được hoàn thiện.'
+            );
+        } else {
+            promptParts.push(
+                '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN CAO NHẤT:**',
+                'Thực hiện chính xác và duy nhất chỉ một yêu cầu sau đây trên bức ảnh được cung cấp:',
+                `"${prompt}"`,
+                '**LƯU Ý QUAN TRỌNG:**',
+                '- Không thực hiện bất kỳ thay đổi nào khác ngoài yêu cầu đã nêu.',
+                '- Giữ nguyên các phần còn lại của bức ảnh.',
+                '- Chỉ trả về hình ảnh đã được chỉnh sửa.'
+            );
+        }
+
+        if (removeWatermark) {
+            promptParts.push('- **Yêu cầu đặc biệt:** Không được có bất kỳ watermark, logo, hay chữ ký nào trên ảnh kết quả.');
+        }
+        
+        const fullPrompt = promptParts.join('\n');
         const textPart = { text: fullPrompt };
 
         console.log("Attempting to edit image with prompt...");
-        // Re-using callGeminiWithRetry which is configured for gemini-2.5-flash-image-preview
         const response = await callGeminiWithRetry([imagePart, textPart]);
         return processGeminiResponse(response);
     } catch (error) {
@@ -969,5 +998,157 @@ export async function removeImageBackground(imageDataUrl: string): Promise<strin
         const processedError = processApiError(error);
         console.error("An unrecoverable error occurred during background removal.", processedError);
         throw processedError;
+    }
+}
+
+// --- NEW: Image Interpolation ---
+
+/**
+ * Analyzes a pair of images to generate a descriptive prompt for the transformation.
+ * @param inputImageDataUrl Data URL of the "before" image.
+ * @param outputImageDataUrl Data URL of the "after" image.
+ * @returns A promise resolving to the generated text prompt.
+ */
+export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outputImageDataUrl: string): Promise<string> {
+    const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
+    const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
+
+    const inputImagePart = { inlineData: { mimeType: inputMime, data: inputData } };
+    const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
+
+    const prompt = `
+        Bạn là một kỹ sư prompt chuyên nghiệp cho một AI tạo ảnh tiên tiến. Nhiệm vụ của bạn là phân tích hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và viết một câu lệnh (prompt) chi tiết, chính xác và có tính nghệ thuật bằng tiếng Việt để mô tả sự biến đổi cần thiết để biến Ảnh 1 thành Ảnh 2.
+
+        Phân tích của bạn phải toàn diện. Hãy xem xét các khía cạnh sau:
+        1.  **Phong cách nghệ thuật & Chất liệu:** Xác định sự thay đổi phong cách nghệ thuật cốt lõi. Có phải là ảnh chụp trở thành tranh sơn dầu, hoạt hình 2D trở thành 3D, hay từ hiện thực sang cyberpunk? Mô tả kết cấu, nét cọ, hoặc phong cách render.
+        2.  **Nội dung & Chủ thể:** Có gì đã được thêm, bớt, hoặc thay đổi? Hãy cụ thể. "Thêm một con rồng" là tốt, nhưng "Thêm một con rồng đỏ hùng vĩ đang phun lửa bay trên trời" thì tốt hơn.
+        3.  **Ánh sáng & Bảng màu:** Mô tả sự thay đổi về ánh sáng (ví dụ: "thay đổi từ ánh sáng ban ngày sang ánh sáng ban đêm đầy kịch tính với ánh đèn neon"). Mô tả bảng màu mới (ví dụ: "sử dụng bảng màu hoàng hôn ấm áp gồm các màu cam, hồng và tím").
+        4.  **Bố cục & Không khí:** Góc máy có thay đổi không? Không khí hoặc cảm xúc mới là gì (ví dụ: "tạo ra một không khí huyền ảo và sương mù")?
+
+        **HƯỚNG DẪN QUAN TRỌNG:**
+        - Prompt phải là một lệnh để *biến đổi* Ảnh 1, không phải là mô tả về Ảnh 2.
+        - Ngắn gọn nhưng giàu mô tả. Tập trung vào các *hành động* biến đổi.
+        - Đầu ra CHỈ LÀ văn bản prompt tiếng Việt. Không bao gồm bất kỳ cụm từ giới thiệu nào như "Đây là prompt:".
+
+        **VÍ DỤ NÂNG CAO:**
+        - **Trước:** Ảnh chụp một con phố hiện đại.
+        - **Sau:** Cùng con phố đó, nhưng trông như cảnh trong phim Blade Runner.
+        - **Prompt Tốt:** "Biến đổi thành một con phố cyberpunk tương lai, thêm vào những ánh đèn neon rực rỡ, những chiếc xe bay lơ lửng, và một bầu không khí mưa bụi ẩm ướt."
+
+        - **Trước:** Một bức vẽ kỹ thuật số về một hiệp sĩ.
+        - **Sau:** Hiệp sĩ trông như được vẽ bởi Rembrandt.
+        - **Prompt Tốt:** "Vẽ lại hiệp sĩ theo phong cách tranh sơn dầu Baroque của Rembrandt, sử dụng kỹ thuật tương phản sáng tối (chiaroscuro) để tạo chiều sâu và kịch tính, với các nét cọ thô và kết cấu."
+
+        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra prompt.
+    `;
+    const textPart = { text: prompt };
+    
+    try {
+        console.log("Attempting to analyze image pair for prompt...");
+        const response = await callGeminiWithRetry([textPart, inputImagePart, outputImagePart]);
+        
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+
+        console.error("API did not return text. Response:", response);
+        throw new Error("The AI model did not return a valid text prompt.");
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("An unrecoverable error occurred during prompt generation.", processedError);
+        throw processedError;
+    }
+}
+
+/**
+ * Merges a base prompt with user's notes into a new, cohesive prompt.
+ * @param basePrompt The initial prompt generated from image analysis.
+ * @param userNotes The user's additional modification requests.
+ * @returns A promise that resolves to the new, merged prompt.
+ */
+export async function interpolatePrompts(basePrompt: string, userNotes: string): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const prompt = `
+        Bạn là một trợ lý AI chuyên tinh chỉnh các câu lệnh tạo ảnh.
+        Nhiệm vụ của bạn là hợp nhất "Yêu cầu Chỉnh sửa của Người dùng" vào "Prompt Gốc" để tạo ra một prompt mới, mạch lạc bằng tiếng Việt.
+
+        - **Prompt Gốc (mô tả một sự biến đổi cơ bản):** "${basePrompt}"
+        - **Yêu cầu Chỉnh sửa của Người dùng (CÓ ƯU TIÊN CAO HƠN):** "${userNotes}"
+
+        **Quy tắc quan trọng:**
+        1.  **Ưu tiên yêu cầu của người dùng:** Prompt mới phải ưu tiên thực hiện yêu cầu của người dùng. Nếu có sự mâu thuẫn, yêu cầu của người dùng sẽ ghi đè lên các phần tương ứng trong Prompt Gốc.
+        2.  **Giữ lại ý chính:** Giữ lại bản chất của sự biến đổi từ Prompt Gốc, trừ khi nó bị thay đổi trực tiếp bởi yêu cầu của người dùng.
+        3.  **Tích hợp hợp lý:** Tích hợp các thay đổi một cách tự nhiên vào prompt, tạo thành một câu lệnh hoàn chỉnh.
+
+        **Ví dụ:**
+        - **Prompt Gốc:** "biến ảnh thành tranh màu nước"
+        - **Yêu cầu người dùng:** "sử dụng tông màu chủ đạo là xanh dương và vàng"
+        - **Prompt Mới:** "biến ảnh thành tranh màu nước, sử dụng bảng màu chủ đạo là xanh dương và vàng"
+
+        - **Prompt Gốc:** "thêm một chiếc mũ phù thủy nhỏ màu đỏ cho con mèo"
+        - **Yêu cầu người dùng:** "thay mũ bằng vương miện và làm cho mắt mèo phát sáng"
+        - **Prompt Mới:** "đội một chiếc vương miện cho con mèo và làm cho mắt nó phát sáng"
+
+        Bây giờ, hãy tạo prompt mới dựa trên các đầu vào được cung cấp. Chỉ xuất ra văn bản prompt cuối cùng bằng tiếng Việt. Không thêm bất kỳ cụm từ giới thiệu nào.
+    `;
+
+    try {
+        console.log("Attempting to interpolate prompts with prioritization...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+        
+        console.error("API did not return text for prompt interpolation. Response:", response);
+        throw new Error("The AI model did not return a valid text prompt for interpolation.");
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("An unrecoverable error occurred during prompt interpolation.", processedError);
+        throw processedError;
+    }
+}
+
+/**
+ * Adapts a base prompt to be more contextually relevant to a reference image.
+ * @param imageDataUrl The data URL of the reference image.
+ * @param basePrompt The initial prompt describing a transformation.
+ * @returns A promise that resolves to the new, contextually-aware prompt.
+ */
+export async function adaptPromptToContext(imageDataUrl: string, basePrompt: string): Promise<string> {
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+    const imagePart = { inlineData: { mimeType, data: base64Data } };
+
+    const promptText = `Nhiệm vụ của bạn là một chuyên gia tinh chỉnh prompt cho AI tạo ảnh. Tôi sẽ cung cấp cho bạn: 1. Một "Ảnh Tham Chiếu". 2. Một "Prompt Gốc" mô tả một sự biến đổi. Yêu cầu của bạn là viết lại "Prompt Gốc" thành một "Prompt Mới" sao cho phù hợp hơn với bối cảnh, chủ thể, và phong cách của "Ảnh Tham Chiếu". Sự biến đổi cốt lõi phải được giữ nguyên. Ví dụ: - Ảnh Tham Chiếu: ảnh một con chó thật. - Prompt Gốc: "biến thành nhân vật hoạt hình" - Prompt Mới: "biến con chó trong ảnh thành nhân vật hoạt hình theo phong cách Pixar". - Ảnh Tham Chiếu: ảnh một toà nhà cổ kính. - Prompt Gốc: "thêm các chi tiết cyberpunk" - Prompt Mới: "thêm các chi tiết máy móc và đèn neon theo phong cách cyberpunk vào toà nhà cổ kính, giữ lại kiến trúc gốc". - Ảnh Tham Chiếu: một bức tranh phong cảnh màu nước. - Prompt Gốc: "thay đổi bầu trời thành dải ngân hà" - Prompt Mới: "vẽ lại bầu trời thành một dải ngân hà rực rỡ theo phong cách màu nước, hoà hợp với phần còn lại của bức tranh". Prompt Gốc hiện tại là: "${basePrompt}". Hãy phân tích Ảnh Tham Chiếu và tạo ra Prompt Mới bằng tiếng Việt. Chỉ trả về nội dung của prompt, không có các cụm từ giới thiệu như "Đây là prompt mới:".`;
+    const textPart = { text: promptText };
+    
+    try {
+        console.log("Attempting to adapt prompt to image context...");
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, textPart] },
+        });
+
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+
+        console.warn("API did not return text for context adaptation. Falling back to base prompt. Response:", response);
+        return basePrompt;
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("An unrecoverable error occurred during prompt adaptation. Falling back to base prompt.", processedError);
+        return basePrompt;
     }
 }

@@ -70,14 +70,14 @@ body {
   --footer-bg-color: rgba(0, 82, 212, 0.5); /* UPDATED: Increased transparency */
 }
 
-.theme-blulagoo {
-  background: #0052D4;  /* fallback for old browsers */
-  background: -webkit-linear-gradient(to right, #6FB1FC, #4364F7, #0052D4);  /* Chrome 10-25, Safari 5.1-6 */
-  background: linear-gradient(to right, #6FB1FC, #4364F7, #0052D4); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+.theme-emerald-water {
+  background: #348F50;  /* fallback for old browsers */
+  background: -webkit-linear-gradient(to right, #56B4D3, #348F50);  /* Chrome 10-25, Safari 5.1-6 */
+  background: linear-gradient(to right, #56B4D3, #348F50); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
   /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #052e6c; /* A deep, rich blue */
-  --polaroid-placeholder-color: #a7cffd; /* A soft, sky blue */
-  --footer-bg-color: rgba(0, 82, 212, 0.5); /* UPDATED: Increased transparency */
+  --polaroid-bg-color: #0d3331; /* A deep teal */
+  --polaroid-placeholder-color: #5eead4; /* A soft teal */
+  --footer-bg-color: rgba(52, 143, 80, 0.5); 
 }
 
 .theme-life {

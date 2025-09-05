@@ -88,6 +88,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                         <li className="flex justify-between items-center"><span>Cắt ảnh (Crop)</span> <Shortcut keys="C" /></li>
                                         <li className="flex justify-between items-center"><span>Chọn vùng (Lasso)</span> <Shortcut keys="L" /></li>
                                         <li className="flex justify-between items-center"><span>Chọn vùng Chữ nhật (Marquee)</span> <Shortcut keys="M" /></li>
+                                        <li className="flex justify-between items-center"><span>Chọn vùng Elip (Ellipse)</span> <Shortcut keys="Shift + M" /></li>
                                         <li className="flex justify-between items-center"><span>Công cụ Bút (Pen)</span> <Shortcut keys="P" /></li>
                                         <li className="flex justify-between items-center"><span>Cọ vẽ (Brush)</span> <Shortcut keys="B" /></li>
                                         <li className="flex justify-between items-center"><span>Tẩy (Eraser)</span> <Shortcut keys="E" /></li>

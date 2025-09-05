@@ -98,12 +98,13 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                 <div className="flex flex-col flex-shrink-0 md:w-80">
                                     <div className="flex justify-between items-center mb-4 flex-shrink-0">
                                         <h3 className="base-font font-bold text-2xl text-yellow-400">Image Editor</h3>
-                                        <button onClick={() => editorState.resetAll(true)} className="btn btn-secondary btn-sm !text-xs !py-1 !px-3">Reset All</button>
+                                        <button onClick={() => editorState.resetAll(true)} className="btn btn-secondary btn-sm">Reset All</button>
                                     </div>
                                     <ImageEditorControls {...editorState} />
-                                    <div className="flex justify-end items-center gap-4 mt-auto pt-4 border-t border-white/10 flex-shrink-0">
+                                    <div className="flex justify-end items-center gap-2 mt-auto pt-4 border-t border-white/10 flex-shrink-0">
+                                        <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
                                         <button onClick={editorState.handleApplyAllAdjustments} className="btn btn-secondary btn-sm" disabled={isLoading}>{isLoading ? 'Applying...' : 'Apply'}</button>
-                                        <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save Changes'}</button>
+                                        <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save'}</button>
                                     </div>
                                 </div>
                             </div>

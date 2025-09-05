@@ -515,6 +515,23 @@ export interface ToyModelCreatorState {
     error: string | null;
 }
 
+export interface ImageInterpolationState {
+    stage: 'idle' | 'prompting' | 'configuring' | 'generating' | 'results';
+    inputImage: string | null;
+    outputImage: string | null;
+    referenceImage: string | null;
+    generatedPrompt: string;
+    additionalNotes: string;
+    finalPrompt: string | null;
+    generatedImage: string | null;
+    historicalImages: { url: string; prompt: string; }[];
+    options: {
+        removeWatermark: boolean;
+        aspectRatio: string;
+    };
+    error: string | null;
+}
+
 
 // Union type for all possible app states
 export type AnyAppState =
@@ -527,7 +544,8 @@ export type AnyAppState =
   | SwapStyleState
   | MixStyleState
   | FreeGenerationState
-  | ToyModelCreatorState;
+  | ToyModelCreatorState
+  | ImageInterpolationState;
 
 // --- App Navigation & State Types (Moved from App.tsx) ---
 export interface AppConfig {
@@ -537,8 +555,8 @@ export interface AppConfig {
     icon: string;
 }
 
-export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'blulagoo' | 'life';
-const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'blulagoo', 'life'];
+export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life';
+const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'emerald-water', 'life'];
 
 export type HomeView = { viewId: 'home'; state: HomeState };
 export type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
@@ -550,6 +568,7 @@ export type SwapStyleView = { viewId: 'swap-style'; state: SwapStyleState };
 export type MixStyleView = { viewId: 'mix-style'; state: MixStyleState };
 export type FreeGenerationView = { viewId: 'free-generation'; state: FreeGenerationState };
 export type ToyModelCreatorView = { viewId: 'toy-model-creator'; state: ToyModelCreatorState };
+export type ImageInterpolationView = { viewId: 'image-interpolation'; state: ImageInterpolationState };
 
 export type ViewState =
   | HomeView
@@ -561,7 +580,8 @@ export type ViewState =
   | SwapStyleView
   | MixStyleView
   | FreeGenerationView
-  | ToyModelCreatorView;
+  | ToyModelCreatorView
+  | ImageInterpolationView;
 
 // Helper function to get initial state for an app
 export const getInitialStateForApp = (viewId: string): AnyAppState => {
@@ -586,6 +606,8 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
             return { stage: 'configuring', image1: null, image2: null, generatedImages: [], historicalImages: [], options: { prompt: '', removeWatermark: false, numberOfImages: 1, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'toy-model-creator':
             return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { computerType: 'Tự động', softwareType: 'Tự động', boxType: 'Tự động', background: 'Tự động', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
+        case 'image-interpolation':
+             return { stage: 'idle', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         default:
             return { stage: 'home' };
     }
@@ -672,7 +694,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, []);
 
     useEffect(() => {
-        document.body.classList.remove('theme-sdvn', 'theme-vietnam', 'theme-dark', 'theme-ocean-blue', 'theme-blue-sky', 'theme-black-night', 'theme-clear-sky', 'theme-skyline', 'theme-blulagoo', 'theme-life');
+        document.body.classList.remove('theme-sdvn', 'theme-vietnam', 'theme-dark', 'theme-ocean-blue', 'theme-blue-sky', 'theme-black-night', 'theme-clear-sky', 'theme-skyline', 'theme-blulagoo', 'theme-life', 'theme-emerald-water');
         document.body.classList.add(`theme-${theme}`);
         localStorage.setItem('app-theme', theme);
     }, [theme]);
@@ -929,10 +951,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                 )}
             </AnimatePresence>
 
-            <div className="w-full flex-1 flex items-start md:items-center justify-center overflow-y-auto md:overflow-x-auto py-4">
+            <div className="w-full flex-1 flex items-start justify-center overflow-y-auto md:overflow-x-auto py-4">
                 <motion.div
                     layout
-                    className="flex flex-col md:flex-row flex-nowrap items-stretch md:items-center justify-start gap-8 px-4 md:px-8 w-full md:w-max mx-auto py-4"
+                    className="flex flex-col md:flex-row flex-nowrap items-start md:items-stretch justify-start gap-8 px-4 md:px-8 w-full md:w-max mx-auto py-4"
                 >
                     {originalImage && (
                         <motion.div
