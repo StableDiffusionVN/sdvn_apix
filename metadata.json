@@ -1,6 +1,6 @@
 {
-  "name": "🌈 aPix",
-  "description": "Tuyển tập các ứng dụng với Gemini Image",
+  "name": "🌈 aPix_by_sdvn.vn",
+  "description": "Ứng dụng chỉnh sửa, tạo ảnh đa dụng được phát triển bởi sdvn.vn | Cộng đồng AI Art Việt Nam",
   "requestFramePermissions": [
     "camera"
   ]
