@@ -76,7 +76,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
 
     // --- Determine button visibility based on the card's role (type) ---
     const isDownloadable = type === 'output';
-    const isEditable = type === 'photo-input' || type === 'content-input' || type === 'multi-input' || type === 'output';
+    const isEditable = type !== 'uploader' && type !== 'display';
     const isSwappable = type !== 'output' && type !== 'display';
     const isRegeneratable = type === 'output';
     const isGallerySelectable = type !== 'output' && type !== 'display';

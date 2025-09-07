@@ -102,6 +102,7 @@ const AppToolbar: React.FC = () => {
     return (
         <>
             <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
+                {/* --- Group 1: Navigation & Info --- */}
                 <button
                     onClick={handleGoHome}
                     className="btn-search"
@@ -139,28 +140,6 @@ const AppToolbar: React.FC = () => {
                     </svg>
                 </button>
                 <button
-                    onClick={handleOpenGallery}
-                    className="btn-gallery"
-                    aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
-                    onMouseEnter={(e) => showTooltip("Thư viện ảnh (Cmd/Ctrl+G)", e)}
-                    onMouseLeave={hideTooltip}
-                >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                </button>
-                <button
-                    onClick={handleOpenEditor}
-                    className="btn-search"
-                    aria-label="Mở trình chỉnh sửa ảnh (Cmd/Ctrl+E)"
-                    onMouseEnter={(e) => showTooltip("Trình chỉnh sửa ảnh (Cmd/Ctrl+E)", e)}
-                    onMouseLeave={hideTooltip}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-                    </svg>
-                </button>
-                <button
                     onClick={handleOpenSearch}
                     className="btn-search"
                     aria-label="Tìm kiếm ứng dụng (Cmd/Ctrl+F)"
@@ -182,20 +161,44 @@ const AppToolbar: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </button>
-
-                <div className="w-px h-5 bg-white/20 mx-1 self-center" />
                 
-                <button
-                    onClick={toggleExtraTools}
-                    className={cn("btn-search", isExtraToolsOpen && 'bg-white/20')}
-                    aria-label="Công cụ bổ sung"
-                    onMouseEnter={(e) => showTooltip("Công cụ bổ sung", e)}
-                    onMouseLeave={hideTooltip}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                    </svg>
-                </button>
+                {/* --- Group 2: Creation & Tools (Hidden on mobile) --- */}
+                <div className="hidden md:flex items-center gap-2">
+                    <div className="w-px h-5 bg-white/20 mx-1 self-center" />
+                    <button
+                        onClick={handleOpenGallery}
+                        className="btn-gallery"
+                        aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
+                        onMouseEnter={(e) => showTooltip("Thư viện ảnh (Cmd/Ctrl+G)", e)}
+                        onMouseLeave={hideTooltip}
+                    >
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={handleOpenEditor}
+                        className="btn-search"
+                        aria-label="Mở trình chỉnh sửa ảnh (Cmd/Ctrl+E)"
+                        onMouseEnter={(e) => showTooltip("Trình chỉnh sửa ảnh (Cmd/Ctrl+E)", e)}
+                        onMouseLeave={hideTooltip}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={toggleExtraTools}
+                        className={cn("btn-search", isExtraToolsOpen && 'bg-white/20')}
+                        aria-label="Công cụ bổ sung"
+                        onMouseEnter={(e) => showTooltip("Công cụ bổ sung", e)}
+                        onMouseLeave={hideTooltip}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <ExtraTools isOpen={isExtraToolsOpen} />
             <AnimatePresence>
