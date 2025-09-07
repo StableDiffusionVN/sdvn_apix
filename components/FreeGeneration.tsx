@@ -194,14 +194,12 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                  <ActionablePolaroidCard
+                    type={currentImage ? 'multi-input' : 'uploader'}
                     caption={caption}
                     status="done"
                     mediaUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
-                    isEditable={!!currentImage}
-                    isSwappable={true}
-                    isGallerySelectable={true}
                     onImageChange={id === 'free-gen-upload-1' ? handleSaveImage1 : handleSaveImage2}
                 />
             </label>
@@ -224,34 +222,36 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
             {appState.stage === 'configuring' && (
                  <motion.div
-                    className="flex flex-col items-center gap-8 w-full max-w-7xl py-6 overflow-y-auto"
+                    className="flex flex-col items-center gap-8 w-full max-w-screen-2xl py-6 overflow-y-auto"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <div className="flex flex-col md:flex-row items-start justify-center gap-8">
-                        <Uploader 
-                            id="free-gen-upload-1"
-                            onUpload={handleImage1Upload}
-                            caption={uploaderCaption1}
-                            description={uploaderDescription1}
-                            currentImage={appState.image1}
-                            placeholderType="magic"
-                        />
-                        <AnimatePresence>
-                        {appState.image1 && (
-                            <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                                <Uploader 
-                                    id="free-gen-upload-2"
-                                    onUpload={handleImage2Upload}
-                                    caption={uploaderCaption2}
-                                    description={uploaderDescription2}
-                                    currentImage={appState.image2}
-                                    placeholderType="magic"
-                                />
-                            </motion.div>
-                        )}
-                        </AnimatePresence>
+                    <div className="w-full overflow-x-auto pb-4">
+                        <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-6 md:gap-8 w-full md:w-max mx-auto px-4">
+                            <Uploader 
+                                id="free-gen-upload-1"
+                                onUpload={handleImage1Upload}
+                                caption={uploaderCaption1}
+                                description={uploaderDescription1}
+                                currentImage={appState.image1}
+                                placeholderType="magic"
+                            />
+                            <AnimatePresence>
+                            {appState.image1 && (
+                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                                    <Uploader 
+                                        id="free-gen-upload-2"
+                                        onUpload={handleImage2Upload}
+                                        caption={uploaderCaption2}
+                                        description={uploaderDescription2}
+                                        currentImage={appState.image2}
+                                        placeholderType="magic"
+                                    />
+                                </motion.div>
+                            )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                      
                     <OptionsPanel>
@@ -268,6 +268,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 <li>Không input ảnh để sử dụng <strong>Imagen</strong>.</li>
                                 <li>Input ảnh để sử dụng <strong>Gemini Image</strong> (chỉnh sửa ảnh).</li>
                                 <li>Trường hợp input nhiều ảnh, nên đặt ảnh chính làm ảnh cuối cùng.</li>
+                                <li>Ảnh input chính nên được crop đúng tỉ lệ mong muốn của ảnh output.</li>
                             </ul>
                         </div>
 
@@ -356,7 +357,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard caption="Ảnh gốc 2" status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} isEditable={true} onImageChange={handleSaveImage2} />
+                            <ActionablePolaroidCard type="multi-input" caption="Ảnh gốc 2" status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onImageChange={handleSaveImage2} />
                         </motion.div>
                     )}
                     {
@@ -369,7 +370,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 + index * 0.1 }}
                             >
-                                <ActionablePolaroidCard caption={`Kết quả ${index + 1}`} status="pending" />
+                                <ActionablePolaroidCard type="output" caption={`Kết quả ${index + 1}`} status="pending" />
                             </motion.div>
                         ))
                        :
@@ -383,17 +384,15 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 whileHover={{ scale: 1.05, zIndex: 10 }}
                             >
                                 <ActionablePolaroidCard
+                                    type="output"
                                     caption={`Kết quả ${index + 1}`}
                                     status={'done'}
                                     mediaUrl={url}
-                                    isDownloadable={true}
-                                    isEditable={true}
-                                    isRegeneratable={true}
                                     onGenerateVideoFromPrompt={(prompt) => generateVideo(url, prompt)}
                                     onImageChange={handleSaveGeneratedImage(index)}
                                     onRegenerate={(prompt) => handleRegeneration(index, prompt)}
                                     regenerationTitle="Tinh chỉnh ảnh hoặc Tạo video"
-                                    regenerationDescription="Thêm yêu cầu để cải thiện ảnh, hoặc dùng prompt để tạo video"
+                                    regenerationDescription="Thêm yêu cầu để cải thiện ảnh, hoặc dùng nó để tạo video"
                                     regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn..."
                                     onClick={() => openLightbox(lightboxImages.indexOf(url))}
                                     isMobile={isMobile}
@@ -413,11 +412,11 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                             >
                                 <ActionablePolaroidCard
+                                    type="output"
                                     caption="Video"
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
-                                    isDownloadable={videoTask.status === 'done'}
                                     onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -433,6 +432,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             transition={{ type: 'spring', stiffness: 80, damping: 15 }}
                         >
                             <ActionablePolaroidCard
+                                type="output"
                                 caption="Lỗi"
                                 status="error"
                                 error={appState.error}

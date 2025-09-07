@@ -294,8 +294,6 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
             {appState.stage === 'idle' && (
                 <ImageUploader 
-                    id="avatar-upload"
-                    onImageUpload={handleImageUpload}
                     onImageChange={handleImageSelectedForUploader}
                     uploaderCaption={uploaderCaption}
                     uploaderDescription={uploaderDescription}
@@ -310,14 +308,12 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <ActionablePolaroidCard 
-                        mediaUrl={appState.uploadedImage} 
-                        caption="Ảnh của bạn" 
+                    <ActionablePolaroidCard
+                        type="photo-input"
+                        mediaUrl={appState.uploadedImage}
+                        caption="Ảnh của bạn"
                         status="done"
                         onClick={() => openLightbox(0)}
-                        isEditable={true}
-                        isSwappable={true}
-                        isGallerySelectable={true}
                         onImageChange={handleUploadedImageChange}
                     />
 
@@ -445,13 +441,11 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
                             >
                                 <ActionablePolaroidCard
+                                    type="output"
                                     caption={idea}
                                     status={imageState?.status || 'pending'}
                                     mediaUrl={imageState?.url}
                                     error={imageState?.error}
-                                    isDownloadable={true}
-                                    isEditable={true}
-                                    isRegeneratable={true}
                                     onImageChange={handleGeneratedImageChange(idea)}
                                     onRegenerate={(prompt) => handleRegenerateIdea(idea, prompt)}
                                     onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
@@ -474,11 +468,11 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                             >
                                 <ActionablePolaroidCard
+                                    type="output"
                                     caption="Video"
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
-                                    isDownloadable={videoTask.status === 'done'}
                                     onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
                                     isMobile={isMobile}
                                 />

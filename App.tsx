@@ -10,7 +10,7 @@ import Home from './components/Home';
 import ArchitectureIdeator from './components/ArchitectureIdeator';
 import AvatarCreator from './components/AvatarCreator';
 // FIX: Module '"file:///components/DressTheModel"' has no default export.
-import { DressTheModel } from './components/DressTheModel';
+import DressTheModel from './components/DressTheModel';
 import PhotoRestoration from './components/PhotoRestoration';
 import ImageToReal from './components/ImageToReal';
 import SwapStyle from './components/SwapStyle';
@@ -18,16 +18,20 @@ import MixStyle from './components/MixStyle';
 import FreeGeneration from './components/FreeGeneration';
 import ToyModelCreator from './components/ToyModelCreator';
 // FIX: Module '"file:///components/ImageInterpolation"' has no default export.
-import { ImageInterpolation } from './components/ImageInterpolation';
+import ImageInterpolation from './components/ImageInterpolation';
 import SearchModal from './components/SearchModal';
 import GalleryModal from './components/GalleryModal';
 import InfoModal from './components/InfoModal';
 import AppToolbar from './components/AppToolbar';
+import LoginScreen from './components/LoginScreen';
+import UserStatus from './components/UserStatus';
 import { ImageEditorModal } from './components/ImageEditorModal';
 import {
     renderSmartlyWrappedTitle,
     useImageEditor,
     useAppControls,
+    useAuth,
+    ImageLayoutModal
 } from './components/uiUtils';
 
 function App() {
@@ -39,6 +43,7 @@ function App() {
         isSearchOpen,
         isGalleryOpen,
         isInfoOpen,
+        isImageLayoutModalOpen,
         handleThemeChange,
         handleSelectApp,
         handleStateChange,
@@ -48,9 +53,11 @@ function App() {
         handleCloseSearch,
         handleCloseGallery,
         handleCloseInfo,
+        closeImageLayoutModal,
     } = useAppControls();
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
+    const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
 
     const renderContent = () => {
         if (!settings) return null; // Wait for settings to load
@@ -193,10 +200,26 @@ function App() {
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="w-screen h-screen flex items-center justify-center bg-neutral-900">
+                <svg className="animate-spin h-10 w-10 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        );
+    }
+
+    if (loginSettings?.enabled && !isLoggedIn) {
+        return <LoginScreen />;
+    }
+
     return (
         <main className="text-neutral-200 min-h-screen w-full relative">
             <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
             
+            {isLoggedIn && currentUser && <UserStatus />}
             <AppToolbar />
 
             <div className="relative z-10 w-full min-h-screen flex flex-row items-center justify-center px-4 pt-16 pb-24">
@@ -226,6 +249,10 @@ function App() {
             <ImageEditorModal 
                 imageToEdit={imageToEdit}
                 onClose={closeImageEditor}
+            />
+            <ImageLayoutModal
+                isOpen={isImageLayoutModalOpen}
+                onClose={closeImageLayoutModal}
             />
             <Footer theme={theme} onThemeChange={handleThemeChange} />
         </main>

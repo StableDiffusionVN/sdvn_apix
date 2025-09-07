@@ -195,8 +195,6 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
             <div className="flex flex-col items-center justify-center w-full flex-1">
                 {appState.stage === 'idle' && (
                     <ImageUploader
-                        id="photo-restore-upload"
-                        onImageUpload={handleImageUpload}
                         onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
@@ -207,8 +205,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
-                            <ActionablePolaroidCard mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleUploadedImageChange} />
+                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange} />
                         </div>
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Thông tin bổ sung</h2>
@@ -234,7 +231,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                                         }}
                                         onBlur={() => handleOptionChange('nationality', nationalitySearch)}
                                         className="form-input"
-                                        placeholder="Tìm kiếm quốc gia..."
+                                        placeholder="Tìm hoặc để trống cho Tự động..."
                                     />
                                     {isNationalityDropdownOpen && (
                                         <ul className="searchable-dropdown-list">
@@ -309,12 +306,10 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
-                        {/* FIX: Replaced incorrect 'imageUrl' prop with 'mediaUrl'. */}
-                        <ActionablePolaroidCard caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                        <ActionablePolaroidCard
+                            type="output"
+                            caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            isDownloadable={true}
-                            isEditable={true}
-                            isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             regenerationTitle="Tinh chỉnh ảnh"

@@ -4,7 +4,8 @@
 */
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppControls, useImageEditor } from './uiUtils';
+import { useAppControls, useImageEditor, ExtraTools } from './uiUtils';
+import { cn } from '../lib/utils';
 
 const AppToolbar: React.FC = () => {
     const {
@@ -17,7 +18,9 @@ const AppToolbar: React.FC = () => {
         handleOpenGallery,
         handleOpenSearch,
         handleOpenInfo,
-        addImagesToGallery
+        addImagesToGallery,
+        isExtraToolsOpen,
+        toggleExtraTools,
     } = useAppControls();
 
     const { openEmptyImageEditor, imageToEdit } = useImageEditor();
@@ -179,7 +182,22 @@ const AppToolbar: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </button>
+
+                <div className="w-px h-5 bg-white/20 mx-1 self-center" />
+                
+                <button
+                    onClick={toggleExtraTools}
+                    className={cn("btn-search", isExtraToolsOpen && 'bg-white/20')}
+                    aria-label="Công cụ bổ sung"
+                    onMouseEnter={(e) => showTooltip("Công cụ bổ sung", e)}
+                    onMouseLeave={hideTooltip}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                    </svg>
+                </button>
             </div>
+            <ExtraTools isOpen={isExtraToolsOpen} />
             <AnimatePresence>
                 {activeTooltip && (
                     <motion.div

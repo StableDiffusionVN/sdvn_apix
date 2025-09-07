@@ -17,6 +17,7 @@ interface PolaroidCardProps {
     onEdit?: (caption: string) => void;
     onSwapImage?: () => void;
     onSelectFromGallery?: () => void;
+    onCaptureFromWebcam?: () => void;
     isMobile?: boolean;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
     onClick?: () => void;
@@ -77,7 +78,7 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, isMobile, placeholderType = 'person', onClick }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, onCaptureFromWebcam, isMobile, placeholderType = 'person', onClick }) => {
     const hasMedia = status === 'done' && mediaUrl;
     const isVideo = hasMedia && mediaUrl!.startsWith('blob:');
     const isClickable = !!onClick;
@@ -133,7 +134,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
                 {/* --- BUTTON CONTAINER --- */}
                 <div className={cn(
                     "absolute top-2 right-2 z-20 flex flex-col gap-2 transition-opacity duration-300",
-                    (hasMedia || onSelectFromGallery) ? (!isMobile ? 'opacity-0 group-hover:opacity-100' : '') : 'opacity-0 pointer-events-none'
+                    (hasMedia || onSelectFromGallery || onCaptureFromWebcam) ? (!isMobile ? 'opacity-0 group-hover:opacity-100' : '') : 'opacity-0 pointer-events-none'
                 )}>
                      {hasMedia && onEdit && (
                         <button
@@ -174,6 +175,32 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    )}
+                    {onCaptureFromWebcam && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onCaptureFromWebcam();
+                            }}
+                            className="p-2 bg-black/50 rounded-full text-white hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white"
+                            aria-label={`Chụp ảnh từ webcam`}
+                        >
+                            <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                viewBox="0 0 32 32" 
+                                className="h-5 w-5" 
+                                stroke="currentColor" 
+                                strokeWidth="2" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                            >
+                                <circle fill="none" cx="16" cy="14" r="11"/>
+                                <circle fill="none" cx="16" cy="14" r="5"/>
+                                <circle fill="none" cx="16" cy="14" r="1"/>
+                                <path fill="none" d="M21.8,23.3l2.4,2.2c1.4,1.2,0.5,3.5-1.3,3.5H9.2c-1.8,0-2.7-2.2-1.3-3.5l2.4-2.2"/>
+                                <circle fill="currentColor" stroke="none" cx="22" cy="9" r="1"/>
                             </svg>
                         </button>
                     )}

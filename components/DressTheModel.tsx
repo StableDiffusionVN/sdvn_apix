@@ -18,6 +18,7 @@ import {
     OptionsPanel,
     useVideoGeneration,
     processAndDownloadAll,
+    SearchableSelect,
 } from './uiUtils';
 
 interface DressTheModelProps {
@@ -39,11 +40,11 @@ interface DressTheModelProps {
 
 const BACKGROUND_OPTIONS = ['Tự động', 'Giữ nguyên bối cảnh gốc', 'Studio (đơn sắc, xám, trắng)', 'Đường phố Paris', 'Đường phố Tokyo ban đêm', 'Đường phố New York', 'Thiên nhiên (bãi biển, rừng cây, núi non)', 'Nội thất sang trọng (khách sạn, biệt thự)', 'Sự kiện (thảm đỏ, sàn diễn thời trang)', 'Bối cảnh nghệ thuật (abstract, gradient)', 'Quán cà phê ấm cúng', 'Thư viện cổ kính', 'Khu vườn thượng uyển', 'Sân thượng thành phố lúc hoàng hôn', 'Hẻm nhỏ graffiti', 'Bên trong một viện bảo tàng nghệ thuật', 'Lâu đài cổ tích', 'Khu chợ địa phương sầm uất', 'Cánh đồng hoa oải hương', 'Bến du thuyền sang trọng', 'Ga tàu hỏa cổ điển', 'Loft công nghiệp (Industrial loft)'];
 const POSE_OPTIONS = ['Tự động', 'Giữ nguyên tư thế gốc', 'Đứng thẳng (chuyên nghiệp, lookbook)', 'Tạo dáng high-fashion (ấn tượng, nghệ thuật)', 'Ngồi (trên ghế, bậc thang, sofa)', 'Đi bộ (tự nhiên, sải bước trên phố)', 'Chuyển động (xoay người, nhảy múa)', 'Dựa vào tường', 'Nhìn qua vai', 'Tay trong túi quần', 'Chân bắt chéo', 'Cúi người', 'Nằm trên sàn/cỏ', 'Chạy/Nhảy', 'Tạo dáng hành động (action pose)', 'Tương tác với phụ kiện (cầm túi, đội mũ)', 'Tư thế yoga/thiền', 'Cười rạng rỡ', 'Biểu cảm suy tư', 'Chống hông', 'Giơ tay lên trời'];
+// FIX: Corrected typo "Fisye" to "Fisheye".
 const PHOTO_STYLE_OPTIONS = ['Tự động', 'Ảnh bìa tạp chí (Vogue, Harper\'s Bazaar)', 'Ảnh lookbook sản phẩm', 'Chân dung cận cảnh', 'Ảnh chụp đường phố (Street style)', 'Phong cách phim điện ảnh (Cinematic)', 'Ảnh chụp tự nhiên (Candid)', 'Ảnh chụp bằng máy phim (35mm film grain)', 'Ảnh Polaroid', 'Ảnh đen trắng cổ điển', 'Ảnh high-key (sáng, ít bóng)', 'Ảnh low-key (tối, tương phản cao)', 'Góc máy Hà Lan (Dutch angle)', 'Ảnh mắt cá (Fisheye lens)', 'Chồng ảnh (Double exposure)', 'Phong cách Lomography (màu sắc rực rỡ, vignette)', 'Chụp từ góc thấp', 'Chụp từ góc cao (bird\'s eye view)', 'Chuyển động mờ (Motion blur)', 'Chân dung siêu thực (Surreal portrait)', 'Ảnh có vệt sáng (Light leaks)'];
 const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
 
-// FIX: This component was not implemented, causing it to return 'void'.
-export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
+const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const { 
         uploaderCaptionModel, uploaderDescriptionModel,
         uploaderCaptionClothing, uploaderDescriptionClothing,
@@ -56,37 +57,6 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
     
-    // Searchable dropdown states
-    const [backgroundSearch, setBackgroundSearch] = useState(appState.options.background);
-    const [isBackgroundDropdownOpen, setIsBackgroundDropdownOpen] = useState(false);
-    const backgroundDropdownRef = useRef<HTMLDivElement>(null);
-    const [poseSearch, setPoseSearch] = useState(appState.options.pose);
-    const [isPoseDropdownOpen, setIsPoseDropdownOpen] = useState(false);
-    const poseDropdownRef = useRef<HTMLDivElement>(null);
-    const [styleSearch, setStyleSearch] = useState(appState.options.style);
-    const [isStyleDropdownOpen, setIsStyleDropdownOpen] = useState(false);
-    const styleDropdownRef = useRef<HTMLDivElement>(null);
-    
-    const filteredBackgrounds = BACKGROUND_OPTIONS.filter(opt => opt.toLowerCase().includes(backgroundSearch.toLowerCase()));
-    const filteredPoses = POSE_OPTIONS.filter(opt => opt.toLowerCase().includes(poseSearch.toLowerCase()));
-    const filteredStyles = PHOTO_STYLE_OPTIONS.filter(opt => opt.toLowerCase().includes(styleSearch.toLowerCase()));
-    
-    useEffect(() => {
-        setBackgroundSearch(appState.options.background);
-        setPoseSearch(appState.options.pose);
-        setStyleSearch(appState.options.style);
-    }, [appState.options]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (backgroundDropdownRef.current && !backgroundDropdownRef.current.contains(event.target as Node)) setIsBackgroundDropdownOpen(false);
-            if (poseDropdownRef.current && !poseDropdownRef.current.contains(event.target as Node)) setIsPoseDropdownOpen(false);
-            if (styleDropdownRef.current && !styleDropdownRef.current.contains(event.target as Node)) setIsStyleDropdownOpen(false);
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
     const lightboxImages = [appState.modelImage, appState.clothingImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     const handleModelImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -142,30 +112,12 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const handleOptionChange = (field: keyof DressTheModelState['options'], value: string | boolean) => {
         onStateChange({ ...appState, options: { ...appState.options, [field]: value } });
     };
-    
-    const handleSelectOption = (field: keyof DressTheModelState['options'], value: string) => {
-        handleOptionChange(field, value);
-        switch(field) {
-            case 'background':
-                setBackgroundSearch(value);
-                setIsBackgroundDropdownOpen(false);
-                break;
-            case 'pose':
-                setPoseSearch(value);
-                setIsPoseDropdownOpen(false);
-                break;
-            case 'style':
-                setStyleSearch(value);
-                setIsStyleDropdownOpen(false);
-                break;
-        }
-    };
-
 
     const executeInitialGeneration = async () => {
         if (!appState.modelImage || !appState.clothingImage) return;
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
+            // No need to transform options, the service handles '' and 'Tự động' correctly
             const resultUrl = await generateDressedModelImage(appState.modelImage, appState.clothingImage, appState.options);
             onStateChange({ ...appState, stage: 'results', generatedImage: resultUrl, historicalImages: [...appState.historicalImages, resultUrl] });
             addImagesToGallery([resultUrl]);
@@ -210,13 +162,17 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         });
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, onImageChange, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, caption, description, currentImage, onImageChange, placeholderType, cardType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                 <ActionablePolaroidCard
-                    caption={caption} status="done" mediaUrl={currentImage || undefined} placeholderType={placeholderType}
+                    type={currentImage ? cardType : 'uploader'}
+                    caption={caption}
+                    status="done"
+                    mediaUrl={currentImage || undefined}
+                    placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
-                    isEditable={!!currentImage} isSwappable={true} isGallerySelectable={true} onImageChange={onImageChange}
+                    onImageChange={onImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -233,67 +189,55 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
             </AnimatePresence>
 
             {appState.stage === 'idle' && (
-                <motion.div className="flex flex-col md:flex-row items-start justify-center gap-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <Uploader id="model-upload" onUpload={handleModelImageUpload} onImageChange={handleModelImageChange} caption={uploaderCaptionModel} description={uploaderDescriptionModel} currentImage={appState.modelImage} placeholderType="person" />
-                    <Uploader id="clothing-upload" onUpload={handleClothingImageUpload} onImageChange={handleClothingImageChange} caption={uploaderCaptionClothing} description={uploaderDescriptionClothing} currentImage={appState.clothingImage} placeholderType="clothing" />
-                </motion.div>
+                <div className="w-full overflow-x-auto pb-4">
+                    <motion.div
+                        className="flex flex-col md:flex-row items-center md:items-start justify-center gap-6 md:gap-8 w-full md:w-max mx-auto px-4"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <Uploader id="model-upload" onUpload={handleModelImageUpload} onImageChange={handleModelImageChange} caption={uploaderCaptionModel} description={uploaderDescriptionModel} currentImage={appState.modelImage} placeholderType="person" cardType="photo-input" />
+                        <Uploader id="clothing-upload" onUpload={handleClothingImageUpload} onImageChange={handleClothingImageChange} caption={uploaderCaptionClothing} description={uploaderDescriptionClothing} currentImage={appState.clothingImage} placeholderType="clothing" cardType="clothing-input" />
+                    </motion.div>
+                </div>
             )}
 
             {appState.stage === 'configuring' && appState.modelImage && appState.clothingImage && (
-                <motion.div className="flex flex-col items-center gap-8 w-full max-w-7xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                    <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
-                        <ActionablePolaroidCard mediaUrl={appState.modelImage} caption="Người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleModelImageChange} />
-                        <ActionablePolaroidCard mediaUrl={appState.clothingImage} caption="Trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
+                <motion.div className="flex flex-col items-center gap-8 w-full max-w-screen-2xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                    <div className="w-full overflow-x-auto pb-4">
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 w-full md:w-max mx-auto px-4">
+                            <ActionablePolaroidCard type="photo-input" mediaUrl={appState.modelImage} caption="Người mẫu" status="done" onClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} onImageChange={handleModelImageChange} />
+                            <ActionablePolaroidCard type="clothing-input" mediaUrl={appState.clothingImage} caption="Trang phục" status="done" onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onImageChange={handleClothingImageChange} />
+                        </div>
                     </div>
 
                     <OptionsPanel className="max-w-4xl">
                         <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div ref={backgroundDropdownRef} className="searchable-dropdown-container">
-                                <label htmlFor="background-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Bối cảnh</label>
-                                <input type="text" id="background-search" value={backgroundSearch}
-                                    onChange={(e) => { setBackgroundSearch(e.target.value); handleOptionChange('background', e.target.value); setIsBackgroundDropdownOpen(true); }}
-                                    onFocus={() => setIsBackgroundDropdownOpen(true)}
-                                    onBlur={() => setTimeout(() => setIsBackgroundDropdownOpen(false), 200)}
-                                    className="form-input" placeholder="Tìm hoặc nhập bối cảnh..." autoComplete="off" />
-                                {isBackgroundDropdownOpen && (
-                                    <ul className="searchable-dropdown-list">
-                                        {filteredBackgrounds.length > 0 ? filteredBackgrounds.map(opt => (
-                                            <li key={opt} onMouseDown={() => handleSelectOption('background', opt)} className="searchable-dropdown-item">{opt}</li>
-                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
-                                    </ul>
-                                )}
-                            </div>
-                            <div ref={poseDropdownRef} className="searchable-dropdown-container">
-                                <label htmlFor="pose-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tư thế</label>
-                                <input type="text" id="pose-search" value={poseSearch}
-                                    onChange={(e) => { setPoseSearch(e.target.value); handleOptionChange('pose', e.target.value); setIsPoseDropdownOpen(true); }}
-                                    onFocus={() => setIsPoseDropdownOpen(true)}
-                                    onBlur={() => setTimeout(() => setIsPoseDropdownOpen(false), 200)}
-                                    className="form-input" placeholder="Tìm hoặc nhập tư thế..." autoComplete="off" />
-                                {isPoseDropdownOpen && (
-                                    <ul className="searchable-dropdown-list">
-                                        {filteredPoses.length > 0 ? filteredPoses.map(opt => (
-                                            <li key={opt} onMouseDown={() => handleSelectOption('pose', opt)} className="searchable-dropdown-item">{opt}</li>
-                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
-                                    </ul>
-                                )}
-                            </div>
-                            <div ref={styleDropdownRef} className="searchable-dropdown-container">
-                                <label htmlFor="style-search" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Phong cách ảnh</label>
-                                <input type="text" id="style-search" value={styleSearch}
-                                    onChange={(e) => { setStyleSearch(e.target.value); handleOptionChange('style', e.target.value); setIsStyleDropdownOpen(true); }}
-                                    onFocus={() => setIsStyleDropdownOpen(true)}
-                                    onBlur={() => setTimeout(() => setIsStyleDropdownOpen(false), 200)}
-                                    className="form-input" placeholder="Tìm hoặc nhập phong cách..." autoComplete="off" />
-                                {isStyleDropdownOpen && (
-                                    <ul className="searchable-dropdown-list">
-                                        {filteredStyles.length > 0 ? filteredStyles.map(opt => (
-                                            <li key={opt} onMouseDown={() => handleSelectOption('style', opt)} className="searchable-dropdown-item">{opt}</li>
-                                        )) : (<li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>)}
-                                    </ul>
-                                )}
-                            </div>
+                            <SearchableSelect
+                                id="background"
+                                label="Bối cảnh"
+                                options={BACKGROUND_OPTIONS}
+                                value={appState.options.background}
+                                onChange={(value) => handleOptionChange('background', value)}
+                                placeholder="Tìm hoặc nhập bối cảnh..."
+                            />
+                            <SearchableSelect
+                                id="pose"
+                                label="Tư thế"
+                                options={POSE_OPTIONS}
+                                value={appState.options.pose}
+                                onChange={(value) => handleOptionChange('pose', value)}
+                                placeholder="Tìm hoặc nhập tư thế..."
+                            />
+                             <SearchableSelect
+                                id="style"
+                                label="Phong cách ảnh"
+                                options={PHOTO_STYLE_OPTIONS}
+                                value={appState.options.style}
+                                onChange={(value) => handleOptionChange('style', value)}
+                                placeholder="Tìm hoặc nhập phong cách..."
+                            />
                              <div>
                                 <label htmlFor="aspect-ratio-dress" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỷ lệ khung ảnh</label>
                                 <select id="aspect-ratio-dress" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
@@ -327,15 +271,15 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 }>
                     {appState.clothingImage && (
                         <motion.div key="clothing" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard caption="Trang phục" status="done" mediaUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} isEditable={true} isSwappable={true} isGallerySelectable={true} onImageChange={handleClothingImageChange} />
+                            <ActionablePolaroidCard type="clothing-input" caption="Trang phục" status="done" mediaUrl={appState.clothingImage} isMobile={isMobile} onClick={() => appState.clothingImage && openLightbox(lightboxImages.indexOf(appState.clothingImage))} onImageChange={handleClothingImageChange} />
                         </motion.div>
                     )}
                     <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-dress" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }} whileHover={{ scale: 1.05, zIndex: 10 }}>
                         <ActionablePolaroidCard
+                            type="output"
                             caption="Kết quả"
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
-                            isDownloadable={true} isEditable={true} isRegeneratable={true}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
@@ -358,11 +302,11 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                             >
                                 <ActionablePolaroidCard
+                                    type="output"
                                     caption="Video"
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
-                                    isDownloadable={videoTask.status === 'done'}
                                     onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -376,3 +320,5 @@ export const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         </div>
     );
 };
+
+export default DressTheModel;

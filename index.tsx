@@ -5,7 +5,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { ImageEditorProvider, AppControlProvider } from './components/uiUtils';
+import { AuthProvider, ImageEditorProvider, AppControlProvider } from './components/uiUtils';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,10 +15,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ImageEditorProvider>
-        <AppControlProvider>
-            <App />
-        </AppControlProvider>
-    </ImageEditorProvider>
+    <AuthProvider>
+        <ImageEditorProvider>
+            <AppControlProvider>
+                <App />
+            </AppControlProvider>
+        </ImageEditorProvider>
+    </AuthProvider>
   </React.StrictMode>
 );

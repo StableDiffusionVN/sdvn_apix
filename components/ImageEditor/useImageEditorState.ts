@@ -718,32 +718,61 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
 
     const getFinalImage = useCallback((): Promise<string | null> => {
         return new Promise((resolve) => {
-            if (!previewCanvasRef.current || !drawingCanvasRef.current || !sourceImageRef.current) {
+            if (!sourceImageRef.current || !drawingCanvasRef.current) {
                 resolve(null);
                 return;
             }
             setIsLoading(true);
+            
             setTimeout(() => {
                 try {
                     const image = sourceImageRef.current!;
-                    const previewCanvas = previewCanvasRef.current!;
                     const drawingCanvas = drawingCanvasRef.current!;
+
                     const isSwapped = rotation === 90 || rotation === 270;
                     const finalCanvas = document.createElement('canvas');
                     finalCanvas.width = isSwapped ? image.naturalHeight : image.naturalWidth;
                     finalCanvas.height = isSwapped ? image.naturalWidth : image.naturalHeight;
                     const finalCtx = finalCanvas.getContext('2d');
                     if (!finalCtx) throw new Error("Could not get final canvas context");
-                    
+
+                    // 1. Draw transformed source image
+                    const drawWidth = isSwapped ? finalCanvas.height : finalCanvas.width;
+                    const drawHeight = isSwapped ? finalCanvas.width : finalCanvas.height;
+                    finalCtx.save();
+                    finalCtx.translate(finalCanvas.width / 2, finalCanvas.height / 2);
+                    finalCtx.rotate(rotation * Math.PI / 180);
+                    finalCtx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
+                    finalCtx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+                    finalCtx.restore();
+
+                    // 2. Apply pixel adjustments (filters) to the full-res canvas
+                    // We pass ignoreSelection: true because saving applies to the whole image.
+                    applyPixelAdjustments(finalCtx, finalCanvas.width, finalCanvas.height, { ignoreSelection: true });
+
+                    // 3. Apply blur effect
                     if (blur > 0) {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = finalCanvas.width;
+                        tempCanvas.height = finalCanvas.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        if (!tempCtx) throw new Error("Could not get temp canvas context for blur");
+                        tempCtx.drawImage(finalCanvas, 0, 0);
+                        finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
                         finalCtx.filter = `blur(${blur}px)`;
-                    }
-                    finalCtx.drawImage(previewCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
-                    if (blur > 0) {
+                        finalCtx.drawImage(tempCanvas, 0, 0);
                         finalCtx.filter = 'none';
                     }
-                    
-                    finalCtx.drawImage(drawingCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
+
+                    // 4. Draw brush strokes, scaled up
+                    const drawScaleX = finalCanvas.width / drawingCanvas.width;
+                    const drawScaleY = finalCanvas.height / drawingCanvas.height;
+                    finalCtx.save();
+                    finalCtx.scale(drawScaleX, drawScaleY);
+                    finalCtx.drawImage(drawingCanvas, 0, 0);
+                    finalCtx.restore();
+
+                    // 5. Resolve with high-quality PNG
                     resolve(finalCanvas.toDataURL('image/png'));
                 } catch (error) {
                     console.error("Error saving image:", error);
@@ -754,7 +783,10 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 }
             }, 50);
         });
-    }, [rotation, blur]);
+    }, [
+        rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur,
+        luminance, contrast, temp, tint, saturation, vibrance, hue, colorAdjustments, grain, clarity, dehaze, isInverted
+    ]);
     
     // --- More Logic (Shortcuts, Actions) ---
     const handleApplyAllAdjustments = useCallback(() => {
@@ -797,7 +829,8 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 applyPixelAdjustments(finalCtx, finalCanvas.width, finalCanvas.height, { ignoreSelection: true });
                 if (blur > 0) {
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = finalCanvas.width; tempCanvas.height = finalCanvas.height;
+                    tempCanvas.width = finalCanvas.width;
+                    tempCanvas.height = finalCanvas.height;
                     const tempCtx = tempCanvas.getContext('2d');
                     if(!tempCtx) throw new Error("Could not get temp canvas context for blur");
                     tempCtx.drawImage(finalCanvas, 0, 0);

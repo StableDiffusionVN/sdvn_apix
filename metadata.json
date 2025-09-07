@@ -1,5 +1,7 @@
 {
   "name": "🌈 aPix",
   "description": "Tuyển tập các ứng dụng với Gemini Image",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

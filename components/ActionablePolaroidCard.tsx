@@ -11,7 +11,20 @@ import {
     useImageEditor,
     useAppControls,
     GalleryPicker,
+    WebcamCaptureModal,
 } from './uiUtils';
+
+// NEW: More descriptive card types to centralize logic
+type CardType =
+  | 'uploader'          // Generic uploader placeholder for any image type
+  | 'photo-input'       // An input that is specifically a user's photograph (e.g., for an avatar)
+  | 'sketch-input'      // An input that is a sketch or architectural drawing
+  | 'clothing-input'    // An input for a clothing item
+  | 'content-input'     // A generic content image for styling or transformation
+  | 'style-input'       // An image used for its artistic style
+  | 'multi-input'       // A flexible input used in free-form generation
+  | 'output'            // A generated result from the AI
+  | 'display';          // A read-only card with no actions
 
 interface ActionablePolaroidCardProps {
     // Core PolaroidCard props
@@ -23,13 +36,9 @@ interface ActionablePolaroidCardProps {
     isMobile?: boolean;
     onClick?: () => void;
     
-    // Action control flags
-    isDownloadable?: boolean;
-    isEditable?: boolean;
-    isSwappable?: boolean;
-    isRegeneratable?: boolean;
-    isGallerySelectable?: boolean;
-    
+    // Role-based prop to determine which buttons to show
+    type: CardType;
+
     // Callbacks for actions
     onImageChange?: (imageDataUrl: string) => void;
     onRegenerate?: (prompt: string) => void;
@@ -50,11 +59,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     placeholderType,
     isMobile,
     onClick,
-    isDownloadable = false,
-    isEditable = false,
-    isSwappable = false,
-    isRegeneratable = false,
-    isGallerySelectable = false,
+    type,
     onImageChange,
     onRegenerate,
     onGenerateVideoFromPrompt,
@@ -66,8 +71,19 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     const { sessionGalleryImages } = useAppControls();
     const [isRegenModalOpen, setIsRegenModalOpen] = useState(false);
     const [isGalleryPickerOpen, setGalleryPickerOpen] = useState(false);
+    const [isWebcamModalOpen, setWebcamModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // --- Determine button visibility based on the card's role (type) ---
+    const isDownloadable = type === 'output';
+    const isEditable = type === 'photo-input' || type === 'content-input' || type === 'multi-input' || type === 'output';
+    const isSwappable = type !== 'output' && type !== 'display';
+    const isRegeneratable = type === 'output';
+    const isGallerySelectable = type !== 'output' && type !== 'display';
+    // UPDATE: Align webcam capability with other input methods for consistency across all apps.
+    // Now, any card that allows image changes will also show the webcam option.
+    const isWebcamSelectable = type !== 'output' && type !== 'display';
+    
     const handleFileSelected = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         if (onImageChange) {
             handleFileUpload(e, onImageChange);
@@ -122,6 +138,21 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
         setGalleryPickerOpen(false);
     };
 
+    const handleOpenWebcam = useCallback(() => {
+        setWebcamModalOpen(true);
+    }, []);
+
+    const handleWebcamCapture = (imageDataUrl: string) => {
+        if (onImageChange) {
+            onImageChange(imageDataUrl);
+        }
+        setWebcamModalOpen(false);
+    };
+
+    // Determine the primary click action for the card.
+    // If it's an uploader, its main job is to trigger the file input.
+    // Otherwise, use the provided onClick handler (e.g., for opening a lightbox).
+    const effectiveOnClick = type === 'uploader' ? handleSwapClick : onClick;
 
     const showButtons = status === 'done' && mediaUrl;
     const canDoSomething = isRegeneratable || !!onGenerateVideoFromPrompt;
@@ -146,11 +177,12 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 error={error}
                 placeholderType={placeholderType}
                 isMobile={isMobile}
-                onClick={onClick}
+                onClick={effectiveOnClick}
                 onDownload={showButtons && isDownloadable ? handleDownloadClick : undefined}
                 onEdit={showButtons && isEditable ? handleEditClick : undefined}
-                onSwapImage={showButtons && isSwappable ? handleSwapClick : undefined}
+                onSwapImage={isSwappable ? handleSwapClick : undefined}
                 onSelectFromGallery={isGallerySelectable ? handleOpenGalleryPicker : undefined}
+                onCaptureFromWebcam={isWebcamSelectable ? handleOpenWebcam : undefined}
                 onShake={showButtons && canDoSomething ? handleRegenerateClick : undefined}
             />
             {canDoSomething && (
@@ -170,6 +202,11 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 onClose={() => setGalleryPickerOpen(false)}
                 onSelect={handleGalleryImageSelect}
                 images={sessionGalleryImages}
+            />
+            <WebcamCaptureModal
+                isOpen={isWebcamModalOpen}
+                onClose={() => setWebcamModalOpen(false)}
+                onCapture={handleWebcamCapture}
             />
         </>
     );
