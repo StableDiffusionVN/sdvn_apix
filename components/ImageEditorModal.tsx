@@ -4,7 +4,7 @@
 */
 import React, { useState, useCallback, ChangeEvent, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type ImageToEdit, useAppControls, handleFileUpload, GalleryPicker } from './uiUtils';
+import { type ImageToEdit, useAppControls, handleFileUpload, GalleryPicker, WebcamCaptureModal } from './uiUtils';
 import { ImageEditorToolbar } from './ImageEditor/ImageEditorToolbar';
 import { ImageEditorControls } from './ImageEditor/ImageEditorControls';
 import { ImageEditorCanvas } from './ImageEditor/ImageEditorCanvas';
@@ -27,9 +27,12 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         internalImageUrl, 
         isLoading, 
         isGalleryPickerOpen, 
-        setIsGalleryPickerOpen, 
+        setIsGalleryPickerOpen,
+        isWebcamModalOpen,
+        setIsWebcamModalOpen,
         handleFileSelected,
         handleGallerySelect,
+        handleWebcamCapture,
         getFinalImage,
     } = editorState;
     
@@ -80,9 +83,17 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                         <p className="text-neutral-400">Click here to select an image from your computer</p>
                                     </button>
                                     <p className="text-neutral-500">or</p>
-                                    <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={sessionGalleryImages.length === 0}>Select from Gallery</button>
+                                    <div className="flex items-center gap-4">
+                                        <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={sessionGalleryImages.length === 0}>Select from Gallery</button>
+                                        <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">Capture from Webcam</button>
+                                    </div>
                                 </div>
                                 <GalleryPicker isOpen={isGalleryPickerOpen} onClose={() => setIsGalleryPickerOpen(false)} onSelect={handleGallerySelect} images={sessionGalleryImages} />
+                                <WebcamCaptureModal
+                                    isOpen={isWebcamModalOpen}
+                                    onClose={() => setIsWebcamModalOpen(false)}
+                                    onCapture={handleWebcamCapture}
+                                />
                             </>
                         ) : (
                             <div className="flex flex-col md:flex-row gap-4 w-full h-full overflow-hidden">

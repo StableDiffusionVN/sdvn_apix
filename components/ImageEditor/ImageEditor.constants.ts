@@ -8,10 +8,11 @@ export const CROP_ASPECT_RATIO_OPTIONS = ['Free', 'Original', '1:1', '2:3', '3:2
 export const HANDLE_SIZE = 10;
 
 export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
-    rotate: { name: 'Xoay ảnh', description: 'Xoay ảnh 90 độ theo chiều kim đồng hồ.' },
+    rotate: { name: 'Xoay ảnh (R)', description: 'Xoay ảnh 90 độ theo chiều kim đồng hồ.' },
     flipH: { name: 'Lật ngang', description: 'Lật ảnh theo chiều ngang.' },
     flipV: { name: 'Lật dọc', description: 'Lật ảnh theo chiều dọc.' },
-    crop: { name: 'Cắt ảnh (C)', description: 'Chọn một vùng để cắt ảnh.' },
+    crop: { name: 'Cắt ảnh (C)', description: 'Chọn một vùng chữ nhật để cắt ảnh.' },
+    'perspective-crop': { name: 'Cắt phối cảnh (Alt+C)', description: 'Chọn 4 điểm để cắt và chỉnh sửa phối cảnh.' },
     selection: { name: 'Chọn vùng (L)', description: 'Vẽ tự do để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     marquee: { name: 'Chọn vùng Chữ nhật (M)', description: 'Vẽ một hình chữ nhật để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     ellipse: { name: 'Chọn vùng Elip', description: 'Vẽ một hình elip để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },

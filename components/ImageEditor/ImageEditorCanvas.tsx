@@ -39,6 +39,10 @@ interface ImageEditorCanvasProps {
     ellipseRect: Rect | null;
     penPathPoints: { anchor: Point, outHandle: Point, inHandle: Point }[];
     currentPenDrag: { start: Point, current: Point } | null;
+    
+    // Perspective crop states
+    perspectiveCropPoints: Point[];
+    hoveredPerspectiveHandleIndex: number | null;
 }
 
 export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
@@ -49,7 +53,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         activeTool, isDrawing, isCursorOverCanvas, cursorPosition, cropSelection, hoveredCropHandle,
         brushSize, brushHardness, brushOpacity, brushColor,
         isSelectionActive, selectionPath, interactionState, currentDrawingPointsRef, marqueeRect,
-        ellipseRect, penPathPoints, currentPenDrag
+        ellipseRect, penPathPoints, currentPenDrag, perspectiveCropPoints, hoveredPerspectiveHandleIndex
     } = props;
     
     const marchingAntsOffsetRef = useRef(0);
@@ -62,6 +66,13 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
             if (handleCursor) return handleCursor;
             if (cropSelection && cursorPosition && isPointInRect(cursorPosition, cropSelection)) return 'move';
             return 'crosshair';
+        }
+        if (activeTool === 'perspective-crop') {
+            if (interactionState === 'placingPerspectivePoints') {
+                return 'crosshair';
+            }
+            if (hoveredPerspectiveHandleIndex !== null) return 'grab';
+            return 'default';
         }
         if (activeTool === 'selection' || activeTool === 'pen' || activeTool === 'marquee' || activeTool === 'ellipse') return 'crosshair';
         return 'default';
@@ -126,6 +137,41 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                         ctx.save(); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
                         ctx.lineDashOffset = -marchingAntsOffsetRef.current; ctx.stroke(selectionPath);
                         ctx.strokeStyle = 'black'; ctx.lineDashOffset = -marchingAntsOffsetRef.current + 5; ctx.stroke(selectionPath);
+                        ctx.restore();
+                    }
+                    if (activeTool === 'perspective-crop' && perspectiveCropPoints.length > 0) {
+                        const points = perspectiveCropPoints;
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+                        ctx.lineWidth = 2;
+                        ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
+
+                        // Draw lines between placed points
+                        ctx.beginPath();
+                        ctx.moveTo(points[0].x, points[0].y);
+                        for (let i = 1; i < points.length; i++) {
+                            ctx.lineTo(points[i].x, points[i].y);
+                        }
+
+                        if (points.length === 4) {
+                            ctx.closePath();
+                            ctx.fill();
+                        } else if (cursorPosition && interactionState === 'placingPerspectivePoints') {
+                            // Draw rubber band line to cursor
+                            ctx.lineTo(cursorPosition.x, cursorPosition.y);
+                        }
+                        ctx.stroke();
+
+                        // Draw points/handles
+                        points.forEach((p, i) => {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                            ctx.fillStyle = (hoveredPerspectiveHandleIndex === i && points.length === 4) ? '#FBBF24' : 'white';
+                            ctx.fill();
+                            ctx.strokeStyle = '#333';
+                            ctx.lineWidth = 1.5;
+                            ctx.stroke();
+                        });
                         ctx.restore();
                     }
                     if (interactionState === 'drawingSelection' && currentDrawingPointsRef.current && currentDrawingPointsRef.current.length > 1) {
@@ -211,7 +257,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         };
         animId = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(animId);
-    }, [isSelectionActive, selectionPath, interactionState, activeTool, penPathPoints, cursorPosition, currentPenDrag, isCursorOverCanvas, marqueeRect, ellipseRect, isDrawing, brushOpacity]);
+    }, [isSelectionActive, selectionPath, interactionState, activeTool, penPathPoints, cursorPosition, currentPenDrag, isCursorOverCanvas, marqueeRect, ellipseRect, isDrawing, brushOpacity, perspectiveCropPoints, hoveredPerspectiveHandleIndex]);
 
     return (
         <div className="image-editor-preview-container w-full h-full">

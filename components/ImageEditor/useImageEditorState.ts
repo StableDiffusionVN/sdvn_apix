@@ -9,10 +9,10 @@ import {
     type Tool, type EditorStateSnapshot, type Point, type Rect, type CropResizeHandle, type CropAction,
     type Interaction, type SelectionStroke, type PenNode, type ColorChannel,
 } from './ImageEditor.types';
-import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS } from './ImageEditor.constants';
+import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS, HANDLE_SIZE } from './ImageEditor.constants';
 import { 
     rgbToHsl, hslToRgb, isPointInRect, getRatioValue, getHandleAtPoint, 
-    getCursorForHandle, approximateCubicBezier 
+    getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective 
 } from './ImageEditor.utils';
 
 /**
@@ -104,7 +104,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     // UI states
     const [openSection, setOpenSection] = useState<'adj' | 'hls' | 'effects' | 'magic' | null>('adj');
     const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
-    // FIX: Explicitly type the state to ColorChannel to avoid it being inferred as a generic string.
+    const [isWebcamModalOpen, setIsWebcamModalOpen] = useState(false);
     const [activeColorTab, setActiveColorTab] = useState<ColorChannel>(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as ColorChannel);
     const [isShowingOriginal, setIsShowingOriginal] = useState(false);
 
@@ -123,6 +123,9 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     const [cropAspectRatio, setCropAspectRatio] = useState('Free');
     const [cropAction, setCropAction] = useState<CropAction | null>(null);
     const [hoveredCropHandle, setHoveredCropHandle] = useState<CropResizeHandle | null>(null);
+    const [perspectiveCropPoints, setPerspectiveCropPoints] = useState<Point[]>([]);
+    const [hoveredPerspectiveHandleIndex, setHoveredPerspectiveHandleIndex] = useState<number | null>(null);
+
 
     // Selection tool states
     const [interactionState, setInteractionState] = useState<Interaction>('none');
@@ -142,7 +145,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const tempDrawingCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const animationFrameRef = useRef<number | null>(null);
-    const interactionStartRef = useRef<{ mouse: Point; selection?: Rect, handle?: CropResizeHandle | null } | null>(null);
+    const interactionStartRef = useRef<{ mouse: Point; selection?: Rect, handle?: CropResizeHandle | null | number } | null>(null);
     const selectionModifierRef = useRef<'new' | 'add' | 'subtract'>('new');
     const currentDrawingPointsRef = useRef<Point[]>([]);
     const previousToolRef = useRef<Tool | null>(null);
@@ -239,6 +242,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS); setActiveColorTab(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as keyof typeof INITIAL_COLOR_ADJUSTMENTS); setOpenSection('adj');
         setActiveTool(null); setBrushSize(20); setBrushHardness(100); setBrushOpacity(100); setBrushColor('#ffffff');
         setCropSelection(null); setCropAspectRatio('Free'); setCropAction(null);
+        setPerspectiveCropPoints([]); setHoveredPerspectiveHandleIndex(null);
         deselect(); setInteractionState('none'); setFeatherAmount(0);
         
         // Clear drawing canvas
@@ -480,6 +484,30 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 setCropAction('drawing');
                 interactionStartRef.current = { mouse: coords };
             }
+        } else if (activeTool === 'perspective-crop') {
+            setIsDrawing(false);
+            if (interactionState === 'placingPerspectivePoints') {
+                const newPoints = [...perspectiveCropPoints, coords];
+                setPerspectiveCropPoints(newPoints);
+                if (newPoints.length === 4) {
+                    setInteractionState('none');
+                }
+                return;
+            }
+            if (perspectiveCropPoints.length === 4) {
+                let handleIndex = -1;
+                for (let i = 0; i < 4; i++) {
+                    const dist = Math.hypot(coords.x - perspectiveCropPoints[i].x, coords.y - perspectiveCropPoints[i].y);
+                    if (dist < HANDLE_SIZE) {
+                        handleIndex = i;
+                        break;
+                    }
+                }
+                if (handleIndex !== -1) {
+                    setInteractionState('resizingPerspective');
+                    interactionStartRef.current = { mouse: coords, handle: handleIndex };
+                }
+            }
         } else if (activeTool === 'selection') {
             setIsDrawing(false);
             selectionModifierRef.current = nativeEvent.altKey ? 'subtract' : nativeEvent.shiftKey ? 'add' : 'new';
@@ -552,6 +580,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 }
                 setCropSelection({ x: rectWidth > 0 ? startPoint.x : startPoint.x + rectWidth, y: rectHeight > 0 ? startPoint.y : startPoint.y + rectHeight, width: Math.abs(rectWidth), height: Math.abs(rectHeight), });
             } else if (cropAction === 'resizing' && startInfo.selection && startInfo.handle) {
+                if (typeof startInfo.handle !== 'string') return;
                 const { handle, selection: startSelection } = startInfo; const ratio = getRatioValue(cropAspectRatio, sourceImageRef.current);
                 let newRect = { ...startSelection }; const right = startSelection.x + startSelection.width; const bottom = startSelection.y + startSelection.height;
                 if (handle.includes('right')) newRect.width = Math.max(0, coords.x - startSelection.x);
@@ -572,6 +601,26 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             }
         } else if (activeTool === 'crop' && cropSelection && !cropAction) {
             setHoveredCropHandle(getHandleAtPoint(coords, cropSelection));
+        } else if (activeTool === 'perspective-crop') {
+            if (interactionState === 'resizingPerspective' && interactionStartRef.current && typeof interactionStartRef.current.handle === 'number') {
+                const index = interactionStartRef.current.handle;
+                setPerspectiveCropPoints(prev => {
+                    if (!prev || prev.length !== 4) return prev;
+                    const newPoints = [...prev];
+                    newPoints[index] = coords;
+                    return newPoints;
+                });
+            } else if (perspectiveCropPoints.length === 4) {
+                let handleIndex = -1;
+                for(let i = 0; i < 4; i++) {
+                    const dist = Math.hypot(coords.x - perspectiveCropPoints[i].x, coords.y - perspectiveCropPoints[i].y);
+                    if (dist < HANDLE_SIZE) {
+                        handleIndex = i;
+                        break;
+                    }
+                }
+                setHoveredPerspectiveHandleIndex(handleIndex !== -1 ? handleIndex : null);
+            }
         } else if (activeTool === 'selection' && interactionState === 'drawingSelection') {
             currentDrawingPointsRef.current.push(coords);
         } else if (activeTool === 'marquee' && interactionState === 'drawingMarquee' && interactionStartRef.current) {
@@ -611,6 +660,9 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             }
         }
         if (cropAction) { setCropAction(null); interactionStartRef.current = null; }
+        if (interactionState === 'resizingPerspective') {
+            interactionStartRef.current = null;
+        }
         if (interactionState === 'drawingSelection') {
             const points = currentDrawingPointsRef.current;
             if (points.length > 2) {
@@ -656,7 +708,10 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             setPenPathPoints(prev => [...prev, newNode]);
             setCurrentPenDrag(null);
         }
-        setInteractionState('none');
+        // Only reset interaction state if it's not a multi-step process
+        if (interactionState !== 'placingPerspectivePoints') {
+            setInteractionState('none');
+        }
     };
     
     // --- Lifecycle & Side Effects ---
@@ -789,6 +844,70 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     ]);
     
     // --- More Logic (Shortcuts, Actions) ---
+    const handleCancelPerspectiveCrop = useCallback(() => {
+        setPerspectiveCropPoints([]);
+        setActiveTool(null);
+        setHoveredPerspectiveHandleIndex(null);
+        setInteractionState('none');
+    }, []);
+
+    const handleApplyPerspectiveCrop = useCallback(() => {
+        if (perspectiveCropPoints.length !== 4 || !sourceImageRef.current || !previewCanvasRef.current) return;
+        commitState();
+    
+        const image = sourceImageRef.current;
+        const previewCanvas = previewCanvasRef.current;
+        const scaleX = image.naturalWidth / previewCanvas.width;
+        const scaleY = image.naturalHeight / previewCanvas.height;
+    
+        const srcPoints = perspectiveCropPoints.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+        
+        const [tl, tr, br, bl] = srcPoints;
+    
+        const widthA = Math.hypot(br.x - bl.x, br.y - bl.y);
+        const widthB = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+        const destWidth = Math.max(widthA, widthB);
+    
+        const heightA = Math.hypot(tr.x - br.x, tr.y - br.y);
+        const heightB = Math.hypot(tl.x - bl.x, tl.y - bl.y);
+        const destHeight = Math.max(heightA, heightB);
+    
+        const destPoints: [Point, Point, Point, Point] = [
+            { x: 0, y: 0 },
+            { x: destWidth, y: 0 },
+            { x: destWidth, y: destHeight },
+            { x: 0, y: destHeight }
+        ];
+    
+        const transform = getPerspectiveTransform(srcPoints, destPoints);
+        if (!transform) {
+            alert("Could not apply perspective crop. The points might not form a valid quadrilateral.");
+            return;
+        }
+    
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = Math.round(destWidth);
+        cropCanvas.height = Math.round(destHeight);
+        
+        warpPerspective(image, cropCanvas, transform);
+    
+        const newDataUrl = cropCanvas.toDataURL('image/png');
+        
+        const postCropState: EditorStateSnapshot = {
+            imageUrl: newDataUrl,
+            luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
+            grain: 0, clarity: 0, dehaze: 0, blur: 0,
+            rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false,
+            brushHardness: 100, brushOpacity: 100,
+            colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null,
+        };
+    
+        pushHistory(postCropState);
+        restoreState(postCropState);
+        handleCancelPerspectiveCrop();
+    
+    }, [perspectiveCropPoints, commitState, handleCancelPerspectiveCrop, pushHistory, restoreState]);
+
     const handleApplyAllAdjustments = useCallback(() => {
         if (!internalImageUrl || !sourceImageRef.current || !previewCanvasRef.current || !drawingCanvasRef.current) return;
         setIsLoading(true);
@@ -862,6 +981,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                     };
                     pushHistory(appliedState);
                 };
+    
                 const newImage = new Image();
                 newImage.onload = () => requestAnimationFrame(resetAndApply);
                 newImage.src = newDataUrl;
@@ -949,7 +1069,17 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         }, 50);
     }, [isSelectionActive, selectionPath, previewCanvasRef, drawingCanvasRef, sourceImageRef, rotation, flipHorizontal, flipVertical, pushHistory, brushHardness, brushOpacity, featherAmount]);
     
-    const handleToolSelect = useCallback((tool: Tool) => { if (activeTool === 'pen' && tool !== 'pen') { setPenPathPoints([]); setCurrentPenDrag(null); } setActiveTool(prev => (prev === tool ? null : tool)); }, [activeTool]);
+    const handleToolSelect = useCallback((tool: Tool) => {
+        if (activeTool === 'pen' && tool !== 'pen') {
+            setPenPathPoints([]);
+            setCurrentPenDrag(null);
+        }
+        if (tool === 'perspective-crop') {
+            setInteractionState('placingPerspectivePoints');
+            setPerspectiveCropPoints([]); // Reset points on tool selection
+        }
+        setActiveTool(prev => (prev === tool ? null : tool));
+    }, [activeTool]);
     const handleCancelCrop = useCallback(() => { setCropSelection(null); setActiveTool(null); }, []);
     const handleApplyCrop = useCallback(() => {
         if (!cropSelection || !sourceImageRef.current || !previewCanvasRef.current) return;
@@ -1026,46 +1156,61 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-            const isUndo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
-            const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
+            const isUndo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey;
+            const isRedo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && e.shiftKey;
             if (isUndo) { e.preventDefault(); handleUndo(); return; }
             if (isRedo) { e.preventDefault(); handleRedo(); return; }
-            if (e.key === 'Escape') {
+            if (e.code === 'Escape') {
                 e.preventDefault();
                 if (activeTool === 'crop' && cropSelection) handleCancelCrop();
+                else if (activeTool === 'perspective-crop' && perspectiveCropPoints.length > 0) handleCancelPerspectiveCrop();
                 else if (activeTool === 'pen' && penPathPoints.length > 0) { setPenPathPoints([]); setCurrentPenDrag(null); } 
                 else if (isSelectionActive) deselect();
                 return;
             }
-            if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'm') {
+            if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && e.code === 'KeyM') {
                 e.preventDefault();
                 handleToolSelect('ellipse');
                 return;
             }
             const isPickerEligible = activeTool === 'brush' || activeTool === 'eraser';
             if (e.key === 'Alt' && !e.repeat && isPickerEligible) { previousToolRef.current = activeTool; setActiveTool('colorpicker'); e.preventDefault(); }
-            if (activeTool === 'crop' && e.key === 'Enter' && cropSelection) { e.preventDefault(); handleApplyCrop(); return; }
+            if (activeTool === 'crop' && e.code === 'Enter' && cropSelection) { e.preventDefault(); handleApplyCrop(); return; }
+            if (activeTool === 'perspective-crop' && e.code === 'Enter' && perspectiveCropPoints.length === 4) { e.preventDefault(); handleApplyPerspectiveCrop(); return; }
+            
+            const isPerspectiveCropShortcut = e.altKey && e.code === 'KeyC';
+            if(isPerspectiveCropShortcut) {
+                e.preventDefault();
+                handleToolSelect('perspective-crop');
+                return;
+            }
+
             const isSimpleKey = !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
             if (isSimpleKey) {
                 let handled = false;
-                switch(e.key.toLowerCase()) {
-                    case 'p': handleToolSelect('pen'); handled = true; break;
-                    case 'b': handleToolSelect('brush'); handled = true; break;
-                    case 'i': handleToolSelect('colorpicker'); handled = true; break;
-                    case 'l': handleToolSelect('selection'); handled = true; break;
-                    case 'm': handleToolSelect('marquee'); handled = true; break;
-                    case 'c': handleToolSelect('crop'); handled = true; break;
-                    case 'e': handleToolSelect('eraser'); handled = true; break;
-                    case '[': if (activeTool === 'brush' || activeTool === 'eraser') { setBrushSize(s => Math.max(1, s - (s > 30 ? 5 : 1))); handled = true; } break;
-                    case ']': if (activeTool === 'brush' || activeTool === 'eraser') { setBrushSize(s => Math.min(200, s + (s >= 30 ? 5 : 1))); handled = true; } break;
+                switch(e.code) {
+                    case 'KeyP': handleToolSelect('pen'); handled = true; break;
+                    case 'KeyB': handleToolSelect('brush'); handled = true; break;
+                    case 'KeyI': handleToolSelect('colorpicker'); handled = true; break;
+                    case 'KeyL': handleToolSelect('selection'); handled = true; break;
+                    case 'KeyM': handleToolSelect('marquee'); handled = true; break;
+                    case 'KeyC': handleToolSelect('crop'); handled = true; break;
+                    case 'KeyE': handleToolSelect('eraser'); handled = true; break;
+                    case 'KeyR':
+                        setRotation(r => (r + 90) % 360);
+                        commitState();
+                        handled = true;
+                        break;
+                    case 'BracketLeft': if (activeTool === 'brush' || activeTool === 'eraser') { setBrushSize(s => Math.max(1, s - (s > 30 ? 5 : 1))); handled = true; } break;
+                    case 'BracketRight': if (activeTool === 'brush' || activeTool === 'eraser') { setBrushSize(s => Math.min(200, s + (s >= 30 ? 5 : 1))); handled = true; } break;
                 }
                 if (handled) e.preventDefault();
             }
-            const isClear = !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && (e.key === 'Delete' || e.key === 'Backspace');
+            const isClear = !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && (e.code === 'Delete' || e.code === 'Backspace');
             if (isClear && isSelectionActive) { e.preventDefault(); deleteImageContentInSelection(); return; }
-            const isFill = (e.metaKey || e.ctrlKey) && (e.key === 'Delete' || e.key === 'Backspace');
-            const isDeselect = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd';
-            const isInverse = (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'i';
+            const isFill = (e.metaKey || e.ctrlKey) && (e.code === 'Delete' || e.code === 'Backspace');
+            const isDeselect = (e.metaKey || e.ctrlKey) && e.code === 'KeyD';
+            const isInverse = (e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyI';
             if (isSelectionActive) {
                 if (isFill) { e.preventDefault(); fillSelection(); }
                 else if (isDeselect) { e.preventDefault(); deselect(); }
@@ -1075,15 +1220,19 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         const handleKeyUp = (e: KeyboardEvent) => { if (!isOpen) return; if (e.key === 'Alt' && previousToolRef.current) { setActiveTool(previousToolRef.current); previousToolRef.current = null; } };
         window.addEventListener('keydown', handleKeyDown); window.addEventListener('keyup', handleKeyUp);
         return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length]);
+    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelPerspectiveCrop, commitState]);
     
     // --- Public API ---
     return {
         // State
         internalImageUrl, isLoading, openSection, activeTool, brushSize, brushColor, brushHardness, brushOpacity, cropSelection, cropAspectRatio,
         cursorPosition, isCursorOverCanvas, isDrawing, isSelectionActive, isSelectionInverted, penPathPoints, currentPenDrag, marqueeRect,
-        ellipseRect, interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen, featherAmount,
+        ellipseRect, interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen, isWebcamModalOpen, featherAmount,
         selectionPath,
+        perspectiveCropPoints,
+        hoveredPerspectiveHandleIndex,
+        handleCancelPerspectiveCrop,
+        handleApplyPerspectiveCrop,
         
         // Filters & Adjustments
         luminance, contrast, temp, tint, saturation, vibrance, hue, grain, clarity, dehaze, blur, rotation, flipHorizontal, flipVertical, isInverted,
@@ -1097,7 +1246,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setHoveredCropHandle,
         setLuminance, setContrast, setTemp, setTint, setSaturation, setVibrance, setHue, setGrain, setClarity, setDehaze, setBlur, setRotation, setFlipHorizontal, setFlipVertical, setIsInverted,
         setColorAdjustments, setActiveColorTab,
-        setIsGalleryPickerOpen, setFeatherAmount,
+        setIsGalleryPickerOpen, setIsWebcamModalOpen, setFeatherAmount,
         handleActionStart, handleCanvasMouseMove, handleActionEnd,
         handleUndo, handleRedo, commitState, resetAll, getFinalImage,
         handleToolSelect, handleCancelCrop, handleApplyCrop,
@@ -1111,6 +1260,14 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         }),
         handleGallerySelect: (newUrl: string) => {
             resetAll(false); setInternalImageUrl(newUrl); setIsGalleryPickerOpen(false);
+            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
+            image.onload = () => { originalImageRef.current = image; };
+            const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
+            setHistory([initialSnapshot]);
+            setHistoryIndex(0);
+        },
+        handleWebcamCapture: (newUrl: string) => {
+            resetAll(false); setInternalImageUrl(newUrl); setIsWebcamModalOpen(false);
             const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
             image.onload = () => { originalImageRef.current = image; };
             const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };

@@ -5,6 +5,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { ImageThumbnailActions } from './ImageThumbnailActions';
 
 interface ImageThumbnailProps {
     index: number;
@@ -14,6 +15,7 @@ interface ImageThumbnailProps {
     onSelect: (index: number) => void;
     onEdit?: (index: number, e: React.MouseEvent) => void;
     onDelete: (index: number, e: React.MouseEvent) => void;
+    onQuickView?: (index: number, e: React.MouseEvent) => void;
 }
 
 export const ImageThumbnail: React.FC<ImageThumbnailProps> = ({
@@ -24,6 +26,7 @@ export const ImageThumbnail: React.FC<ImageThumbnailProps> = ({
     onSelect,
     onEdit,
     onDelete,
+    onQuickView,
 }) => {
     const isVideo = imageUrl.startsWith('blob:');
 
@@ -68,18 +71,13 @@ export const ImageThumbnail: React.FC<ImageThumbnailProps> = ({
                 )}
             </AnimatePresence>
 
-            {!isSelectionMode && (
-                <div className="thumbnail-actions">
-                    {!isVideo && onEdit && (
-                        <button onClick={(e) => onEdit(index, e)} className="thumbnail-action-btn" aria-label={`Sửa ảnh ${index + 1}`} title="Sửa ảnh">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" /></svg>
-                        </button>
-                    )}
-                    <button onClick={(e) => onDelete(index, e)} className="thumbnail-action-btn hover:!bg-red-600 focus:!ring-red-500" aria-label={`Xóa ảnh ${index + 1}`} title="Xóa ảnh">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                    </button>
-                </div>
-            )}
+            <ImageThumbnailActions
+                isSelectionMode={isSelectionMode}
+                isVideo={isVideo}
+                onQuickView={onQuickView ? (e) => onQuickView(index, e) : undefined}
+                onEdit={onEdit ? (e) => onEdit(index, e) : undefined}
+                onDelete={(e) => onDelete(index, e)}
+            />
         </motion.div>
     );
 };

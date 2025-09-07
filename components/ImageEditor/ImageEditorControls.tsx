@@ -41,7 +41,7 @@ const SelectionControls: React.FC<ImageEditorControlsProps> = (props) => {
 };
 
 export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) => {
-    const { activeTool, openSection, setOpenSection, cropAspectRatio, setCropAspectRatio, handleCancelCrop, handleApplyCrop, cropSelection, isSelectionActive } = props;
+    const { activeTool, openSection, setOpenSection, cropAspectRatio, setCropAspectRatio, handleCancelCrop, handleApplyCrop, cropSelection, isSelectionActive, handleCancelPerspectiveCrop, handleApplyPerspectiveCrop, perspectiveCropPoints } = props;
     const { activeTool: _unused, ...restProps } = props;
 
     const accordionHeaderClasses = "w-full flex justify-between items-center p-3 bg-neutral-700 hover:bg-neutral-600 transition-colors";
@@ -70,11 +70,24 @@ export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) =
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <AnimatePresence>
+                {activeTool === 'perspective-crop' && perspectiveCropPoints.length === 4 && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">
+                        <div className="p-3 space-y-3">
+                            <h4 className="base-font font-bold text-neutral-200">Perspective Crop</h4>
+                            <div className="flex gap-2 justify-end">
+                                <button onClick={handleCancelPerspectiveCrop} className="btn btn-secondary btn-sm !text-xs !py-1 !px-3">Cancel</button>
+                                <button onClick={handleApplyPerspectiveCrop} className="btn btn-primary btn-sm !text-xs !py-1 !px-3" disabled={perspectiveCropPoints.length !== 4}>Apply</button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             
             <AnimatePresence>
                 {(activeTool === 'brush' || activeTool === 'eraser') && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">
-                       {/* FIX: Pass the narrowed 'activeTool' prop to satisfy the component's stricter type, avoiding a TypeScript error. */}
                        <BrushEraserSettings {...restProps} activeTool={activeTool} />
                     </motion.div>
                 )}

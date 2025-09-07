@@ -66,6 +66,11 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
         removeImageFromGallery(indexToDelete);
     };
 
+    const handleQuickView = (indexToView: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        openLightbox(indexToView);
+    };
+
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
         setSelectedIndices([]);
@@ -182,6 +187,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
                                                 onSelect={handleImageSelect}
                                                 onEdit={handleEditImage}
                                                 onDelete={handleDeleteImage}
+                                                onQuickView={handleQuickView}
                                             />
                                         ))}
                                     </AnimatePresence>

@@ -8,10 +8,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import PolaroidCard from './PolaroidCard';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
+// Fix: Import `useLightbox` from `uiHooks` instead of `uiContexts` to resolve module resolution error.
 import { useAppControls, useImageEditor } from './uiContexts';
-import { ImageThumbnail } from './ImageThumbnail'; // NEW
-import { GalleryToolbar } from './GalleryToolbar'; // NEW
-import { combineImages } from './uiFileUtilities'; // NEW
+import { useLightbox } from './uiHooks';
+import { ImageThumbnail } from './ImageThumbnail';
+import { GalleryToolbar } from './GalleryToolbar';
+import { ImageThumbnailActions } from './ImageThumbnailActions';
+import { combineImages } from './uiFileUtilities';
+import Lightbox from './Lightbox';
 export * from './SearchableSelect'; // EXPORT THE NEW COMPONENT
 
 /**
@@ -394,6 +398,13 @@ interface GalleryPickerProps {
 export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, onSelect, images }) => {
     const { addImagesToGallery, removeImageFromGallery, replaceImageInGallery } = useAppControls();
     const { openImageEditor } = useImageEditor();
+    const { 
+        lightboxIndex, 
+        openLightbox, 
+        closeLightbox, 
+        navigateLightbox 
+    } = useLightbox();
+    
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const isDroppingRef = useRef(false);
     const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -401,11 +412,12 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
     const [isCombining, setIsCombining] = useState(false);
 
     useEffect(() => {
+        closeLightbox();
         if (!isOpen) {
             setIsSelectionMode(false);
             setSelectedIndices([]);
         }
-    }, [isOpen]);
+    }, [isOpen, closeLightbox]);
     
     const handleToggleSelectionMode = () => {
         setIsSelectionMode(!isSelectionMode);
@@ -468,6 +480,11 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         } finally {
             setIsCombining(false);
         }
+    };
+    
+    const handleQuickView = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        openLightbox(index);
     };
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -535,6 +552,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
     }
 
     return ReactDOM.createPortal(
+    <>
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -581,8 +599,9 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
                                         onEdit={handleEditImage}
                                         onDelete={(indexToDelete, e) => {
                                             e.stopPropagation();
-                                            removeImageFromGallery(indexToDelete);
+                                           removeImageFromGallery(indexToDelete);
                                         }}
+                                        onQuickView={handleQuickView}
                                     />
                                 ))}
                             </div>
@@ -609,7 +628,9 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
                     </motion.div>
                 </motion.div>
             )}
-        </AnimatePresence>,
+        </AnimatePresence>
+    <Lightbox images={images} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
+    </>,
         document.body
     );
 };

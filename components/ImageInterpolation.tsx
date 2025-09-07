@@ -57,11 +57,11 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         appStateRef.current = appState;
     });
 
-    // FIX: Refactored to pass a state object to onStateChange instead of a function, resolving a TypeScript error.
     const handleInputImageChange = (url: string) => {
-        const wasConfiguring = appState.stage === 'configuring' || appState.stage === 'prompting';
+        const currentAppState = appStateRef.current;
+        const wasConfiguring = currentAppState.stage === 'configuring' || currentAppState.stage === 'prompting';
         onStateChange({
-            ...appState, 
+            ...currentAppState, 
             inputImage: url, 
             generatedPrompt: '',
             promptSuggestions: '',
@@ -74,11 +74,11 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         addImagesToGallery([url]);
     };
 
-    // FIX: Refactored to pass a state object to onStateChange instead of a function, resolving a TypeScript error.
     const handleOutputImageChange = (url: string) => {
-        const wasConfiguring = appState.stage === 'configuring' || appState.stage === 'prompting';
+        const currentAppState = appStateRef.current;
+        const wasConfiguring = currentAppState.stage === 'configuring' || currentAppState.stage === 'prompting';
         onStateChange({
-            ...appState, 
+            ...currentAppState, 
             outputImage: url, 
             generatedPrompt: '',
             promptSuggestions: '',

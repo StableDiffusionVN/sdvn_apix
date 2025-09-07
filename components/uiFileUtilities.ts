@@ -224,6 +224,7 @@ interface CombineImageOptions {
         enabled: boolean;
         fontColor?: string;
         backgroundColor?: string;
+        baseFontSize?: number;
     };
 }
 
@@ -240,7 +241,7 @@ export const combineImages = async (
         mainTitle = '',
         gap = 0,
         backgroundColor = '#FFFFFF',
-        labels = { enabled: false, fontColor: '#000000', backgroundColor: '#FFFFFF' }
+        labels = { enabled: false, fontColor: '#000000', backgroundColor: '#FFFFFF', baseFontSize: 40 }
     } = options;
     
     const loadedImages = await Promise.all(items.map(item => loadImage(item.url)));
@@ -250,33 +251,35 @@ export const combineImages = async (
     
     const hasMainTitle = labels.enabled && mainTitle.trim() !== '';
     const hasItemLabels = labels.enabled && items.some(item => item.label.trim() !== '');
-    
-    // Standardize label font size and padding for consistency
-    const itemLabelFontSize = 40;
-    const labelVerticalPadding = 24;
-    const finalItemLabelHeight = hasItemLabels ? itemLabelFontSize + labelVerticalPadding * 2 : 0;
 
     if (layout === 'horizontal') {
-        const titleFontSize = Math.max(24, Math.min(80, (loadedImages.reduce((sum, img) => sum + img.width, 0)) / 25));
-        const titleHeight = hasMainTitle ? titleFontSize + labelVerticalPadding * 2 : 0;
         const targetHeight = Math.max(...loadedImages.map(img => img.height));
-
         const scaledImages = loadedImages.map(img => {
             const scaleFactor = targetHeight / img.height;
             return { img, width: img.width * scaleFactor, height: targetHeight };
         });
 
         const totalContentWidth = scaledImages.reduce((sum, sImg) => sum + sImg.width, 0) + (gap * (loadedImages.length - 1));
-        const totalContentHeight = titleHeight + targetHeight + finalItemLabelHeight;
-
         canvas.width = totalContentWidth + gap * 2;
+        
+        const baseFontSize = labels.baseFontSize || 40;
+        const referenceWidth = 1500;
+        const fontScaleFactor = canvas.width / referenceWidth;
+        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
+        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
+        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
+        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
+        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
+        
+        const totalContentHeight = titleHeight + targetHeight + finalItemLabelHeight;
         canvas.height = totalContentHeight + gap * 2;
+        
         ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (hasMainTitle) {
             ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${titleFontSize}px "Be Vietnam Pro"`;
+            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
@@ -293,7 +296,7 @@ export const combineImages = async (
                 ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
                 ctx.fillRect(currentX, labelY, sImg.width, finalItemLabelHeight);
                 ctx.fillStyle = labels.fontColor || '#000000';
-                ctx.font = `bold ${itemLabelFontSize}px "Be Vietnam Pro"`;
+                ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(item.label.trim(), currentX + sImg.width / 2, labelY + finalItemLabelHeight / 2);
@@ -303,8 +306,16 @@ export const combineImages = async (
 
     } else if (layout === 'vertical') {
         const targetWidth = Math.max(...loadedImages.map(img => img.width));
-        const titleFontSize = Math.max(24, Math.min(80, targetWidth / 20));
-        const titleHeight = hasMainTitle ? titleFontSize + labelVerticalPadding * 2 : 0;
+        canvas.width = targetWidth + gap * 2;
+
+        const baseFontSize = labels.baseFontSize || 40;
+        const referenceWidth = 1500;
+        const fontScaleFactor = canvas.width / referenceWidth;
+        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
+        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
+        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
+        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
+        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
         
         const scaledImages = loadedImages.map(img => {
             const scaleFactor = targetWidth / img.width;
@@ -312,22 +323,21 @@ export const combineImages = async (
         });
 
         let totalContentHeight = titleHeight;
-        scaledImages.forEach((_sImg, i) => {
-            totalContentHeight += scaledImages[i].height;
+        scaledImages.forEach((sImg, i) => {
+            totalContentHeight += sImg.height;
             if (hasItemLabels && items[i].label.trim() !== '') {
                 totalContentHeight += finalItemLabelHeight;
             }
         });
         totalContentHeight += gap * (loadedImages.length - 1);
 
-        canvas.width = targetWidth + gap * 2;
         canvas.height = totalContentHeight + gap * 2;
         ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         if (hasMainTitle) {
             ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${titleFontSize}px "Be Vietnam Pro"`;
+            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
@@ -344,7 +354,7 @@ export const combineImages = async (
                 ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
                 ctx.fillRect(gap, currentY, sImg.width, finalItemLabelHeight);
                 ctx.fillStyle = labels.fontColor || '#000000';
-                ctx.font = `bold ${itemLabelFontSize}px "Be Vietnam Pro"`;
+                ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(item.label.trim(), gap + sImg.width / 2, currentY + finalItemLabelHeight / 2);
@@ -358,7 +368,6 @@ export const combineImages = async (
         const canvasMaxWidth = 1920; 
         const contentWidth = canvasMaxWidth - gap * 2;
         
-        // NEW: Square-root algorithm for row partitioning to prioritize horizontal layout
         const n = loadedImages.length;
         const cols = n > 0 ? Math.ceil(Math.sqrt(n)) : 0;
         const numRows = cols > 0 ? Math.ceil(n / cols) : 0;
@@ -373,9 +382,17 @@ export const combineImages = async (
             }
         }
         
-        const titleFontSize = Math.max(24, Math.min(96, canvasMaxWidth / 25));
-        const titleHeight = hasMainTitle ? titleFontSize + labelVerticalPadding * 2 : 0;
+        canvas.width = canvasMaxWidth;
 
+        const baseFontSize = labels.baseFontSize || 40;
+        const referenceWidth = 1500;
+        const fontScaleFactor = canvas.width / referenceWidth;
+        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
+        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
+        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
+        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
+        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
+        
         const finalRowLayouts: { height: number; images: HTMLImageElement[]; items: CombineImageItem[] }[] = [];
         let finalTotalHeight = titleHeight + gap * 2 + Math.max(0, imageRows.length - 1) * gap;
         
@@ -393,7 +410,6 @@ export const combineImages = async (
             finalTotalHeight += rowImageHeight + (hasItemLabels ? finalItemLabelHeight : 0);
         }
 
-        canvas.width = canvasMaxWidth;
         canvas.height = finalTotalHeight;
         
         ctx.fillStyle = backgroundColor;
@@ -401,7 +417,7 @@ export const combineImages = async (
 
         if (hasMainTitle) {
             ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${titleFontSize}px "Be Vietnam Pro"`;
+            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
@@ -423,7 +439,7 @@ export const combineImages = async (
                     ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
                     ctx.fillRect(xPos, labelY, dWidth, finalItemLabelHeight);
                     ctx.fillStyle = labels.fontColor || '#000000';
-                    ctx.font = `bold ${itemLabelFontSize}px "Be Vietnam Pro"`;
+                    ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(item.label.trim(), xPos + dWidth / 2, labelY + finalItemLabelHeight / 2);

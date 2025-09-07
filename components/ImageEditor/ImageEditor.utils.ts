@@ -80,7 +80,7 @@ export const getHandleAtPoint = (point: Point, selection: Rect): CropResizeHandl
     if (onTopEdge && withinX) return 'top';
     if (onBottomEdge && withinX) return 'bottom';
     if (onLeftEdge && withinY) return 'left';
-    if (onRightEdge && withinX) return 'right';
+    if (onRightEdge && withinY) return 'right';
 
     return null;
 }
@@ -123,4 +123,147 @@ export function hexToRgba(hex: string, opacity: number): string {
         b = parseInt(hex.substring(5, 7), 16);
     }
     return `rgba(${r},${g},${b},${opacity / 100})`;
+}
+
+// --- NEW: Perspective Transform Utilities ---
+
+/**
+ * Calculates the inverse of a 3x3 matrix.
+ * @param m A 9-element array representing the row-major 3x3 matrix.
+ * @returns A 9-element array of the inverted matrix, or null if not invertible.
+ */
+function getInverse(m: number[]): number[] | null {
+    if (m.length !== 9) return null;
+    const a = m[0], b = m[1], c = m[2];
+    const d = m[3], e = m[4], f = m[5];
+    const g = m[6], h = m[7], i = m[8];
+
+    const det = a * (e * i - f * h) -
+                b * (d * i - f * g) +
+                c * (d * h - e * g);
+
+    if (Math.abs(det) < 1e-10) {
+        return null; // Matrix is not invertible or is singular
+    }
+    
+    const invDet = 1 / det;
+
+    const result = [
+        (e * i - f * h) * invDet,
+        (c * h - b * i) * invDet,
+        (b * f - c * e) * invDet,
+        (f * g - d * i) * invDet,
+        (a * i - c * g) * invDet,
+        (c * d - a * f) * invDet,
+        (d * h - e * g) * invDet,
+        (b * g - a * h) * invDet,
+        (a * e - b * d) * invDet
+    ];
+
+    return result;
+}
+
+export function getPerspectiveTransform(src: Point[], dest: Point[]): number[] | null {
+    const a = [], b = [];
+    for (let i = 0; i < 4; i++) {
+        a.push([src[i].x, src[i].y, 1, 0, 0, 0, -src[i].x * dest[i].x, -src[i].y * dest[i].x]);
+        b.push(dest[i].x);
+        a.push([0, 0, 0, src[i].x, src[i].y, 1, -src[i].x * dest[i].y, -src[i].y * dest[i].y]);
+        b.push(dest[i].y);
+    }
+
+    const h = solveSystem(a, b);
+    if (!h) return null;
+
+    return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+}
+
+function solveSystem(a: number[][], b: number[]): number[] | null {
+    const n = 8;
+    for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let j = i + 1; j < n; j++) {
+            if (Math.abs(a[j][i]) > Math.abs(a[maxRow][i])) {
+                maxRow = j;
+            }
+        }
+        [a[i], a[maxRow]] = [a[maxRow], a[i]];
+        [b[i], b[maxRow]] = [b[maxRow], b[i]];
+        if (Math.abs(a[i][i]) <= 1e-10) return null;
+        for (let j = i + 1; j < n; j++) {
+            const factor = a[j][i] / a[i][i];
+            b[j] -= factor * b[i];
+            for (let k = i; k < n; k++) {
+                a[j][k] -= factor * a[i][k];
+            }
+        }
+    }
+    const x = new Array(n).fill(0);
+    for (let i = n - 1; i >= 0; i--) {
+        let sum = 0;
+        for (let j = i + 1; j < n; j++) {
+            sum += a[i][j] * x[j];
+        }
+        x[i] = (b[i] - sum) / a[i][i];
+    }
+    return x;
+}
+
+export function warpPerspective(srcImage: HTMLImageElement, destCanvas: HTMLCanvasElement, transform: number[]): void {
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = srcImage.naturalWidth;
+    srcCanvas.height = srcImage.naturalHeight;
+    const srcCtx = srcCanvas.getContext('2d');
+    if (!srcCtx) return;
+    srcCtx.drawImage(srcImage, 0, 0);
+    const srcData = srcCtx.getImageData(0, 0, srcImage.naturalWidth, srcImage.naturalHeight).data;
+
+    const destCtx = destCanvas.getContext('2d');
+    if (!destCtx) return;
+    const destImageData = destCtx.createImageData(destCanvas.width, destCanvas.height);
+    const destData = destImageData.data;
+
+    const invTransform = getInverse(transform);
+    if (!invTransform) return;
+    const inv = invTransform; // for brevity
+
+    const srcWidth = srcImage.naturalWidth;
+    const srcHeight = srcImage.naturalHeight;
+    const destWidth = destCanvas.width;
+
+    for (let y = 0; y < destCanvas.height; y++) {
+        for (let x = 0; x < destCanvas.width; x++) {
+            const denominator = inv[6] * x + inv[7] * y + inv[8];
+            const srcX = (inv[0] * x + inv[1] * y + inv[2]) / denominator;
+            const srcY = (inv[3] * x + inv[4] * y + inv[5]) / denominator;
+
+            // Use bilinear interpolation for better quality
+            if (srcX >= 0 && srcX < srcWidth - 1 && srcY >= 0 && srcY < srcHeight - 1) {
+                const sx = Math.floor(srcX);
+                const sy = Math.floor(srcY);
+                const fracX = srcX - sx;
+                const fracY = srcY - sy;
+
+                const idx00 = (sy * srcWidth + sx) * 4;
+                const idx10 = idx00 + 4;
+                const idx01 = ((sy + 1) * srcWidth + sx) * 4;
+                const idx11 = idx01 + 4;
+
+                const destIndex = (y * destWidth + x) * 4;
+
+                for (let c = 0; c < 4; c++) { // R, G, B, A
+                    const c00 = srcData[idx00 + c];
+                    const c10 = srcData[idx10 + c];
+                    const c01 = srcData[idx01 + c];
+                    const c11 = srcData[idx11 + c];
+                    
+                    const top = c00 * (1 - fracX) + c10 * fracX;
+                    const bottom = c01 * (1 - fracX) + c11 * fracX;
+                    
+                    destData[destIndex + c] = Math.round(top * (1 - fracY) + bottom * fracY);
+                }
+            }
+        }
+    }
+    destCtx.putImageData(destImageData, 0, 0);
 }
