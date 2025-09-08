@@ -1,0 +1,27 @@
+{
+  "freeGeneration_mainTitle": "Free Generation",
+  "freeGeneration_subtitle": "Unleash your creativity with prompts",
+  "freeGeneration_uploaderCaption1": "Upload image 1 (optional)",
+  "freeGeneration_uploaderDescription1": "Image to edit or use as inspiration",
+  "freeGeneration_uploaderCaption2": "Upload image 2 (optional)",
+  "freeGeneration_uploaderDescription2": "Second image to combine or reference",
+  "freeGeneration_originalImage2Caption": "Original Image 2",
+  "freeGeneration_resultCaption": "Result {0}",
+  "freeGeneration_promptTitle": "Enter Prompt",
+  "freeGeneration_tipsTitle": "Usage Tips",
+  "freeGeneration_tips": [
+    "No image input to use **Imagen**.",
+    "Input an image to use **Gemini Image** (image editing).",
+    "When inputting multiple images, the main image should be the last one.",
+    "The main input image should be cropped to the desired output aspect ratio."
+  ],
+  "freeGeneration_promptPlaceholder": "e.g., an astronaut cat skateboarding on Mars, oil painting style...",
+  "freeGeneration_numImagesLabel": "Number of Images",
+  "freeGeneration_numImagesAriaLabel": "Select number of images",
+  "freeGeneration_editModeWarning": "Edit mode only creates 1 image at a time.",
+  "freeGeneration_aspectRatioNote": "The closest supported aspect ratio will be used.",
+  "freeGeneration_createButton": "Create",
+  "freeGeneration_regenTitle": "Refine Image or Create Video",
+  "freeGeneration_regenDescription": "Add a request to improve the image, or use it to create a video",
+  "freeGeneration_regenPlaceholder": "e.g., make the colors brighter..."
+}

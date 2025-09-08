@@ -1030,8 +1030,9 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 const adjustedLayerCtx = adjustedLayerCanvas.getContext('2d');
                 if (!adjustedLayerCtx) throw new Error("Could not create adjusted layer context");
 
-                // 4. Draw the adjusted image (from the live preview) onto this temporary layer.
+                // 4. Draw the adjusted image (from the live preview) AND drawings onto this temporary layer.
                 adjustedLayerCtx.drawImage(previewCanvas, 0, 0);
+                adjustedLayerCtx.drawImage(drawingCanvas, 0, 0);
 
                 // 5. Use the mask to "cut out" the adjusted parts.
                 adjustedLayerCtx.globalCompositeOperation = 'destination-in';
@@ -1144,9 +1145,12 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             fillCtx.drawImage(maskCanvas, 0, 0);
         }
         
+        ctx.save();
+        ctx.globalAlpha = brushOpacity / 100;
         ctx.drawImage(fillCanvas, 0, 0);
+        ctx.restore();
         commitState();
-    }, [selectionPath, brushColor, featherAmount, commitState]);
+    }, [selectionPath, brushColor, brushOpacity, featherAmount, commitState]);
 
     const invertSelection = useCallback(() => setIsSelectionInverted(prev => !prev), []);
     
@@ -1211,16 +1215,18 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             const isFill = (e.metaKey || e.ctrlKey) && (e.code === 'Delete' || e.code === 'Backspace');
             const isDeselect = (e.metaKey || e.ctrlKey) && e.code === 'KeyD';
             const isInverse = (e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyI';
+            const isApplyToSelection = e.code === 'Enter' && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
             if (isSelectionActive) {
                 if (isFill) { e.preventDefault(); fillSelection(); }
                 else if (isDeselect) { e.preventDefault(); deselect(); }
                 else if (isInverse) { e.preventDefault(); invertSelection(); }
+                else if (isApplyToSelection) { e.preventDefault(); handleApplyAdjustmentsToSelection(); }
             } else if (isInverse) { e.preventDefault(); invertSelection(); }
         };
         const handleKeyUp = (e: KeyboardEvent) => { if (!isOpen) return; if (e.key === 'Alt' && previousToolRef.current) { setActiveTool(previousToolRef.current); previousToolRef.current = null; } };
         window.addEventListener('keydown', handleKeyDown); window.addEventListener('keyup', handleKeyUp);
         return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelPerspectiveCrop, commitState]);
+    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelPerspectiveCrop, commitState, handleApplyAdjustmentsToSelection]);
     
     // --- Public API ---
     return {

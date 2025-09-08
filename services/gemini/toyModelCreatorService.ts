@@ -36,6 +36,10 @@ export interface ToyModelOptions {
     pokeballType: string;
     evolutionDisplay: string;
     modelStyle: string;
+    // Concept 6: Crafting Model
+    modelType: string;
+    blueprintType: string;
+    characterMood: string;
     // Constant Options
     aspectRatio: string;
     notes?: string;
@@ -129,6 +133,52 @@ const buildMiniaturePrompt = (options: ToyModelOptions): string[] => {
     ];
 };
 
+const buildCraftingModelPrompt = (options: ToyModelOptions): string[] => {
+    const promptParts = [
+        '**Nhiệm vụ cốt lõi:** Dựa trên hình ảnh được cung cấp, hãy tạo ra một bức ảnh MỚI, siêu thực, chất lượng cao, mô tả chính nhân vật/chủ thể trong ảnh đang tự tay chế tạo một mô hình thu nhỏ của chính mình.',
+        '**YÊU CẦU VỀ TÍNH NHẤT QUÁN (QUAN TRỌNG NHẤT):**',
+        '1. **Nhân vật chế tạo:** Người đang chế tạo mô hình phải giống HỆT nhân vật trong ảnh gốc (khuôn mặt, trang phục, vóc dáng).',
+        '2. **Mô hình được chế tạo:** Mô hình thu nhỏ đang được làm phải là phiên bản mini của nhân vật gốc.',
+        '3. **Bản vẽ:** Bản vẽ/thiết kế ở hậu cảnh cũng phải mô tả chính xác nhân vật gốc.',
+        '-> Cả ba yếu tố này phải đồng nhất và trung thành tuyệt đối với hình ảnh đầu vào.',
+    ];
+
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
+        promptParts.push(...getAspectRatioPromptInstruction(options.aspectRatio, 1));
+    }
+
+    promptParts.push('\n**CHI TIẾT BỐ CỤC CẢNH:**');
+    
+    const sceneDetails = [];
+
+    if (options.characterMood && options.characterMood !== 'Tự động') {
+        sceneDetails.push(`- **Tâm trạng nhân vật:** Phải thể hiện được tâm trạng "${options.characterMood}".`);
+    } else {
+        sceneDetails.push('- **Tâm trạng nhân vật:** Tập trung cao độ và tỉ mỉ vào công việc.');
+    }
+
+    if (options.modelType && options.modelType !== 'Tự động') {
+        sceneDetails.push(`- **Loại mô hình đang chế tạo:** Một ${options.modelType} chi tiết.`);
+    } else {
+        sceneDetails.push('- **Loại mô hình đang chế tạo:** Một mô hình/tượng nhỏ chi tiết (ví dụ: tượng resin, mô hình lắp ráp).');
+    }
+
+    if (options.blueprintType && options.blueprintType !== 'Tự động') {
+        sceneDetails.push(`- **Bản vẽ thiết kế:** Ở phía sau, có một bản thiết kế của mô hình ${options.blueprintType}.`);
+    } else {
+        sceneDetails.push('- **Bản vẽ thiết kế:** Ở phía sau, có một bản vẽ kỹ thuật hoặc mô hình 3D trên màn hình máy tính của mô hình đang được chế tạo.');
+    }
+    
+    if (options.background && options.background !== 'Tự động') {
+        sceneDetails.push(`- **Bối cảnh/Phông nền:** Toàn bộ cảnh diễn ra trong một ${options.background}.`);
+    } else {
+        sceneDetails.push('- **Bối cảnh/Phông nền (Tự động):** Toàn bộ cảnh diễn ra trong một căn phòng/xưởng làm việc có phong cách và các chi tiết phù hợp với chủ đề của nhân vật gốc (ví dụ: nhân vật công nghệ thì xưởng hiện đại, nhân vật cổ trang thì xưởng gỗ...).');
+    }
+
+    promptParts.push(...sceneDetails);
+    return promptParts;
+};
+
 const buildPokemonModelPrompt = (options: ToyModelOptions): string[] => {
     const promptParts = [
         '**Nhiệm-vụ-cốt-lõi:** Hãy tưởng tượng lại chủ thể trong hình ảnh được cung cấp như một Pokémon hoàn toàn mới. Dựa trên đó, tạo ra một bức ảnh chụp sản phẩm **siêu thực, sống động, và đậm chất điện ảnh (cinematic)**.',
@@ -201,6 +251,9 @@ export async function generateToyModelImage(
             break;
         case 'miniature':
             promptParts = buildMiniaturePrompt(options);
+            break;
+        case 'crafting_model':
+            promptParts = buildCraftingModelPrompt(options);
             break;
         case 'pokemon_model':
             promptParts = buildPokemonModelPrompt(options);

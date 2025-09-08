@@ -1,0 +1,15 @@
+{
+  "swapStyle_mainTitle": "Thay Đổi Phong Cách Ảnh",
+  "swapStyle_subtitle": "Tải ảnh và chọn một phong cách để biến đổi",
+  "swapStyle_uploaderCaption": "Tải ảnh gốc",
+  "swapStyle_uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh cần thay đổi phong cách",
+  "swapStyle_styleLabel": "Phong cách",
+  "swapStyle_stylePlaceholder": "Tìm hoặc để trống cho Tự động...",
+  "swapStyle_strengthLabel": "Mức độ ảnh hưởng Style",
+  "swapStyle_notesPlaceholder": "Ví dụ: tập trung vào khuôn mặt, tông màu xanh...",
+  "swapStyle_creating": "Đang biến đổi...",
+  "swapStyle_createButton": "Áp dụng Style",
+  "swapStyle_autoStyleCaption": "Phong cách Tự động",
+  "swapStyle_regenDescription": "Thêm ghi chú để cải thiện ảnh theo phong cách",
+  "swapStyle_regenPlaceholder": "Ví dụ: thêm nhiều chi tiết hơn, màu sắc rực rỡ hơn..."
+}

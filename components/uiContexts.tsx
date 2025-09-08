@@ -36,13 +36,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [currentUser, setCurrentUser] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const autoLoginAsDefaultUser = useCallback(() => {
-        const autoLoginUser = 'sdvn.vn';
-        setCurrentUser(autoLoginUser);
-        setIsLoggedIn(true);
-        sessionStorage.setItem('currentUser', autoLoginUser);
-    }, []);
-
     useEffect(() => {
         const initializeAuth = async () => {
             const defaultSettingsOnError: LoginSettings = {
@@ -68,8 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setLoginSettings(settings);
                     
                     if (settings.enabled === false) {
-                        // Auto-login ONLY when enabled is explicitly false.
-                        autoLoginAsDefaultUser();
+                        // Login is disabled. Bypass the login screen. No user is set.
+                        setIsLoggedIn(true);
+                        setCurrentUser(null);
+                        sessionStorage.removeItem('currentUser');
                     } else {
                         // Treat enabled:true or missing enabled property as login required.
                         handleEnabledLogin(settings);
@@ -91,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         initializeAuth();
-    }, [autoLoginAsDefaultUser]);
+    }, []);
 
     const login = useCallback(async (username: string, password?: string): Promise<boolean> => {
         if (!loginSettings) return false;
@@ -197,10 +192,13 @@ interface AppControlContextType {
     isInfoOpen: boolean;
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
+    isBeforeAfterModalOpen: boolean;
+    language: 'vi' | 'en';
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
     replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
     handleThemeChange: (newTheme: Theme) => void;
+    handleLanguageChange: (lang: 'vi' | 'en') => void;
     navigateTo: (viewId: string) => void;
     handleStateChange: (newAppState: AnyAppState) => void;
     handleSelectApp: (appId: string) => void;
@@ -217,6 +215,9 @@ interface AppControlContextType {
     toggleExtraTools: () => void;
     openImageLayoutModal: () => void;
     closeImageLayoutModal: () => void;
+    openBeforeAfterModal: () => void;
+    closeBeforeAfterModal: () => void;
+    t: (key: string, ...args: any[]) => any;
 }
 
 const AppControlContext = createContext<AppControlContextType | undefined>(undefined);
@@ -237,10 +238,77 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [isExtraToolsOpen, setIsExtraToolsOpen] = useState(false);
     const [isImageLayoutModalOpen, setIsImageLayoutModalOpen] = useState(false);
+    const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
     const [settings, setSettings] = useState(null); // Initially null
 
+    const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
+    const [translations, setTranslations] = useState<Record<string, any>>({});
+
     const currentView = viewHistory[historyIndex];
+
+    useEffect(() => {
+        const fetchTranslations = async () => {
+             const modules = [
+                'common', 
+                'data',
+                'home', 
+                'architectureIdeator',
+                'avatarCreator',
+                'dressTheModel',
+                'freeGeneration',
+                'imageInterpolation',
+                'imageToReal',
+                'mixStyle',
+                'photoRestoration',
+                'swapStyle',
+                'toyModelCreator'
+            ];
+            try {
+                const fetchPromises = modules.map(module =>
+                    fetch(`/locales/${language}/${module}.json`)
+                        .then(res => {
+                            if (!res.ok) {
+                                console.warn(`Could not fetch ${module}.json for ${language}`);
+                                return {}; // Return empty object on failure to not break Promise.all
+                            }
+                            return res.json();
+                        })
+                );
+
+                const loadedTranslations = await Promise.all(fetchPromises);
+                
+                const mergedTranslations = loadedTranslations.reduce(
+                    (acc, current) => ({ ...acc, ...current }),
+                    {}
+                );
+                setTranslations(mergedTranslations);
+            } catch (error) {
+                console.error(`Could not load translations for ${language}`, error);
+            }
+        };
+        fetchTranslations();
+    }, [language]);
+
+    const handleLanguageChange = useCallback((lang: 'vi' | 'en') => {
+        setLanguage(lang);
+        localStorage.setItem('app-language', lang);
+    }, []);
+
+    const t = useCallback((key: string, ...args: any[]): any => {
+        let translation = translations[key];
+        if (translation === undefined) {
+            console.warn(`Translation key not found: ${key}`);
+            return key;
+        }
+        if (typeof translation === 'string' && args.length > 0) {
+            args.forEach((arg, index) => {
+                translation = translation.replace(`{${index}}`, arg);
+            });
+        }
+        return translation;
+    }, [translations]);
+
 
     const addImagesToGallery = useCallback((newImages: string[]) => {
         setSessionGalleryImages(prev => {
@@ -366,6 +434,11 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setIsExtraToolsOpen(false); // Close the tools menu when opening the modal
     }, []);
     const closeImageLayoutModal = useCallback(() => setIsImageLayoutModalOpen(false), []);
+    const openBeforeAfterModal = useCallback(() => {
+        setIsBeforeAfterModalOpen(true);
+        setIsExtraToolsOpen(false);
+    }, []);
+    const closeBeforeAfterModal = useCallback(() => setIsBeforeAfterModalOpen(false), []);
 
     const value: AppControlContextType = {
         currentView,
@@ -379,10 +452,13 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isInfoOpen,
         isExtraToolsOpen,
         isImageLayoutModalOpen,
+        isBeforeAfterModalOpen,
+        language,
         addImagesToGallery,
         removeImageFromGallery,
         replaceImageInGallery,
         handleThemeChange,
+        handleLanguageChange,
         navigateTo,
         handleStateChange,
         handleSelectApp,
@@ -399,6 +475,9 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         toggleExtraTools,
         openImageLayoutModal,
         closeImageLayoutModal,
+        openBeforeAfterModal,
+        closeBeforeAfterModal,
+        t,
     };
 
     return (

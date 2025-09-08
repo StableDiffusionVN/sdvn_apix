@@ -18,8 +18,8 @@ import {
     handleFileUpload,
     useLightbox,
     processAndDownloadAll,
+    useAppControls,
 } from './uiUtils';
-import { COUNTRIES } from '../lib/countries';
 
 interface PhotoRestorationProps {
     mainTitle: string;
@@ -35,9 +35,6 @@ interface PhotoRestorationProps {
     onGoBack: () => void;
 }
 
-const PHOTO_TYPE_OPTIONS = ['Chân dung', 'Phong cảnh', 'Gia đình', 'Sự kiện', 'Kiến trúc', 'Đời thường'];
-const GENDER_OPTIONS = ['Tự động', 'Nam', 'Nữ', 'Nhiều người'];
-
 const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
@@ -45,6 +42,7 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         ...headerProps 
     } = props;
     
+    const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     
     // State for searchable nationality dropdown
@@ -53,8 +51,11 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     const nationalityDropdownRef = useRef<HTMLDivElement>(null);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
+    const COUNTRIES = t('countries');
+    const PHOTO_TYPE_OPTIONS = t('photoRestoration_photoTypeOptions');
+    const GENDER_OPTIONS = t('photoRestoration_genderOptions');
 
-    const filteredCountries = COUNTRIES.filter(country => 
+    const filteredCountries = COUNTRIES.filter((country: string) => 
         country.toLowerCase().includes(nationalitySearch.toLowerCase())
     );
 
@@ -205,18 +206,18 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange} />
+                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption={t('common_originalImage')} status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange} />
                         </div>
                         <OptionsPanel>
-                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Thông tin bổ sung</h2>
-                            <p className="text-neutral-300 text-sm">Cung cấp thêm thông tin giúp AI phục chế ảnh chính xác hơn.</p>
+                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('photoRestoration_additionalInfoTitle')}</h2>
+                            <p className="text-neutral-300 text-sm">{t('photoRestoration_additionalInfoSubtitle')}</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {renderSelect('type', 'Loại ảnh', PHOTO_TYPE_OPTIONS)}
-                                {renderSelect('gender', 'Giới tính', GENDER_OPTIONS)}
+                                {renderSelect('type', t('photoRestoration_photoTypeLabel'), PHOTO_TYPE_OPTIONS)}
+                                {renderSelect('gender', t('photoRestoration_genderLabel'), GENDER_OPTIONS)}
 
                                 {/* Searchable Nationality Dropdown */}
                                 <div ref={nationalityDropdownRef} className="searchable-dropdown-container">
-                                    <label htmlFor="nationality" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Quốc tịch</label>
+                                    <label htmlFor="nationality" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('photoRestoration_nationalityLabel')}</label>
                                     <input
                                         type="text"
                                         id="nationality"
@@ -231,16 +232,16 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                                         }}
                                         onBlur={() => handleOptionChange('nationality', nationalitySearch)}
                                         className="form-input"
-                                        placeholder="Tìm hoặc để trống cho Tự động..."
+                                        placeholder={t('photoRestoration_nationalityPlaceholder')}
                                     />
                                     {isNationalityDropdownOpen && (
                                         <ul className="searchable-dropdown-list">
-                                            {filteredCountries.length > 0 ? filteredCountries.map(country => (
+                                            {filteredCountries.length > 0 ? filteredCountries.map((country: string) => (
                                                 <li key={country} onMouseDown={() => handleNationalitySelect(country)} className="searchable-dropdown-item">
                                                     {country}
                                                 </li>
                                             )) : (
-                                                <li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>
+                                                <li className="searchable-dropdown-item !cursor-default">{t('common_notFound')}</li>
                                             )}
                                         </ul>
                                     )}
@@ -248,39 +249,39 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
 
                                 {/* Age Input */}
                                 <div>
-                                    <label htmlFor="age" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Độ tuổi</label>
+                                    <label htmlFor="age" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('photoRestoration_ageLabel')}</label>
                                     <input
                                         type="text"
                                         id="age"
                                         value={appState.options.age}
                                         onChange={(e) => handleOptionChange('age', e.target.value)}
                                         className="form-input"
-                                        placeholder="Tự động"
+                                        placeholder={t('common_auto')}
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú</label>
+                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('photoRestoration_notesLabel')}</label>
                                 <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder="Ví dụ: phục chế màu áo dài xanh..." className="form-input h-24" rows={3} />
+                                    placeholder={t('photoRestoration_notesPlaceholder')} className="form-input h-24" rows={3} />
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4 pt-2">
                                 <div className="flex items-center">
                                     <input type="checkbox" id="remove-stains" checked={appState.options.removeStains}
                                         onChange={(e) => handleOptionChange('removeStains', e.target.checked)}
                                         className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                    <label htmlFor="remove-stains" className="ml-3 block text-sm font-medium text-neutral-300">Xóa vết loang, ố</label>
+                                    <label htmlFor="remove-stains" className="ml-3 block text-sm font-medium text-neutral-300">{t('photoRestoration_removeStainsLabel')}</label>
                                 </div>
                                 <div className="flex items-center">
                                     <input type="checkbox" id="remove-watermark-restore" checked={appState.options.removeWatermark}
                                         onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                         className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                    <label htmlFor="remove-watermark-restore" className="ml-3 block text-sm font-medium text-neutral-300">Xóa watermark (nếu có)</label>
+                                    <label htmlFor="remove-watermark-restore" className="ml-3 block text-sm font-medium text-neutral-300">{t('common_removeWatermark')}</label>
                                 </div>
                             </div>
                             <div className="flex items-center justify-end gap-4 pt-4">
-                                <button onClick={onReset} className="btn btn-secondary">Đổi ảnh khác</button>
-                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? 'Đang phục chế...' : 'Phục chế ảnh'}</button>
+                                <button onClick={onReset} className="btn btn-secondary">{t('common_changeImage')}</button>
+                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? t('photoRestoration_creating') : t('photoRestoration_createButton')}</button>
                             </div>
                         </OptionsPanel>
                     </AppOptionsLayout>
@@ -295,9 +296,9 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                     error={appState.error}
                     actions={
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>)}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa tùy chọn</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                            <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_editOptions')}</button>
+                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
                         </>
                     }>
                     <motion.div
@@ -308,13 +309,13 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
                         <ActionablePolaroidCard
                             type="output"
-                            caption="Ảnh đã phục chế" status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                            caption={t('photoRestoration_resultCaption')} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
-                            regenerationTitle="Tinh chỉnh ảnh"
-                            regenerationDescription="Thêm ghi chú để cải thiện ảnh phục chế"
-                            regenerationPlaceholder="Ví dụ: làm cho màu da sáng hơn..."
+                            regenerationTitle={t('common_regenTitle')}
+                            regenerationDescription={t('photoRestoration_regenDescription')}
+                            regenerationPlaceholder={t('photoRestoration_regenPlaceholder')}
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                 </ResultsView>

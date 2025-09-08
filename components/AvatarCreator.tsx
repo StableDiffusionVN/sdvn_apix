@@ -18,59 +18,8 @@ import {
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
+    useAppControls,
 } from './uiUtils';
-
-const IDEAS_BY_CATEGORY = [
-    {
-        category: "Khoảnh Khắc Tự Hào",
-        ideas: [
-            'Tung bay tà áo dài và lá cờ đỏ',
-            'Nụ cười rạng rỡ bên lá cờ Tổ quốc',
-            'Chào cờ trang nghiêm ở Quảng trường Ba Đình',
-            'Ánh mắt tự hào hướng về lá cờ',
-            'Dạo bước trên con đường cờ hoa rực rỡ',
-            'Tự tin check-in tại Cột cờ Lũng Cú',
-            'Tay trong tay cùng người lính hải quân',
-            'Vẻ đẹp kiêu hãnh trước Lăng Bác',
-            'Giọt lệ hạnh phúc khi quốc ca vang lên',
-            'Gửi gắm tình yêu nơi cột mốc Trường Sa',
-            'Thiếu nữ với bó hoa sen và cờ đỏ',
-            'Vẫy cao lá cờ chiến thắng',
-            'Gia đình nhỏ bên lá cờ Tổ quốc',
-            'Khoảnh khắc đời thường dưới bóng cờ',
-            'Áo dài đỏ tung bay trên phố cổ'
-        ],
-    },
-    {
-        category: "Biểu tượng & Văn hóa",
-        ideas: ['Áo dài đỏ sao vàng', 'Bên cạnh hoa sen hồng', 'Họa tiết trống đồng Đông Sơn', 'Đội nón lá truyền thống', 'Vẽ mặt hình cờ đỏ sao vàng', 'Cầm cành đào ngày Tết', 'Bên cạnh cây mai vàng', 'Áo dài trắng nữ sinh', 'Múa lân sư rồng', 'Chơi đàn T\'rưng', 'Thả đèn hoa đăng', 'Nghệ nhân gốm Bát Tràng', 'Vẻ đẹp thiếu nữ bên khung cửi', 'Cầm lồng đèn Trung Thu', 'Nghệ thuật múa rối nước'],
-    },
-    {
-        category: "Lịch sử & Anh hùng",
-        ideas: ['Chiến sĩ Điện Biên Phủ', 'Nữ tướng Hai Bà Trưng', 'Vua Hùng dựng nước', 'Thanh niên xung phong', 'Chiến sĩ hải quân Trường Sa', 'Anh bộ đội Cụ Hồ', 'Du kích trong rừng', 'Cô gái mở đường', 'Tinh thần bất khuất thời Trần', 'Hình tượng Thánh Gióng', 'Nữ anh hùng Võ Thị Sáu', 'Chân dung thời bao cấp', 'Chiến sĩ giải phóng quân', 'Dân công hỏa tuyến', 'Người lính biên phòng'],
-    },
-    {
-        category: "Phong cảnh & Địa danh",
-        ideas: ['Giữa ruộng bậc thang Sapa', 'Trên thuyền ở Vịnh Hạ Long', 'Đứng trước Hồ Gươm, cầu Thê Húc', 'Khám phá hang Sơn Đoòng', 'Cánh đồng lúa chín vàng', 'Vẻ đẹp cao nguyên đá Hà Giang', 'Hoàng hôn trên phá Tam Giang', 'Biển xanh Phú Quốc', 'Chèo thuyền ở Tràng An, Ninh Bình', 'Đi giữa phố cổ Hội An', 'Cột cờ Lũng Cú', 'Dinh Độc Lập lịch sử', 'Nhà thờ Đức Bà Sài Gòn', 'Bên dòng sông Mekong', 'Vẻ đẹp Đà Lạt mộng mơ'],
-    },
-    {
-        category: "Ẩm thực & Đời sống",
-        ideas: ['Thưởng thức Phở Hà Nội', 'Uống cà phê sữa đá Sài Gòn', 'Gói bánh chưng ngày Tết', 'Gánh hàng rong phố cổ', 'Ăn bánh mì vỉa hè', 'Không khí chợ nổi Cái Răng', 'Làm nón lá', 'Người nông dân trên đồng', 'Ngư dân kéo lưới', 'Gia đình sum vầy', 'Bên xe máy Dream huyền thoại', 'Uống trà đá vỉa hè', 'Bữa cơm gia đình Việt', 'Làm muối ở Hòn Khói', 'Trồng cây cà phê Tây Nguyên'],
-    },
-    {
-        category: "Nghệ thuật & Sáng tạo",
-        ideas: ['Phong cách tranh cổ động', 'Phong cách tranh sơn mài', 'Họa tiết gốm Chu Đậu', 'Nét vẽ tranh Đông Hồ', 'Ánh sáng từ đèn lồng Hội An', 'Nghệ thuật thư pháp', 'Họa tiết thổ cẩm Tây Bắc', 'Phong cách ảnh phim xưa', 'Nghệ thuật điêu khắc Chăm Pa', 'Vẻ đẹp tranh lụa', 'Phong cách Cyberpunk Sài Gòn', 'Hòa mình vào dải ngân hà', 'Họa tiết rồng thời Lý', 'Ánh sáng neon hiện đại', 'Phong cách Low-poly'],
-    },
-    {
-        category: "Thể thao & Tự hào",
-        ideas: ['Cổ động viên bóng đá cuồng nhiệt', 'Khoảnh khắc nâng cúp vàng', 'Vận động viên SEA Games', 'Tay đua xe đạp', 'Võ sĩ Vovinam', 'Cầu thủ bóng đá chuyên nghiệp', 'Niềm vui chiến thắng', 'Đi bão sau trận thắng', 'Vận động viên điền kinh', 'Tinh thần thể thao Olympic', 'Tay vợt cầu lông', 'Nữ vận động viên wushu', 'Cờ đỏ trên khán đài', 'Vận động viên bơi lội', 'Huy chương vàng tự hào'],
-    },
-    {
-        category: "Tương lai & Khoa học",
-        ideas: ['Phi hành gia cắm cờ Việt Nam', 'Nhà khoa học trong phòng thí nghiệm', 'Kỹ sư công nghệ tương lai', 'Thành phố thông minh', 'Nông nghiệp công nghệ cao', 'Bác sĩ robot y tế', 'Năng lượng mặt trời Việt Nam', 'Khám phá đại dương', 'Chuyên gia trí tuệ nhân tạo', 'Kiến trúc sư công trình xanh'],
-    },
-];
-const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
 
 interface AvatarCreatorProps {
     mainTitle: string;
@@ -97,9 +46,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         ...headerProps
     } = props;
     
+    const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
+    
+    const IDEAS_BY_CATEGORY = t('avatarCreator_ideasByCategory');
+    const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
 
     const outputLightboxImages = appState.selectedIdeas
         .map(idea => appState.generatedImages[idea])
@@ -276,9 +229,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
 
     const getButtonText = () => {
-        if (appState.stage === 'generating') return 'Đang tạo...';
-        if (appState.selectedIdeas.length < minIdeas) return `Chọn ít nhất ${minIdeas} ý tưởng`;
-        return `Tạo ảnh`;
+        if (appState.stage === 'generating') return t('common_creating');
+        if (appState.selectedIdeas.length < minIdeas) return t('avatarCreator_selectAtLeast', minIdeas);
+        return t('avatarCreator_createButton');
     };
     
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
@@ -311,21 +264,21 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     <ActionablePolaroidCard
                         type="photo-input"
                         mediaUrl={appState.uploadedImage}
-                        caption="Ảnh của bạn"
+                        caption={t('avatarCreator_yourImageCaption')}
                         status="done"
                         onClick={() => openLightbox(0)}
                         onImageChange={handleUploadedImageChange}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
-                        <h2 className="base-font font-bold text-2xl text-neutral-200">Chọn từ {minIdeas} đến {maxIdeas} ý tưởng bạn muốn thử</h2>
-                        <p className="text-neutral-400 mb-4">Đã chọn: {appState.selectedIdeas.length}/{maxIdeas}</p>
+                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('avatarCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
+                        <p className="text-neutral-400 mb-4">{t('avatarCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
                         <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
-                            {IDEAS_BY_CATEGORY.map(categoryObj => (
+                            {IDEAS_BY_CATEGORY.map((categoryObj: any) => (
                                 <div key={categoryObj.category}>
                                     <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                        {categoryObj.ideas.map(p => {
+                                        {categoryObj.ideas.map((p: string) => {
                                             const isSelected = appState.selectedIdeas.includes(p);
                                             return (
                                                 <button 
@@ -350,23 +303,23 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
-                            <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ khung ảnh</label>
+                            <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                             <select
                                 id="aspect-ratio"
                                 value={appState.options.aspectRatio}
                                 onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
                                 className="form-input"
                             >
-                                {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                {ASPECT_RATIO_OPTIONS.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung (tùy chọn)</label>
+                            <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
                                 id="additional-prompt"
                                 value={appState.options.additionalPrompt}
                                 onChange={(e) => handleOptionChange('additionalPrompt', e.target.value)}
-                                placeholder="Ví dụ: tông màu ấm, phong cách phim xưa..."
+                                placeholder={t('avatarCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}
                                 aria-label="Ghi chú bổ sung cho ảnh"
@@ -379,17 +332,17 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 checked={appState.options.removeWatermark}
                                 onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                 className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                aria-label="Xóa watermark nếu có"
+                                aria-label={t('common_removeWatermark')}
                             />
                             <label htmlFor="remove-watermark-avatar" className="ml-3 block text-sm font-medium text-neutral-300">
-                                Xóa watermark (nếu có)
+                                {t('common_removeWatermark')}
                             </label>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4 mt-4">
                         <button onClick={onReset} className="btn btn-secondary">
-                            Đổi ảnh khác
+                            {t('common_changeImage')}
                         </button>
                         <button 
                             onClick={handleGenerateClick} 
@@ -412,13 +365,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     actions={
                         <>
                             <button onClick={handleDownloadAll} className="btn btn-primary">
-                                Tải về tất cả
+                                {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
-                                Chọn ý tưởng khác
+                                {t('avatarCreator_chooseOtherIdeas')}
                             </button>
                             <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
-                                Bắt đầu lại
+                                {t('common_startOver')}
                             </button>
                         </>
                     }
@@ -449,7 +402,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     onImageChange={handleGeneratedImageChange(idea)}
                                     onRegenerate={(prompt) => handleRegenerateIdea(idea, prompt)}
                                     onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
-                                    regenerationPlaceholder="Ví dụ: thêm một bông hoa sen, mặc áo dài màu xanh..."
+                                    regenerationTitle={t('common_regenTitle')}
+                                    regenerationDescription={t('common_regenDescription')}
+                                    regenerationPlaceholder={t('avatarCreator_regenPlaceholder')}
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -469,7 +424,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption="Video"
+                                    caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}

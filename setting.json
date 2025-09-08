@@ -1,162 +1,162 @@
 {
   "home": {
-    "mainTitle": "aPix",
-    "subtitle": "Hãy chọn ứng dụng và bắt đầu sáng tạo",
+    "mainTitleKey": "home_mainTitle",
+    "subtitleKey": "home_subtitle",
     "useSmartTitleWrapping": false,
     "smartTitleWrapWords": 2
   },
   "apps": [
     {
       "id": "free-generation",
-      "title": "Tạo ảnh tự do",
-      "description": "Tạo ảnh mới từ văn bản hoặc chỉnh sửa ảnh tải lên bằng prompt của riêng bạn.",
+      "titleKey": "app_free-generation_title",
+      "descriptionKey": "app_free-generation_description",
       "icon": "🚀"
     },
     {
       "id": "image-interpolation",
-      "title": "Nội suy hình ảnh",
-      "description": "Phân tích cặp ảnh để tạo prompt, sau đó áp dụng prompt đó cho một ảnh tham chiếu.",
+      "titleKey": "app_image-interpolation_title",
+      "descriptionKey": "app_image-interpolation_description",
       "icon": "⚗️"
     },
     {
       "id": "toy-model-creator",
-      "title": "Tạo mô hình đồ chơi",
-      "description": "Biến đối tượng trong ảnh của bạn thành một mô hình đồ chơi đặt trên bàn làm việc.",
+      "titleKey": "app_toy-model-creator_title",
+      "descriptionKey": "app_toy-model-creator_description",
       "icon": "🤖"
     },
     {
       "id": "avatar-creator",
-      "title": "Tạo avatar yêu nước",
-      "description": "Biến ảnh chân dung của bạn thành một tác phẩm nghệ thuật thể hiện niềm tự hào dân tộc.",
+      "titleKey": "app_avatar-creator_title",
+      "descriptionKey": "app_avatar-creator_description",
       "icon": "🇻🇳"
     },
     {
       "id": "architecture-ideator",
-      "title": "Lên ý tưởng kiến trúc",
-      "description": "Biến các ảnh phác thảo kiến trúc (vẽ tay, sketch, 3D) thành ảnh thật, sống động.",
+      "titleKey": "app_architecture-ideator_title",
+      "descriptionKey": "app_architecture-ideator_description",
       "icon": "🏛️"
     },
     {
       "id": "dress-the-model",
-      "title": "Mặc trang phục cho mẫu",
-      "description": "Thử trang phục mới cho người mẫu từ ảnh của bạn, giữ nguyên khuôn mặt và vóc dáng.",
+      "titleKey": "app_dress-the-model_title",
+      "descriptionKey": "app_dress-the-model_description",
       "icon": "👗"
     },
     {
       "id": "photo-restoration",
-      "title": "Phục chế ảnh cũ",
-      "description": "Phục hồi màu sắc và chi tiết cho những bức ảnh cũ, bị hư hỏng, mang ký ức trở lại.",
+      "titleKey": "app_photo-restoration_title",
+      "descriptionKey": "app_photo-restoration_description",
       "icon": "🖼️"
     },
     {
       "id": "image-to-real",
-      "title": "Chuyển đổi sang ảnh thật",
-      "description": "Biến ảnh vẽ, hoạt hình, hoặc bất kỳ phong cách nào thành một bức ảnh chân thực.",
+      "titleKey": "app_image-to-real_title",
+      "descriptionKey": "app_image-to-real_description",
       "icon": "✨"
     },
     {
       "id": "swap-style",
-      "title": "Thay đổi phong cách ảnh",
-      "description": "Biến đổi ảnh của bạn theo hàng trăm phong cách nghệ thuật độc đáo khác nhau.",
+      "titleKey": "app_swap-style_title",
+      "descriptionKey": "app_swap-style_description",
       "icon": "🎨"
     },
     {
       "id": "mix-style",
-      "title": "Trộn phong cách ảnh",
-      "description": "Kết hợp nội dung của một ảnh với phong cách nghệ thuật của một ảnh khác.",
+      "titleKey": "app_mix-style_title",
+      "descriptionKey": "app_mix-style_description",
       "icon": "🎭"
     }
   ],
   "avatarCreator": {
-    "mainTitle": "Tạo Avatar Yêu Nước",
-    "subtitle": "Chọn ảnh và ý tưởng để bắt đầu",
+    "mainTitleKey": "avatarCreator_mainTitle",
+    "subtitleKey": "avatarCreator_subtitle",
     "minIdeas": 1,
     "maxIdeas": 6,
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaption": "Tải ảnh của bạn",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo"
+    "uploaderCaptionKey": "avatarCreator_uploaderCaption",
+    "uploaderDescriptionKey": "avatarCreator_uploaderDescription"
   },
   "architectureIdeator": {
-    "mainTitle": "Lên ý tưởng kiến trúc",
-    "subtitle": "Biến phác thảo của bạn thành hiện thực",
+    "mainTitleKey": "architectureIdeator_mainTitle",
+    "subtitleKey": "architectureIdeator_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaption": "Tải ảnh phác thảo",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải lên bản vẽ, hoặc ảnh 3D"
+    "uploaderCaptionKey": "architectureIdeator_uploaderCaption",
+    "uploaderDescriptionKey": "architectureIdeator_uploaderDescription"
   },
   "dressTheModel": {
-    "mainTitle": "Mặc Trang Phục Cho Mẫu",
-    "subtitle": "Tải ảnh người mẫu và trang phục để bắt đầu",
+    "mainTitleKey": "dressTheModel_mainTitle",
+    "subtitleKey": "dressTheModel_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaptionModel": "Tải ảnh người mẫu",
-    "uploaderDescriptionModel": "Ảnh chân dung hoặc toàn thân, rõ mặt",
-    "uploaderCaptionClothing": "Tải ảnh trang phục",
-    "uploaderDescriptionClothing": "Ảnh sản phẩm rõ ràng, chính diện"
+    "uploaderCaptionModelKey": "dressTheModel_uploaderCaptionModel",
+    "uploaderDescriptionModelKey": "dressTheModel_uploaderDescriptionModel",
+    "uploaderCaptionClothingKey": "dressTheModel_uploaderCaptionClothing",
+    "uploaderDescriptionClothingKey": "dressTheModel_uploaderDescriptionClothing"
   },
   "photoRestoration": {
-    "mainTitle": "Phục Chế Ảnh Cũ",
-    "subtitle": "Tải lên bức ảnh cần phục chế để bắt đầu",
+    "mainTitleKey": "photoRestoration_mainTitle",
+    "subtitleKey": "photoRestoration_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaption": "Tải ảnh cũ",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh cần phục chế, sửa chữa"
+    "uploaderCaptionKey": "photoRestoration_uploaderCaption",
+    "uploaderDescriptionKey": "photoRestoration_uploaderDescription"
   },
   "imageToReal": {
-    "mainTitle": "Chuyển Đổi Sang Ảnh Thật",
-    "subtitle": "Tải lên bất kỳ ảnh nào để biến nó thành ảnh thật",
+    "mainTitleKey": "imageToReal_mainTitle",
+    "subtitleKey": "imageToReal_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 3,
-    "uploaderCaption": "Tải ảnh gốc",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh vẽ, 3D, hoạt hình..."
+    "uploaderCaptionKey": "imageToReal_uploaderCaption",
+    "uploaderDescriptionKey": "imageToReal_uploaderDescription"
   },
   "swapStyle": {
-    "mainTitle": "Thay Đổi Phong Cách Ảnh",
-    "subtitle": "Tải ảnh và chọn một phong cách để biến đổi",
+    "mainTitleKey": "swapStyle_mainTitle",
+    "subtitleKey": "swapStyle_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 3,
-    "uploaderCaption": "Tải ảnh gốc",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh cần thay đổi phong cách"
+    "uploaderCaptionKey": "swapStyle_uploaderCaption",
+    "uploaderDescriptionKey": "swapStyle_uploaderDescription"
   },
   "mixStyle": {
-    "mainTitle": "Trộn Phong Cách Ảnh",
-    "subtitle": "Tải ảnh nội dung và ảnh phong cách để bắt đầu",
+    "mainTitleKey": "mixStyle_mainTitle",
+    "subtitleKey": "mixStyle_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 3,
-    "uploaderCaptionContent": "Ảnh nội dung",
-    "uploaderDescriptionContent": "Ảnh chứa chủ thể và bố cục chính",
-    "uploaderCaptionStyle": "Ảnh phong cách",
-    "uploaderDescriptionStyle": "Ảnh chứa màu sắc, kết cấu để tham khảo"
+    "uploaderCaptionContentKey": "mixStyle_uploaderCaptionContent",
+    "uploaderDescriptionContentKey": "mixStyle_uploaderDescriptionContent",
+    "uploaderCaptionStyleKey": "mixStyle_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "mixStyle_uploaderDescriptionStyle"
   },
   "freeGeneration": {
-    "mainTitle": "Tạo Ảnh Tự Do",
-    "subtitle": "Giải phóng sức sáng tạo của bạn với prompt",
+    "mainTitleKey": "freeGeneration_mainTitle",
+    "subtitleKey": "freeGeneration_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaption1": "Tải ảnh 1 (tùy chọn)",
-    "uploaderDescription1": "Ảnh để chỉnh sửa hoặc làm nguồn cảm hứng",
-    "uploaderCaption2": "Tải ảnh 2 (tùy chọn)",
-    "uploaderDescription2": "Ảnh thứ hai để kết hợp hoặc tham chiếu"
+    "uploaderCaption1Key": "freeGeneration_uploaderCaption1",
+    "uploaderDescription1Key": "freeGeneration_uploaderDescription1",
+    "uploaderCaption2Key": "freeGeneration_uploaderCaption2",
+    "uploaderDescription2Key": "freeGeneration_uploaderDescription2"
   },
   "toyModelCreator": {
-    "mainTitle": "Tạo Mô Hình Đồ Chơi",
-    "subtitle": "Tải lên ảnh một nhân vật hoặc vật thể để bắt đầu",
+    "mainTitleKey": "toyModelCreator_mainTitle",
+    "subtitleKey": "toyModelCreator_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
-    "uploaderCaption": "Tải ảnh gốc",
-    "uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh nhân vật, vật thể..."
+    "uploaderCaptionKey": "toyModelCreator_uploaderCaption",
+    "uploaderDescriptionKey": "toyModelCreator_uploaderDescription"
   },
   "imageInterpolation": {
-    "mainTitle": "Nội suy hình ảnh",
-    "subtitle": "Tải lên cặp ảnh và ảnh tham chiếu để bắt đầu",
+    "mainTitleKey": "imageInterpolation_mainTitle",
+    "subtitleKey": "imageInterpolation_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 3,
-    "uploaderCaptionInput": "Ảnh Input",
-    "uploaderDescriptionInput": "Hình ảnh bắt đầu",
-    "uploaderCaptionOutput": "Ảnh Output",
-    "uploaderDescriptionOutput": "Hình ảnh mong muốn",
-    "uploaderCaptionReference": "Ảnh Tham chiếu",
-    "uploaderDescriptionReference": "Ảnh để áp dụng thay đổi"
+    "uploaderCaptionInputKey": "imageInterpolation_uploaderCaptionInput",
+    "uploaderDescriptionInputKey": "imageInterpolation_uploaderDescriptionInput",
+    "uploaderCaptionOutputKey": "imageInterpolation_uploaderCaptionOutput",
+    "uploaderDescriptionOutputKey": "imageInterpolation_uploaderDescriptionOutput",
+    "uploaderCaptionReferenceKey": "imageInterpolation_uploaderCaptionReference",
+    "uploaderDescriptionReferenceKey": "imageInterpolation_uploaderDescriptionReference"
   }
 }

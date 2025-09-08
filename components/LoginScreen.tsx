@@ -4,10 +4,11 @@
 */
 import React, { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { useAuth } from './uiUtils';
+import { useAuth, useAppControls } from './uiUtils';
 
 const LoginScreen: React.FC = () => {
     const { login } = useAuth();
+    const { t } = useAppControls();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -20,7 +21,7 @@ const LoginScreen: React.FC = () => {
 
         const success = await login(username, password);
         if (!success) {
-            setError('Tên đăng nhập hoặc mật khẩu không đúng.');
+            setError(t('login_error'));
             setIsLoading(false);
         }
         // On success, the App component will re-render, no need to do anything else here.
@@ -41,12 +42,12 @@ const LoginScreen: React.FC = () => {
                 >
                     <div className="text-center mb-6">
                         <h1 className="text-5xl title-font font-bold text-white">aPix</h1>
-                        <p className="sub-title-font font-bold text-neutral-300 mt-1">Vui lòng đăng nhập</p>
+                        <p className="sub-title-font font-bold text-neutral-300 mt-1">{t('login_title')}</p>
                     </div>
 
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-neutral-300 mb-1">Tài khoản</label>
+                            <label htmlFor="username" className="block text-sm font-medium text-neutral-300 mb-1">{t('login_username')}</label>
                             <input
                                 id="username"
                                 type="text"
@@ -58,7 +59,7 @@ const LoginScreen: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label htmlFor="password"  className="block text-sm font-medium text-neutral-300 mb-1">Mật khẩu</label>
+                            <label htmlFor="password"  className="block text-sm font-medium text-neutral-300 mb-1">{t('login_password')}</label>
                             <input
                                 id="password"
                                 type="password"
@@ -87,7 +88,7 @@ const LoginScreen: React.FC = () => {
                             className="btn btn-primary w-full"
                             disabled={isLoading}
                         >
-                            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                            {isLoading ? t('login_loading') : t('login_submit')}
                         </button>
                     </div>
                 </form>

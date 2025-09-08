@@ -4,6 +4,7 @@
 */
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useAppControls } from './uiUtils';
 
 interface AppConfig {
   id: string;
@@ -20,6 +21,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
+  const { t } = useAppControls();
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
 
@@ -91,7 +93,7 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
                 {renderAppTitle(app.title)}
               </h3>
               <p className="base-font text-neutral-300 flex-grow text-sm">{app.description}</p>
-              <span className="base-font font-bold text-white mt-6 self-end transition-transform duration-300 group-hover:translate-x-1">Bắt đầu →</span>
+              <span className="base-font font-bold text-white mt-6 self-end transition-transform duration-300 group-hover:translate-x-1">{t('home_start')}</span>
             </motion.div>
           );
         })}
@@ -108,16 +110,16 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
             {!showAll && totalPages > 1 && (
               <>
                 <button onClick={handlePrevPage} disabled={currentPage === 1} aria-label="Trang trước">
-                  ‹ Trước
+                  {t('home_prevPage')}
                 </button>
-                <span aria-live="polite">Trang {currentPage} / {totalPages}</span>
+                <span aria-live="polite">{t('home_page')} {currentPage} / {totalPages}</span>
                 <button onClick={handleNextPage} disabled={currentPage === totalPages} aria-label="Trang sau">
-                  Sau ›
+                  {t('home_nextPage')}
                 </button>
               </>
             )}
             <button onClick={handleToggleShowAll}>
-              {showAll ? 'Thu gọn' : 'Hiển thị tất cả'}
+              {showAll ? t('home_collapse') : t('home_showAll')}
             </button>
           </motion.div>
         </div>

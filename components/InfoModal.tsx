@@ -104,6 +104,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                         <li className="flex justify-between items-center"><span>Trừ khỏi vùng chọn</span> <Shortcut keys="Giữ Alt + Vẽ" /></li>
                                         <li className="flex justify-between items-center"><span>Xóa nội dung trong vùng chọn</span> <Shortcut keys="Delete / Backspace" /></li>
                                         <li className="flex justify-between items-center"><span>Tô màu vào vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Delete" /></li>
+                                        <li className="flex justify-between items-center"><span>Áp dụng hiệu ứng vào vùng chọn</span> <Shortcut keys="Enter" /></li>
                                         <li className="flex justify-between items-center"><span>Bỏ chọn</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
                                         <li className="flex justify-between items-center"><span>Nghịch đảo vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Shift + I" /></li>
                                         <li className="flex justify-between items-center"><span>Hủy đường Bút (Pen)</span> <Shortcut keys="Esc" /></li>

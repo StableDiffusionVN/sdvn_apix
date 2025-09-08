@@ -25,26 +25,27 @@ import InfoModal from './components/InfoModal';
 import AppToolbar from './components/AppToolbar';
 import LoginScreen from './components/LoginScreen';
 import UserStatus from './components/UserStatus';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import { ImageEditorModal } from './components/ImageEditorModal';
 import {
     renderSmartlyWrappedTitle,
     useImageEditor,
     useAppControls,
-    useAuth,
-    ImageLayoutModal
+    ImageLayoutModal,
+    BeforeAfterModal,
+    useAuth
 } from './components/uiUtils';
 
 function App() {
     const {
         currentView,
         settings,
-        theme,
         sessionGalleryImages,
         isSearchOpen,
         isGalleryOpen,
         isInfoOpen,
         isImageLayoutModalOpen,
-        handleThemeChange,
+        isBeforeAfterModalOpen,
         handleSelectApp,
         handleStateChange,
         addImagesToGallery,
@@ -54,9 +55,12 @@ function App() {
         handleCloseGallery,
         handleCloseInfo,
         closeImageLayoutModal,
+        closeBeforeAfterModal,
+        t,
     } = useAppControls();
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
+    // FIX: Imported `useAuth` to resolve 'Cannot find name' error.
     const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
 
     const renderContent = () => {
@@ -82,16 +86,22 @@ function App() {
                     <Home 
                         key="home"
                         onSelectApp={handleSelectApp} 
-                        title={renderSmartlyWrappedTitle(settings.home.mainTitle, settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
-                        subtitle={settings.home.subtitle}
-                        apps={settings.apps}
+                        title={renderSmartlyWrappedTitle(t(settings.home.mainTitleKey), settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
+                        subtitle={t(settings.home.subtitleKey)}
+                        apps={settings.apps.map((app: any) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)}))}
                     />
                 );
             case 'free-generation':
                  return (
                     <motion.div key="free-generation" {...motionProps}>
                         <FreeGeneration 
-                            {...settings.freeGeneration} 
+                            {...settings.freeGeneration}
+                            mainTitle={t(settings.freeGeneration.mainTitleKey)}
+                            subtitle={t(settings.freeGeneration.subtitleKey)}
+                            uploaderCaption1={t(settings.freeGeneration.uploaderCaption1Key)}
+                            uploaderDescription1={t(settings.freeGeneration.uploaderDescription1Key)}
+                            uploaderCaption2={t(settings.freeGeneration.uploaderCaption2Key)}
+                            uploaderDescription2={t(settings.freeGeneration.uploaderDescription2Key)}
                             {...commonProps} 
                             appState={currentView.state} 
                         />
@@ -102,6 +112,10 @@ function App() {
                     <motion.div key="architecture-ideator" {...motionProps}>
                         <ArchitectureIdeator 
                             {...settings.architectureIdeator} 
+                            mainTitle={t(settings.architectureIdeator.mainTitleKey)}
+                            subtitle={t(settings.architectureIdeator.subtitleKey)}
+                            uploaderCaption={t(settings.architectureIdeator.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.architectureIdeator.uploaderDescriptionKey)}
                             {...commonProps} 
                             appState={currentView.state} 
                         />
@@ -111,7 +125,13 @@ function App() {
                 return (
                     <motion.div key="dress-the-model" {...motionProps}>
                         <DressTheModel 
-                            {...settings.dressTheModel} 
+                            {...settings.dressTheModel}
+                            mainTitle={t(settings.dressTheModel.mainTitleKey)}
+                            subtitle={t(settings.dressTheModel.subtitleKey)}
+                            uploaderCaptionModel={t(settings.dressTheModel.uploaderCaptionModelKey)}
+                            uploaderDescriptionModel={t(settings.dressTheModel.uploaderDescriptionModelKey)}
+                            uploaderCaptionClothing={t(settings.dressTheModel.uploaderCaptionClothingKey)}
+                            uploaderDescriptionClothing={t(settings.dressTheModel.uploaderDescriptionClothingKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -122,6 +142,10 @@ function App() {
                     <motion.div key="photo-restoration" {...motionProps}>
                         <PhotoRestoration 
                             {...settings.photoRestoration} 
+                            mainTitle={t(settings.photoRestoration.mainTitleKey)}
+                            subtitle={t(settings.photoRestoration.subtitleKey)}
+                            uploaderCaption={t(settings.photoRestoration.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.photoRestoration.uploaderDescriptionKey)}
                             {...commonProps} 
                             appState={currentView.state} 
                         />
@@ -132,6 +156,10 @@ function App() {
                     <motion.div key="image-to-real" {...motionProps}>
                         <ImageToReal 
                             {...settings.imageToReal} 
+                            mainTitle={t(settings.imageToReal.mainTitleKey)}
+                            subtitle={t(settings.imageToReal.subtitleKey)}
+                            uploaderCaption={t(settings.imageToReal.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.imageToReal.uploaderDescriptionKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -142,6 +170,10 @@ function App() {
                     <motion.div key="swap-style" {...motionProps}>
                         <SwapStyle 
                             {...settings.swapStyle} 
+                            mainTitle={t(settings.swapStyle.mainTitleKey)}
+                            subtitle={t(settings.swapStyle.subtitleKey)}
+                            uploaderCaption={t(settings.swapStyle.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.swapStyle.uploaderDescriptionKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -152,6 +184,12 @@ function App() {
                     <motion.div key="mix-style" {...motionProps}>
                         <MixStyle 
                             {...settings.mixStyle} 
+                            mainTitle={t(settings.mixStyle.mainTitleKey)}
+                            subtitle={t(settings.mixStyle.subtitleKey)}
+                            uploaderCaptionContent={t(settings.mixStyle.uploaderCaptionContentKey)}
+                            uploaderDescriptionContent={t(settings.mixStyle.uploaderDescriptionContentKey)}
+                            uploaderCaptionStyle={t(settings.mixStyle.uploaderCaptionStyleKey)}
+                            uploaderDescriptionStyle={t(settings.mixStyle.uploaderDescriptionStyleKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -161,7 +199,11 @@ function App() {
                  return (
                     <motion.div key="toy-model-creator" {...motionProps}>
                         <ToyModelCreator 
-                            {...settings.toyModelCreator} 
+                            {...settings.toyModelCreator}
+                            mainTitle={t(settings.toyModelCreator.mainTitleKey)}
+                            subtitle={t(settings.toyModelCreator.subtitleKey)}
+                            uploaderCaption={t(settings.toyModelCreator.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.toyModelCreator.uploaderDescriptionKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -171,7 +213,11 @@ function App() {
                  return (
                     <motion.div key="avatar-creator" {...motionProps}>
                         <AvatarCreator 
-                            {...settings.avatarCreator} 
+                            {...settings.avatarCreator}
+                            mainTitle={t(settings.avatarCreator.mainTitleKey)}
+                            subtitle={t(settings.avatarCreator.subtitleKey)}
+                            uploaderCaption={t(settings.avatarCreator.uploaderCaptionKey)}
+                            uploaderDescription={t(settings.avatarCreator.uploaderDescriptionKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -181,7 +227,15 @@ function App() {
                  return (
                     <motion.div key="image-interpolation" {...motionProps}>
                         <ImageInterpolation 
-                            {...settings.imageInterpolation} 
+                            {...settings.imageInterpolation}
+                            mainTitle={t(settings.imageInterpolation.mainTitleKey)}
+                            subtitle={t(settings.imageInterpolation.subtitleKey)}
+                            uploaderCaptionInput={t(settings.imageInterpolation.uploaderCaptionInputKey)}
+                            uploaderDescriptionInput={t(settings.imageInterpolation.uploaderDescriptionInputKey)}
+                            uploaderCaptionOutput={t(settings.imageInterpolation.uploaderCaptionOutputKey)}
+                            uploaderDescriptionOutput={t(settings.imageInterpolation.uploaderDescriptionOutputKey)}
+                            uploaderCaptionReference={t(settings.imageInterpolation.uploaderCaptionReferenceKey)}
+                            uploaderDescriptionReference={t(settings.imageInterpolation.uploaderDescriptionReferenceKey)}
                             {...commonProps}
                             appState={currentView.state} 
                         />
@@ -192,9 +246,9 @@ function App() {
                     <Home 
                         key="home-fallback"
                         onSelectApp={handleSelectApp} 
-                        title={renderSmartlyWrappedTitle(settings.home.mainTitle, settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
-                        subtitle={settings.home.subtitle}
-                        apps={settings.apps}
+                        title={renderSmartlyWrappedTitle(t(settings.home.mainTitleKey), settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
+                        subtitle={t(settings.home.subtitleKey)}
+                        apps={settings.apps.map((app: any) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)}))}
                     />
                  );
         }
@@ -219,7 +273,10 @@ function App() {
         <main className="text-neutral-200 min-h-screen w-full relative">
             <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
             
-            {isLoggedIn && currentUser && <UserStatus />}
+            <div className="fixed top-4 left-4 z-20 flex items-center gap-2">
+                {isLoggedIn && currentUser && <UserStatus />}
+                <LanguageSwitcher />
+            </div>
             <AppToolbar />
 
             <div className="relative z-10 w-full min-h-screen flex flex-row items-center justify-center px-4 pt-16 pb-24">
@@ -235,7 +292,7 @@ function App() {
                     handleSelectApp(appId);
                     handleCloseSearch();
                 }}
-                apps={settings?.apps || []}
+                apps={settings ? settings.apps.map((app: any) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)})) : []}
             />
             <GalleryModal
                 isOpen={isGalleryOpen}
@@ -254,7 +311,11 @@ function App() {
                 isOpen={isImageLayoutModalOpen}
                 onClose={closeImageLayoutModal}
             />
-            <Footer theme={theme} onThemeChange={handleThemeChange} />
+            <BeforeAfterModal
+                isOpen={isBeforeAfterModalOpen}
+                onClose={closeBeforeAfterModal}
+            />
+            <Footer />
         </main>
     );
 }

@@ -20,6 +20,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     SearchableSelect,
+    useAppControls,
 } from './uiUtils';
 
 interface ArchitectureIdeatorProps {
@@ -36,11 +37,6 @@ interface ArchitectureIdeatorProps {
     onGoBack: () => void;
 }
 
-const CONTEXT_OPTIONS = ['Tự động', 'Đô thị hiện đại (Modern city)', 'Vùng quê yên tĩnh (Countryside)', 'Ven biển (Coastal)', 'Vùng núi (Mountainous)', 'Sa mạc (Desert)', 'Rừng rậm (Jungle)', 'Khu công nghiệp (Industrial zone)', 'Không gian vũ trụ (Outer space)', 'Thế giới thần tiên (Fairy tale world)', 'Thành phố tương lai (Cyberpunk city)', 'Thành phố dưới nước (Underwater city)', 'Thành phố trên mây (City on clouds)', 'Khu di tích cổ đại (Ancient ruins)', 'Vườn Nhật Bản (Japanese garden)', 'Đường phố London thời Victoria (Victorian London)', 'Khu nhà ổ chuột Brazil (Brazilian favela)', 'Trạm nghiên cứu Bắc Cực (Arctic station)', 'Colony trên sao Hỏa (Mars colony)', 'Vùng đất hoang tàn hậu tận thế (Post-apocalyptic wasteland)', 'Làng Địa Trung Hải (Mediterranean village)', 'Cảnh quan núi lửa (Volcanic landscape)'];
-const STYLE_OPTIONS = ['Tự động', 'Hiện đại (Modern)', 'Tối giản (Minimalist)', 'Brutalist', 'Đông Dương (Indochine)', 'Cổ điển (Classical)', 'Nhiệt đới (Tropical)', 'Nhà gỗ (Cabin)', 'Go-tic (Gothic)', 'Art Deco', 'Deconstructivism', 'Bền vững (Sustainable)', 'Hữu cơ (Biophilic/Organic)', 'Tham số (Parametricism)', 'Công nghiệp (Industrial)', 'Scandinavian', 'Nhà nông trại hiện đại (Modern Farmhouse)', 'Địa Trung Hải (Mediterranean)', 'Tương lai (Futuristic)', 'Steampunk', 'Nhà trên cây (Treehouse)', 'Kiến trúc hang động (Cave architecture)', 'Nhà container (Container home)'];
-const COLOR_OPTIONS = ['Tự động', 'Tông màu ấm (Warm tones)', 'Tông màu lạnh (Cool tones)', 'Màu trung tính (Neutral colors)', 'Đơn sắc (Monochromatic)', 'Tương phản cao (High contrast)', 'Màu Pastel nhẹ nhàng (Soft pastels)', 'Màu rực rỡ (Vibrant colors)', 'Màu đất (Earthy tones)', 'Màu đá quý (Jewel tones)', 'Neonoir (Neon colors)', 'Màu gỉ sét & kim loại (Rust & Metallic)', 'Trắng và gỗ (White & Wood)', 'Xám bê tông (Concrete gray)', 'Xanh bạc hà & hồng san hô (Mint & Coral)', 'Xanh navy & vàng đồng (Navy & Brass)', 'Sepia (Nâu đỏ)', 'Đen trắng (Black & White)', 'Màu hoàng hôn (Sunset palette)', 'Màu bình minh (Sunrise palette)', 'Màu cầu vồng (Rainbow)', 'Màu của đại dương (Oceanic colors)'];
-const LIGHTING_OPTIONS = ['Tự động', 'Ánh sáng ban ngày tự nhiên (Natural daylight)', 'Bình minh/Hoàng hôn (Golden hour)', 'Ánh sáng ban đêm (Night lighting)', 'Ngày u ám, ánh sáng dịu (Overcast, soft light)', 'Nắng gắt, bóng đổ rõ (Harsh sun, hard shadows)', 'Ánh sáng Neon', 'Ánh sáng huyền ảo (Ethereal lighting)', 'Ánh sáng thể tích (Volumetric rays)', 'Ánh sáng sân khấu (Stage lighting)', 'Ánh sáng từ đèn lồng (Lantern light)', 'Ánh sáng lập lòe từ lửa (Flickering firelight)', 'Ánh sáng phát quang sinh học (Bioluminescent glow)', 'Phim noir (Film noir shadows)', 'Ánh sáng studio (Studio lighting)', 'Chiếu sáng từ dưới lên (Uplighting)', 'Ánh sáng lấp lánh (Twinkling/Twinkling lights)', 'Cháy sáng (Overexposed)', 'Tối và u ám (Dark and moody)', 'Ánh sáng phản chiếu từ nước (Water reflection)', 'Bóng đổ từ rèm cửa (Caustic shadows)'];
-
 const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
@@ -48,6 +44,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         ...headerProps 
     } = props;
     
+    const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     
@@ -180,7 +177,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             <ActionablePolaroidCard
                                 type="sketch-input"
                                 mediaUrl={appState.uploadedImage}
-                                caption="Ảnh phác thảo"
+                                caption={t('architectureIdeator_sketchCaption')}
                                 status="done"
                                 onClick={() => openLightbox(0)}
                                 onImageChange={handleUploadedImageChange}
@@ -188,48 +185,48 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         </div>
 
                         <OptionsPanel>
-                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh ý tưởng</h2>
+                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('architectureIdeator_optionsTitle')}</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <SearchableSelect
                                     id="context"
-                                    label="Bối cảnh"
-                                    options={CONTEXT_OPTIONS}
+                                    label={t('architectureIdeator_contextLabel')}
+                                    options={t('architectureIdeator_contextOptions')}
                                     value={appState.options.context}
                                     onChange={(value) => handleOptionChange('context', value)}
-                                    placeholder="Tìm hoặc nhập bối cảnh..."
+                                    placeholder={t('architectureIdeator_contextPlaceholder')}
                                 />
                                 <SearchableSelect
                                     id="style"
-                                    label="Phong cách kiến trúc"
-                                    options={STYLE_OPTIONS}
+                                    label={t('architectureIdeator_styleLabel')}
+                                    options={t('architectureIdeator_styleOptions')}
                                     value={appState.options.style}
                                     onChange={(value) => handleOptionChange('style', value)}
-                                    placeholder="Tìm hoặc nhập phong cách..."
+                                    placeholder={t('architectureIdeator_stylePlaceholder')}
                                 />
                                 <SearchableSelect
                                     id="color"
-                                    label="Tông màu"
-                                    options={COLOR_OPTIONS}
+                                    label={t('architectureIdeator_colorLabel')}
+                                    options={t('architectureIdeator_colorOptions')}
                                     value={appState.options.color}
                                     onChange={(value) => handleOptionChange('color', value)}
-                                    placeholder="Tìm hoặc nhập tông màu..."
+                                    placeholder={t('architectureIdeator_colorPlaceholder')}
                                 />
                                 <SearchableSelect
                                     id="lighting"
-                                    label="Ánh sáng"
-                                    options={LIGHTING_OPTIONS}
+                                    label={t('architectureIdeator_lightingLabel')}
+                                    options={t('architectureIdeator_lightingOptions')}
                                     value={appState.options.lighting}
                                     onChange={(value) => handleOptionChange('lighting', value)}
-                                    placeholder="Tìm hoặc nhập ánh sáng..."
+                                    placeholder={t('architectureIdeator_lightingPlaceholder')}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
+                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('architectureIdeator_notesLabel')}</label>
                                 <textarea
                                     id="notes"
                                     value={appState.options.notes}
                                     onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder="Ví dụ: thêm nhiều cây xanh, vật liệu kính..."
+                                    placeholder={t('architectureIdeator_notesPlaceholder')}
                                     className="form-input h-24"
                                     rows={3}
                                 />
@@ -241,22 +238,22 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                     checked={appState.options.removeWatermark}
                                     onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                     className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                    aria-label="Xóa watermark nếu có"
+                                    aria-label={t('common_removeWatermark')}
                                 />
                                 <label htmlFor="remove-watermark-arch" className="ml-3 block text-sm font-medium text-neutral-300">
-                                    Xóa watermark (nếu có)
+                                    {t('common_removeWatermark')}
                                 </label>
                             </div>
                             <div className="flex items-center justify-end gap-4 pt-4">
                                 <button onClick={onReset} className="btn btn-secondary">
-                                    Đổi ảnh khác
+                                    {t('common_changeImage')}
                                 </button>
                                 <button 
                                     onClick={executeInitialGeneration} 
                                     className="btn btn-primary"
                                     disabled={isLoading}
                                 >
-                                    {isLoading ? 'Đang tạo...' : 'Tạo ảnh'}
+                                    {isLoading ? t('common_creating') : t('architectureIdeator_createButton')}
                                 </button>
                             </div>
                         </OptionsPanel>
@@ -275,14 +272,14 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         <>
                             {appState.generatedImage && !appState.error && (
                                 <button onClick={handleDownloadAll} className="btn btn-primary">
-                                    Tải về tất cả
+                                    {t('common_downloadAll')}
                                 </button>
                             )}
                             <button onClick={handleBackToOptions} className="btn btn-secondary">
-                                Chỉnh sửa tùy chọn
+                                {t('common_editOptions')}
                             </button>
                             <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
-                                Bắt đầu lại
+                                {t('common_startOver')}
                             </button>
                         </>
                     }
@@ -296,7 +293,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                     >
                         <ActionablePolaroidCard
                             type="output"
-                            caption="Kết quả"
+                            caption={t('common_result')}
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
@@ -304,9 +301,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
-                            regenerationTitle="Tinh chỉnh ảnh kiến trúc"
-                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
-                            regenerationPlaceholder="Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm..."
+                            regenerationTitle={t('architectureIdeator_regenTitle')}
+                            regenerationDescription={t('architectureIdeator_regenDescription')}
+                            regenerationPlaceholder={t('architectureIdeator_regenPlaceholder')}
                         />
                     </motion.div>
                     {appState.historicalImages.map(sourceUrl => {
@@ -322,7 +319,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption="Video"
+                                    caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}

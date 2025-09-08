@@ -20,8 +20,8 @@ import {
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
+    useAppControls,
 } from './uiUtils';
-import { STYLE_OPTIONS_LIST } from '../lib/styles';
 
 interface SwapStyleProps {
     mainTitle: string;
@@ -37,8 +37,6 @@ interface SwapStyleProps {
     onGoBack: () => void;
 }
 
-const STYLE_STRENGTH_LEVELS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'] as const;
-
 const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
@@ -46,6 +44,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         ...headerProps
     } = props;
     
+    const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     
@@ -53,10 +52,13 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const [styleSearch, setStyleSearch] = React.useState('');
     const [isStyleDropdownOpen, setStyleDropdownOpen] = React.useState(false);
     const styleDropdownRef = useRef<HTMLDivElement>(null);
+    
+    const STYLE_OPTIONS_LIST = t('styles');
+    const STYLE_STRENGTH_LEVELS = t('style_strengthLevels');
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
-    const filteredStyles = STYLE_OPTIONS_LIST.filter(style => 
+    const filteredStyles = STYLE_OPTIONS_LIST.filter((style: string) => 
         style.toLowerCase().includes(styleSearch.toLowerCase())
     );
 
@@ -195,14 +197,14 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption="Ảnh gốc" status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange}/>
+                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption={t('common_originalImage')} status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange}/>
                         </div>
                         <OptionsPanel>
-                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh</h2>
+                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('common_options')}</h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {/* Searchable Style Dropdown */}
                                 <div ref={styleDropdownRef} className="searchable-dropdown-container">
-                                    <label htmlFor="style" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Phong cách</label>
+                                    <label htmlFor="style" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('swapStyle_styleLabel')}</label>
                                     <input
                                         type="text"
                                         id="style-search"
@@ -216,41 +218,41 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                                         }}
                                         onBlur={() => handleOptionChange('style', styleSearch)}
                                         className="form-input"
-                                        placeholder="Tìm hoặc để trống cho Tự động..."
+                                        placeholder={t('swapStyle_stylePlaceholder')}
                                     />
                                     {isStyleDropdownOpen && (
                                         <ul className="searchable-dropdown-list">
-                                            {filteredStyles.length > 0 ? filteredStyles.map(style => (
+                                            {filteredStyles.length > 0 ? filteredStyles.map((style: string) => (
                                                 <li key={style} onMouseDown={() => handleStyleSelect(style)} className="searchable-dropdown-item">
                                                     {style}
                                                 </li>
                                             )) : (
-                                                <li className="searchable-dropdown-item !cursor-default">Không tìm thấy</li>
+                                                <li className="searchable-dropdown-item !cursor-default">{t('common_notFound')}</li>
                                             )}
                                         </ul>
                                     )}
                                 </div>
                                 <Slider
-                                    label="Mức độ ảnh hưởng Style"
+                                    label={t('swapStyle_strengthLabel')}
                                     options={STYLE_STRENGTH_LEVELS}
                                     value={appState.options.styleStrength}
                                     onChange={(value) => handleOptionChange('styleStrength', value)}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
+                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotes')}</label>
                                 <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder="Ví dụ: tập trung vào khuôn mặt, tông màu xanh..." className="form-input h-24" rows={3} />
+                                    placeholder={t('swapStyle_notesPlaceholder')} className="form-input h-24" rows={3} />
                             </div>
                             <div className="flex items-center pt-2">
                                 <input type="checkbox" id="remove-watermark-swap" checked={appState.options.removeWatermark}
                                     onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                     className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                <label htmlFor="remove-watermark-swap" className="ml-3 block text-sm font-medium text-neutral-300">Xóa watermark (nếu có)</label>
+                                <label htmlFor="remove-watermark-swap" className="ml-3 block text-sm font-medium text-neutral-300">{t('common_removeWatermark')}</label>
                             </div>
                             <div className="flex items-center justify-end gap-4 pt-4">
-                                <button onClick={onReset} className="btn btn-secondary">Đổi ảnh khác</button>
-                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? 'Đang biến đổi...' : 'Áp dụng Style'}</button>
+                                <button onClick={onReset} className="btn btn-secondary">{t('common_changeImage')}</button>
+                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? t('swapStyle_creating') : t('swapStyle_createButton')}</button>
                             </div>
                         </OptionsPanel>
                     </AppOptionsLayout>
@@ -265,9 +267,9 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                     error={appState.error}
                     actions={
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>)}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                            <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_edit')}</button>
+                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
                         </>
                     }>
                     <motion.div
@@ -278,14 +280,14 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
                         <ActionablePolaroidCard
                             type="output"
-                            caption={appState.options.style || 'Phong cách Tự động'} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                            caption={appState.options.style || t('swapStyle_autoStyleCaption')} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
-                            regenerationTitle="Tinh chỉnh ảnh"
-                            regenerationDescription="Thêm ghi chú để cải thiện ảnh theo phong cách"
-                            regenerationPlaceholder="Ví dụ: thêm nhiều chi tiết hơn, màu sắc rực rỡ hơn..."
+                            regenerationTitle={t('common_regenTitle')}
+                            regenerationDescription={t('swapStyle_regenDescription')}
+                            regenerationPlaceholder={t('swapStyle_regenPlaceholder')}
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
                     </motion.div>
                      {appState.historicalImages.map(sourceUrl => {
@@ -301,7 +303,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption="Video"
+                                    caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}

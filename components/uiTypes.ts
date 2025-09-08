@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import { COUNTRIES } from '../lib/countries';
-import { STYLE_OPTIONS_LIST } from '../lib/styles';
-
 // Base types
 export interface ImageForZip {
     url: string;
@@ -23,8 +20,8 @@ export interface VideoTask {
 
 export interface AppConfig {
     id: string;
-    title: string;
-    description: string;
+    titleKey: string;
+    descriptionKey: string;
     icon: string;
 }
 
@@ -203,6 +200,10 @@ export interface ToyModelCreatorState {
         pokeballType: string;
         evolutionDisplay: string;
         modelStyle: string;
+        // Concept 6: Crafting Model
+        modelType: string;
+        blueprintType: string;
+        characterMood: string;
         // Constant Options
         aspectRatio: string;
         notes: string;
@@ -318,6 +319,9 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
                     pokeballType: '',
                     evolutionDisplay: '',
                     modelStyle: '',
+                    modelType: '',
+                    blueprintType: '',
+                    characterMood: '',
                     aspectRatio: 'Giữ nguyên', 
                     notes: '', 
                     removeWatermark: false 
