@@ -19,7 +19,8 @@ interface ImageEditorModalProps {
 
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit, onClose }) => {
     const { 
-        sessionGalleryImages 
+        sessionGalleryImages,
+        t
     } = useAppControls();
     
     const editorState = useImageEditorState(imageToEdit);
@@ -30,15 +31,18 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         setIsGalleryPickerOpen,
         isWebcamModalOpen,
         setIsWebcamModalOpen,
+        handleFile,
         handleFileSelected,
         handleGallerySelect,
         handleWebcamCapture,
+        handleCreateBlank,
         getFinalImage,
     } = editorState;
     
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [activeTooltip, setActiveTooltip] = useState<{ id: string; rect: DOMRect } | null>(null);
     const tooltipTimeoutRef = useRef<number | null>(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
     const isOpen = imageToEdit !== null;
     
@@ -50,6 +54,31 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
             onClose();
         }
     }, [getFinalImage, imageToEdit, onClose]);
+
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            const file = e.dataTransfer.files[0];
+            if (file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        }
+    }, [handleFile]);
     
     // --- Tooltip Management ---
     const showTooltip = (id: string, e: React.MouseEvent) => {
@@ -76,17 +105,35 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                         {!internalImageUrl ? (
                              <>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e: ChangeEvent<HTMLInputElement>) => handleFileSelected(e)} onClick={(e) => ((e.target as HTMLInputElement).value = '')} />
-                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-neutral-900/50 rounded-lg border-2 border-dashed border-neutral-700">
-                                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-8 rounded-lg hover:bg-neutral-800/50 transition-colors">
-                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-neutral-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <h4 className="text-xl font-bold text-neutral-200">Upload Image</h4>
-                                        <p className="text-neutral-400">Click here to select an image from your computer</p>
-                                    </button>
-                                    <p className="text-neutral-500">or</p>
-                                    <div className="flex items-center gap-4">
-                                        <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={sessionGalleryImages.length === 0}>Select from Gallery</button>
-                                        <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">Capture from Webcam</button>
+                                <div
+                                    className="w-full h-full flex flex-col items-center justify-center gap-4 bg-neutral-900/50 rounded-lg border-2 border-dashed border-neutral-700 p-8 relative"
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                >
+                                    <h3 className="text-2xl font-bold text-yellow-400 base-font">{t('imageEditor_startTitle')}</h3>
+                                    <p className="text-neutral-400 text-center max-w-sm">{t('imageEditor_startSubtitle')}</p>
+                                    <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
+                                        <button onClick={() => fileInputRef.current?.click()} className="btn btn-primary btn-sm">{t('imageEditor_uploadButton')}</button>
+                                        <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={sessionGalleryImages.length === 0}>{t('imageEditor_galleryButton')}</button>
+                                        <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">{t('imageEditor_webcamButton')}</button>
+                                        <button onClick={handleCreateBlank} className="btn btn-secondary btn-sm">{t('imageEditor_createButton')}</button>
                                     </div>
+                                    <AnimatePresence>
+                                        {isDraggingOver && (
+                                            <motion.div
+                                                className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                </svg>
+                                                <p className="text-2xl font-bold text-yellow-400">{t('imageEditor_dropPrompt')}</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                                 <GalleryPicker isOpen={isGalleryPickerOpen} onClose={() => setIsGalleryPickerOpen(false)} onSelect={handleGallerySelect} images={sessionGalleryImages} />
                                 <WebcamCaptureModal

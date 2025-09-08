@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
-import { handleFileUpload } from '../uiUtils';
-import { removeImageBackground } from '../../services/geminiService';
+// FIX: Correctly typed `imageToEdit` by importing `ImageToEdit` from `uiUtils`.
+import { handleFileUpload, type ImageToEdit } from '../uiUtils';
+import { removeImageBackground, editImageWithPrompt } from '../../services/geminiService';
 import { 
     type Tool, type EditorStateSnapshot, type Point, type Rect, type CropResizeHandle, type CropAction,
     type Interaction, type SelectionStroke, type PenNode, type ColorChannel,
@@ -74,7 +75,8 @@ const createFeatheredMask = (
 };
 
 
-export const useImageEditorState = (imageToEdit: { url: string | null } | null) => {
+// FIX: Correctly typed `imageToEdit` by importing `ImageToEdit` from `uiUtils`.
+export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
     // --- State & Refs ---
     const [internalImageUrl, setInternalImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -111,12 +113,13 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     // Tool states
     const [activeTool, setActiveTool] = useState<Tool | null>(null);
     const [brushSize, setBrushSize] = useState(20);
-    const [brushHardness, setBrushHardness] = useState(100);
-    const [brushOpacity, setBrushOpacity] = useState(100);
+    const [brushHardness, setBrushHardness] = useState(50);
+    const [brushOpacity, setBrushOpacity] = useState(50);
     const [brushColor, setBrushColor] = useState('#ffffff');
     const [isDrawing, setIsDrawing] = useState(false);
     const [cursorPosition, setCursorPosition] = useState<Point | null>(null);
     const [isCursorOverCanvas, setIsCursorOverCanvas] = useState(false);
+    const [aiEditPrompt, setAiEditPrompt] = useState('');
 
     // Crop-specific states
     const [cropSelection, setCropSelection] = useState<Rect | null>(null);
@@ -240,10 +243,11 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setLuminance(0); setContrast(0); setTemp(0); setTint(0); setSaturation(0); setVibrance(0); setHue(0);
         setRotation(0); setFlipHorizontal(false); setFlipVertical(false); setIsInverted(false); setGrain(0); setClarity(0); setDehaze(0); setBlur(0);
         setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS); setActiveColorTab(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as keyof typeof INITIAL_COLOR_ADJUSTMENTS); setOpenSection('adj');
-        setActiveTool(null); setBrushSize(20); setBrushHardness(100); setBrushOpacity(100); setBrushColor('#ffffff');
+        setActiveTool(null); setBrushSize(20); setBrushHardness(50); setBrushOpacity(50); setBrushColor('#ffffff');
         setCropSelection(null); setCropAspectRatio('Free'); setCropAction(null);
         setPerspectiveCropPoints([]); setHoveredPerspectiveHandleIndex(null);
         deselect(); setInteractionState('none'); setFeatherAmount(0);
+        setAiEditPrompt('');
         
         // Clear drawing canvas
         if (drawingCanvasRef.current) {
@@ -263,7 +267,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                     imageUrl: originalUrl,
                     luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
                     grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false,
-                    isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS,
+                    isInverted: false, brushHardness: 50, brushOpacity: 50, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS,
                     drawingCanvasDataUrl: null,
                 };
                 setHistory([initialSnapshot]);
@@ -276,6 +280,42 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             setHistoryIndex(-1);
         }
     }, [deselect]);
+    
+    const setupNewImage = useCallback((newUrl: string) => {
+        resetAll(false);
+        setInternalImageUrl(newUrl);
+
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.src = newUrl;
+        image.onload = () => {
+            originalImageRef.current = image;
+        };
+        
+        const initialSnapshot: EditorStateSnapshot = {
+            imageUrl: newUrl,
+            luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
+            grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false,
+            isInverted: false, brushHardness: 50, brushOpacity: 50,
+            colorAdjustments: INITIAL_COLOR_ADJUSTMENTS,
+            drawingCanvasDataUrl: null,
+        };
+        setHistory([initialSnapshot]);
+        setHistoryIndex(0);
+    }, [resetAll]);
+
+    // NEW function to handle a File object directly
+    const handleFile = useCallback((file: File) => {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (typeof reader.result === 'string') {
+                    setupNewImage(reader.result);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    }, [setupNewImage]);
     
     // --- Canvas & Drawing Logic ---
     const applyPixelAdjustments = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number, options: { ignoreSelection?: boolean } = {}) => {
@@ -725,7 +765,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 const image = new Image(); image.crossOrigin = "anonymous"; image.src = url;
                 image.onload = () => {
                     originalImageRef.current = image;
-                    const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: url };
+                    const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 50, brushOpacity: 50, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: url };
                     setHistory([initialSnapshot]);
                     setHistoryIndex(0);
                 };
@@ -772,12 +812,11 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
     }, [isOpen, internalImageUrl, setupCanvas]);
 
     const getFinalImage = useCallback((): Promise<string | null> => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             if (!sourceImageRef.current || !drawingCanvasRef.current) {
                 resolve(null);
                 return;
             }
-            setIsLoading(true);
             
             setTimeout(() => {
                 try {
@@ -830,11 +869,8 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                     // 5. Resolve with high-quality PNG
                     resolve(finalCanvas.toDataURL('image/png'));
                 } catch (error) {
-                    console.error("Error saving image:", error);
-                    alert("An error occurred while saving the image.");
-                    resolve(null);
-                } finally {
-                    setIsLoading(false);
+                    console.error("Error creating final image:", error);
+                    reject(error);
                 }
             }, 50);
         });
@@ -898,7 +934,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
             luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
             grain: 0, clarity: 0, dehaze: 0, blur: 0,
             rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false,
-            brushHardness: 100, brushOpacity: 100,
+            brushHardness: brushHardness, brushOpacity: brushOpacity,
             colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null,
         };
     
@@ -906,7 +942,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         restoreState(postCropState);
         handleCancelPerspectiveCrop();
     
-    }, [perspectiveCropPoints, commitState, handleCancelPerspectiveCrop, pushHistory, restoreState]);
+    }, [perspectiveCropPoints, commitState, handleCancelPerspectiveCrop, pushHistory, restoreState, brushHardness, brushOpacity]);
 
     const handleApplyAllAdjustments = useCallback(() => {
         if (!internalImageUrl || !sourceImageRef.current || !previewCanvasRef.current || !drawingCanvasRef.current) return;
@@ -1095,10 +1131,10 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         const cropCtx = cropCanvas.getContext('2d'); if (!cropCtx) return;
         cropCtx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
         const newDataUrl = cropCanvas.toDataURL('image/png');
-        const postCropState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
+        const postCropState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: brushHardness, brushOpacity: brushOpacity, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
         pushHistory(postCropState);
         restoreState(postCropState); setCropSelection(null); setActiveTool(null);
-    }, [cropSelection, commitState, handleCancelCrop, pushHistory, restoreState]);
+    }, [cropSelection, commitState, handleCancelCrop, pushHistory, restoreState, brushHardness, brushOpacity]);
     
     const deleteImageContentInSelection = useCallback(() => {
         if (!selectionPath || !previewCanvasRef.current || !drawingCanvasRef.current) return;
@@ -1121,12 +1157,12 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
                 ctx.drawImage(maskCanvas, 0, 0);
 
                 const newDataUrl = combinedCanvas.toDataURL('image/png');
-                const bakedState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
+                const bakedState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: brushHardness, brushOpacity: brushOpacity, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
                 pushHistory(bakedState); restoreState(bakedState); deselect();
             } catch (error) { console.error("Error deleting content:", error); alert("An error occurred while deleting the selected content."); } 
             finally { setIsLoading(false); }
         }, 50);
-    }, [selectionPath, featherAmount, pushHistory, restoreState, deselect, previewCanvasRef, drawingCanvasRef]);
+    }, [selectionPath, featherAmount, pushHistory, restoreState, deselect, previewCanvasRef, drawingCanvasRef, brushHardness, brushOpacity]);
     
     const fillSelection = useCallback(() => {
         if (!selectionPath || !drawingCanvasRef.current) return;
@@ -1154,6 +1190,127 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
 
     const invertSelection = useCallback(() => setIsSelectionInverted(prev => !prev), []);
     
+    const handleCreateBlank = useCallback(() => {
+        const createBlankCanvasDataUrl = (width: number, height: number, color: string): string => {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, width, height);
+            }
+            return canvas.toDataURL('image/png');
+        };
+        const newUrl = createBlankCanvasDataUrl(2000, 2000, '#FFFFFF');
+        setupNewImage(newUrl);
+    }, [setupNewImage]);
+
+    const handleAiEdit = useCallback(async () => {
+        if (!aiEditPrompt.trim() || !internalImageUrl) return;
+        setIsLoading(true);
+
+        try {
+            let imageToSendUrl: string;
+            let promptToSend = aiEditPrompt;
+
+            const currentImageAsUrl = await getFinalImage();
+            if (!currentImageAsUrl) throw new Error("Could not get current image data.");
+
+            if (isSelectionActive && selectionPath) {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                const img = new Image();
+
+                await new Promise<void>((resolve, reject) => {
+                    img.onload = () => resolve();
+                    img.onerror = (err) => reject(new Error("Failed to load image for masking."));
+                    img.src = currentImageAsUrl;
+                });
+                
+                tempCanvas.width = img.naturalWidth;
+                tempCanvas.height = img.naturalHeight;
+                if (!tempCtx) throw new Error("Could not get temp canvas context");
+
+                tempCtx.drawImage(img, 0, 0);
+
+                const previewCanvas = previewCanvasRef.current;
+                if (!previewCanvas) throw new Error("Preview canvas not found");
+                const scaleX = img.naturalWidth / previewCanvas.width;
+                const scaleY = img.naturalHeight / previewCanvas.height;
+                
+                tempCtx.save();
+                tempCtx.scale(scaleX, scaleY);
+                tempCtx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                tempCtx.fill(selectionPath);
+                tempCtx.restore();
+
+                imageToSendUrl = tempCanvas.toDataURL('image/png');
+                promptToSend = `${aiEditPrompt}. **YÊU CẦU:** chỉ chỉnh sửa trong vùng tô màu đỏ mờ, sau đó xoá bỏ vùng tô mờ này.`;
+
+            } else {
+                imageToSendUrl = currentImageAsUrl;
+            }
+
+            const resultUrl = await editImageWithPrompt(imageToSendUrl, promptToSend);
+            
+            const resetAndApply = () => {
+                setLuminance(0); setContrast(0); setTemp(0); setTint(0); setSaturation(0); setVibrance(0); setHue(0);
+                setGrain(0); setClarity(0); setDehaze(0); setBlur(0); setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS);
+                setRotation(0); setFlipHorizontal(false); setFlipVertical(false); setIsInverted(false);
+                setCropSelection(null); 
+                deselect();
+                if (drawingCanvasRef.current) {
+                    drawingCanvasRef.current.getContext('2d')?.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+                }
+                setInternalImageUrl(resultUrl);
+                const appliedState: EditorStateSnapshot = {
+                    imageUrl: resultUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
+                    grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false,
+                    brushHardness: 50, brushOpacity: 50,
+                    colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null,
+                };
+                pushHistory(appliedState);
+                setAiEditPrompt('');
+            };
+
+            const newImage = new Image();
+            newImage.crossOrigin = "anonymous";
+            newImage.onload = () => requestAnimationFrame(resetAndApply);
+            newImage.src = resultUrl;
+
+        } catch (err) {
+            alert(`Lỗi với Chỉnh sửa AI: ${err instanceof Error ? err.message : "Đã xảy ra lỗi không xác định."}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [aiEditPrompt, internalImageUrl, getFinalImage, isSelectionActive, selectionPath, previewCanvasRef, pushHistory, deselect]);
+    
+    const handleSave = useCallback(async () => {
+        if (!imageToEdit) return;
+        setIsLoading(true);
+        try {
+            const finalUrl = await getFinalImage();
+            if (finalUrl) {
+                imageToEdit.onSave(finalUrl);
+            }
+        } catch (err) {
+            console.error("Error saving image:", err);
+            alert("An error occurred while saving the image.");
+        } finally {
+            setIsLoading(false);
+            if (imageToEdit) { // Check again in case it changed
+                // The original logic closed the modal on save. Let's keep that.
+                // Assuming imageToEdit.onSave is synchronous or we don't wait for it.
+                 const { onClose } = (imageToEdit as any)._private || {}; // A bit of a hack to get onClose
+                 if (typeof onClose === 'function') {
+                    onClose();
+                 }
+            }
+        }
+    }, [getFinalImage, imageToEdit]);
+
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isOpen) return;
@@ -1162,6 +1319,23 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
 
             const isUndo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey;
             const isRedo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && e.shiftKey;
+            const isSelectAll = (e.metaKey || e.ctrlKey) && e.code === 'KeyA';
+            
+            if (isSelectAll) {
+                e.preventDefault();
+                const canvas = previewCanvasRef.current;
+                if (canvas) {
+                    const { width, height } = canvas;
+                    const allPoints: Point[] = [
+                        { x: 0, y: 0 }, { x: width, y: 0 },
+                        { x: width, y: height }, { x: 0, y: height }
+                    ];
+                    setSelectionStrokes([{ points: allPoints, op: 'add' }]);
+                    setIsSelectionInverted(false);
+                }
+                return;
+            }
+            
             if (isUndo) { e.preventDefault(); handleUndo(); return; }
             if (isRedo) { e.preventDefault(); handleRedo(); return; }
             if (e.code === 'Escape') {
@@ -1234,7 +1408,7 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         internalImageUrl, isLoading, openSection, activeTool, brushSize, brushColor, brushHardness, brushOpacity, cropSelection, cropAspectRatio,
         cursorPosition, isCursorOverCanvas, isDrawing, isSelectionActive, isSelectionInverted, penPathPoints, currentPenDrag, marqueeRect,
         ellipseRect, interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen, isWebcamModalOpen, featherAmount,
-        selectionPath,
+        selectionPath, aiEditPrompt,
         perspectiveCropPoints,
         hoveredPerspectiveHandleIndex,
         handleCancelPerspectiveCrop,
@@ -1252,34 +1426,21 @@ export const useImageEditorState = (imageToEdit: { url: string | null } | null) 
         setHoveredCropHandle,
         setLuminance, setContrast, setTemp, setTint, setSaturation, setVibrance, setHue, setGrain, setClarity, setDehaze, setBlur, setRotation, setFlipHorizontal, setFlipVertical, setIsInverted,
         setColorAdjustments, setActiveColorTab,
-        setIsGalleryPickerOpen, setIsWebcamModalOpen, setFeatherAmount,
+        setIsGalleryPickerOpen, setIsWebcamModalOpen, setFeatherAmount, setAiEditPrompt,
         handleActionStart, handleCanvasMouseMove, handleActionEnd,
-        handleUndo, handleRedo, commitState, resetAll, getFinalImage,
-        handleToolSelect, handleCancelCrop, handleApplyCrop,
-        handleFileSelected: (e: ChangeEvent<HTMLInputElement>) => handleFileUpload(e, (newUrl) => { 
-            resetAll(false); setInternalImageUrl(newUrl);
-            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
-            image.onload = () => { originalImageRef.current = image; };
-            const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
-            setHistory([initialSnapshot]);
-            setHistoryIndex(0);
-        }),
+        handleUndo, handleRedo, commitState, resetAll, getFinalImage, handleSave,
+        handleToolSelect, handleCancelCrop, handleApplyCrop, handleAiEdit,
+        handleFile,
+        handleFileSelected: (e: ChangeEvent<HTMLInputElement>) => handleFileUpload(e, setupNewImage),
         handleGallerySelect: (newUrl: string) => {
-            resetAll(false); setInternalImageUrl(newUrl); setIsGalleryPickerOpen(false);
-            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
-            image.onload = () => { originalImageRef.current = image; };
-            const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
-            setHistory([initialSnapshot]);
-            setHistoryIndex(0);
+            setupNewImage(newUrl);
+            setIsGalleryPickerOpen(false);
         },
         handleWebcamCapture: (newUrl: string) => {
-            resetAll(false); setInternalImageUrl(newUrl); setIsWebcamModalOpen(false);
-            const image = new Image(); image.crossOrigin = "anonymous"; image.src = newUrl;
-            image.onload = () => { originalImageRef.current = image; };
-            const initialSnapshot: EditorStateSnapshot = { luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: 100, brushOpacity: 100, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, imageUrl: newUrl };
-            setHistory([initialSnapshot]);
-            setHistoryIndex(0);
+            setupNewImage(newUrl);
+            setIsWebcamModalOpen(false);
         },
+        handleCreateBlank,
         handleClearDrawings: () => {
             const canvas = drawingCanvasRef.current; if (!canvas) return;
             const ctx = canvas.getContext('2d');

@@ -28,8 +28,8 @@ export const BrushEraserSettings: React.FC<BrushEraserSettingsProps> = (props) =
                 <button onClick={handleClearDrawings} className="text-xs text-neutral-400 hover:text-yellow-400">Clear Drawings</button>
             </div>
             <RangeSlider id="brush-size" label="Size" value={brushSize} min={1} max={200} step={1} onChange={setBrushSize} onReset={() => setBrushSize(20)} onCommit={commitState} />
-            <RangeSlider id="brush-hardness" label="Hardness" value={brushHardness} min={0} max={100} step={1} onChange={setBrushHardness} onReset={() => { setBrushHardness(100); commitState(); }} onCommit={commitState} />
-            <RangeSlider id="brush-opacity" label="Opacity" value={brushOpacity} min={1} max={100} step={1} onChange={setBrushOpacity} onReset={() => { setBrushOpacity(100); commitState(); }} onCommit={commitState} />
+            <RangeSlider id="brush-hardness" label="Hardness" value={brushHardness} min={0} max={100} step={1} onChange={setBrushHardness} onReset={() => { setBrushHardness(50); commitState(); }} onCommit={commitState} />
+            <RangeSlider id="brush-opacity" label="Opacity" value={brushOpacity} min={1} max={100} step={1} onChange={setBrushOpacity} onReset={() => { setBrushOpacity(50); commitState(); }} onCommit={commitState} />
         </div>
     );
 };
