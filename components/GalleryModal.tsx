@@ -103,7 +103,6 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
         if (selectedIndices.length < 2) return;
         setIsCombining(true);
         try {
-            // FIX: The combineImages function expects an array of objects with url and label, and an options object.
             const itemsToCombine = selectedIndices.map(index => ({
                 url: images[index],
                 label: '' // No labels are used when combining from the main gallery.

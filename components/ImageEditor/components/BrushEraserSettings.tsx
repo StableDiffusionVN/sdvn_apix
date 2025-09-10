@@ -6,7 +6,6 @@ import React from 'react';
 import { RangeSlider } from './RangeSlider';
 
 interface BrushEraserSettingsProps {
-    // FIX: activeTool must be either 'brush' or 'eraser' in this component.
     activeTool: 'brush' | 'eraser';
     brushSize: number; setBrushSize: (v: number) => void;
     brushHardness: number; setBrushHardness: (v: number) => void;

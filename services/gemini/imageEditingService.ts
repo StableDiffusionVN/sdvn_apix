@@ -108,3 +108,50 @@ export async function removeImageBackground(imageDataUrl: string): Promise<strin
         throw processedError;
     }
 }
+
+export async function generateFromMultipleImages(
+    imageDataUrls: string[],
+    prompt: string,
+    aspectRatio?: string,
+    removeWatermark?: boolean
+): Promise<string> {
+    try {
+        const imageParts = await Promise.all(
+            imageDataUrls.map(async (url) => {
+                const { mimeType, data } = parseDataUrl(url);
+                return { inlineData: { mimeType, data } };
+            })
+        );
+
+        const promptParts = [
+            `Bạn được cung cấp ${imageDataUrls.length} hình ảnh đầu vào, được sắp xếp theo thứ tự lựa chọn của người dùng.`,
+            `Nhiệm vụ của bạn là sử dụng chúng làm ngữ cảnh, nguồn cảm hứng hoặc các yếu tố để kết hợp dựa trên chỉ dẫn sau đây để tạo ra một hình ảnh mới, duy nhất và gắn kết: "${prompt}"`,
+        ];
+        
+        if (aspectRatio && aspectRatio !== 'Giữ nguyên') {
+            promptParts.push(
+                ...getAspectRatioPromptInstruction(aspectRatio, 1)
+            );
+        }
+
+        if (removeWatermark) {
+            promptParts.push('- **Yêu cầu đặc biệt:** Kết quả không được chứa bất kỳ watermark, logo, hay chữ ký nào.');
+        }
+        
+        promptParts.push('Đầu ra cuối cùng chỉ được là một hình ảnh duy nhất.');
+
+        const fullPrompt = promptParts.join('\n');
+        const textPart = { text: fullPrompt };
+
+        const allParts = [...imageParts, textPart];
+
+        console.log("Attempting to generate image from multiple sources...");
+        const response = await callGeminiWithRetry(allParts);
+        return processGeminiResponse(response);
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during multi-image generation:", processedError);
+        throw processedError;
+    }
+}

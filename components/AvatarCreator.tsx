@@ -19,6 +19,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     useAppControls,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface AvatarCreatorProps {
@@ -123,21 +124,23 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const ideasQueue = [...ideasToGenerate];
         
         let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages };
+        const settingsToEmbed = { viewId: 'avatar-creator', state: appState };
 
         const processIdea = async (idea: string) => {
             try {
                 const resultUrl = await generatePatrioticImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
+                const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
                 
                 currentAppState = {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'done', url: resultUrl },
+                        [idea]: { status: 'done', url: urlWithMetadata },
                     },
-                    historicalImages: [...currentAppState.historicalImages, { idea, url: resultUrl }],
+                    historicalImages: [...currentAppState.historicalImages, { idea, url: urlWithMetadata }],
                 };
                 onStateChange(currentAppState);
-                addImagesToGallery([resultUrl]);
+                addImagesToGallery([urlWithMetadata]);
 
             } catch (err) {
                 const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -182,12 +185,14 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(imageUrlToEdit, customPrompt);
+            const settingsToEmbed = { viewId: 'avatar-creator', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: resultUrl } },
-                historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: resultUrl }],
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
+                historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: urlWithMetadata }],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
              onStateChange({

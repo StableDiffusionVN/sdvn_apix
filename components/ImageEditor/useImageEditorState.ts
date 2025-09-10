@@ -3,17 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
-// FIX: Correctly typed `imageToEdit` by importing `ImageToEdit` from `uiUtils`.
+import { useMotionValue, useMotionValueEvent } from 'framer-motion';
 import { handleFileUpload, type ImageToEdit } from '../uiUtils';
 import { removeImageBackground, editImageWithPrompt } from '../../services/geminiService';
 import { 
     type Tool, type EditorStateSnapshot, type Point, type Rect, type CropResizeHandle, type CropAction,
     type Interaction, type SelectionStroke, type PenNode, type ColorChannel,
+    type ColorAdjustments,
 } from './ImageEditor.types';
 import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS, HANDLE_SIZE } from './ImageEditor.constants';
 import { 
     rgbToHsl, hslToRgb, isPointInRect, getRatioValue, getHandleAtPoint, 
-    getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective 
+    getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective, hexToRgba
 } from './ImageEditor.utils';
 
 /**
@@ -75,8 +76,10 @@ const createFeatheredMask = (
 };
 
 
-// FIX: Correctly typed `imageToEdit` by importing `ImageToEdit` from `uiUtils`.
-export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
+export const useImageEditorState = (
+    imageToEdit: ImageToEdit | null,
+    canvasViewRef: React.RefObject<HTMLDivElement>
+) => {
     // --- State & Refs ---
     const [internalImageUrl, setInternalImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -101,10 +104,10 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
     const [flipHorizontal, setFlipHorizontal] = useState(false);
     const [flipVertical, setFlipVertical] = useState(false);
     const [isInverted, setIsInverted] = useState(false);
-    const [colorAdjustments, setColorAdjustments] = useState(INITIAL_COLOR_ADJUSTMENTS);
+    const [colorAdjustments, setColorAdjustments] = useState<ColorAdjustments>(INITIAL_COLOR_ADJUSTMENTS);
     
     // UI states
-    const [openSection, setOpenSection] = useState<'adj' | 'hls' | 'effects' | 'magic' | null>('adj');
+    const [openSection, setOpenSection] = useState<'adj' | 'hls' | 'effects' | 'magic' | null>('magic');
     const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
     const [isWebcamModalOpen, setIsWebcamModalOpen] = useState(false);
     const [activeColorTab, setActiveColorTab] = useState<ColorChannel>(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as ColorChannel);
@@ -140,6 +143,16 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
     const [ellipseRect, setEllipseRect] = useState<Rect | null>(null);
     const [featherAmount, setFeatherAmount] = useState(0);
 
+    const panX = useMotionValue(0);
+    const panY = useMotionValue(0);
+    const scale = useMotionValue(1);
+    const [zoomDisplay, setZoomDisplay] = useState(100);
+    useMotionValueEvent(scale, "change", (latest) => {
+        setZoomDisplay(Math.round(latest * 100));
+    });
+    const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+    const [isSpacePanning, setIsSpacePanning] = useState(false);
+
     // Refs
     const sourceImageRef = useRef<HTMLImageElement | null>(null);
     const originalImageRef = useRef<HTMLImageElement | null>(null);
@@ -153,6 +166,8 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
     const currentDrawingPointsRef = useRef<Point[]>([]);
     const previousToolRef = useRef<Tool | null>(null);
     const lastPointRef = useRef<Point | null>(null);
+    const drawAdjustedImageRef = useRef<(() => void) | null>(null);
+    const panStartRef = useRef<{ pan: {x: number, y: number}, pointer: Point } | null>(null);
 
     const isOpen = imageToEdit !== null;
 
@@ -174,7 +189,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
             selectionStrokes.forEach(stroke => addPolygonToPath(stroke.op === 'subtract' ? [...stroke.points].reverse() : stroke.points, finalPath));
         }
         return finalPath;
-    }, [selectionStrokes, isSelectionInverted, internalImageUrl]);
+    }, [selectionStrokes, isSelectionInverted, canvasDimensions]);
 
     const isSelectionActive = useMemo(() => selectionPath !== null, [selectionPath]);
     
@@ -190,7 +205,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
     const captureState = useCallback((): EditorStateSnapshot => ({
         luminance, contrast, temp, tint, saturation, vibrance, hue, grain, clarity, dehaze, blur,
         rotation, flipHorizontal, flipVertical, isInverted, colorAdjustments, brushHardness, brushOpacity,
-        drawingCanvasDataUrl: drawingCanvasRef.current?.toDataURL() ?? null,
+        drawingCanvasDataUrl: drawingCanvasRef.current?.toDataURL('image/png') ?? null,
         imageUrl: internalImageUrl!,
     }), [
         luminance, contrast, temp, tint, saturation, vibrance, hue, grain, clarity, dehaze, blur,
@@ -230,7 +245,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
                 img.src = snapshot.drawingCanvasDataUrl;
             }
         }
-    }, [internalImageUrl]);
+    }, [internalImageUrl, setLuminance, setContrast, setTemp, setTint, setSaturation, setVibrance, setHue, setGrain, setClarity, setDehaze, setBlur, setRotation, setFlipHorizontal, setFlipVertical, setIsInverted, setBrushHardness, setBrushOpacity, setColorAdjustments, setInternalImageUrl]);
 
     const commitState = useCallback(() => {
         if (!internalImageUrl) return;
@@ -242,7 +257,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         // Reset all adjustments and tool states
         setLuminance(0); setContrast(0); setTemp(0); setTint(0); setSaturation(0); setVibrance(0); setHue(0);
         setRotation(0); setFlipHorizontal(false); setFlipVertical(false); setIsInverted(false); setGrain(0); setClarity(0); setDehaze(0); setBlur(0);
-        setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS); setActiveColorTab(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as keyof typeof INITIAL_COLOR_ADJUSTMENTS); setOpenSection('adj');
+        setColorAdjustments(INITIAL_COLOR_ADJUSTMENTS); setActiveColorTab(Object.keys(INITIAL_COLOR_ADJUSTMENTS)[0] as keyof typeof INITIAL_COLOR_ADJUSTMENTS); setOpenSection('magic');
         setActiveTool(null); setBrushSize(20); setBrushHardness(50); setBrushOpacity(50); setBrushColor('#ffffff');
         setCropSelection(null); setCropAspectRatio('Free'); setCropAction(null);
         setPerspectiveCropPoints([]); setHoveredPerspectiveHandleIndex(null);
@@ -414,7 +429,10 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         if (!ctx) return;
 
         const image = isShowingOriginal ? originalImageRef.current : sourceImageRef.current;
-        if (!image) return;
+        
+        if (!image || !image.complete || image.naturalWidth === 0) {
+            return;
+        }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -468,20 +486,93 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
             ctx.restore();
         }
     }, [rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur, isSelectionActive, selectionPath, isShowingOriginal]);
+
+    useEffect(() => {
+        if(drawAdjustedImageRef) {
+            drawAdjustedImageRef.current = drawAdjustedImage;
+        }
+    }, [drawAdjustedImage]);
     
     // --- Canvas & Event Handlers ---
-    const getCanvasCoords = (e: React.MouseEvent | React.TouchEvent<HTMLCanvasElement>) => {
-        if (!overlayCanvasRef.current) return null;
-        const canvas = overlayCanvasRef.current;
-        const rect = canvas.getBoundingClientRect();
+    const getPointerInView = (e: React.MouseEvent | React.TouchEvent<HTMLCanvasElement | HTMLDivElement>) => {
+        if (!canvasViewRef.current) return null;
+        const view = canvasViewRef.current;
+        const rect = view.getBoundingClientRect();
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
         return { x: clientX - rect.left, y: clientY - rect.top };
     };
     
-    const handleActionStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent<HTMLCanvasElement | HTMLDivElement>) => {
+        const viewRect = canvasViewRef.current?.getBoundingClientRect();
+        if (!viewRect || canvasDimensions.width === 0) return null;
+
+        const currentScale = scale.get();
+        const currentPanX = panX.get();
+        const currentPanY = panY.get();
+        
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+        const ptr_x_rel_view_center = clientX - (viewRect.left + viewRect.width / 2);
+        const ptr_y_rel_view_center = clientY - (viewRect.top + viewRect.height / 2);
+
+        const ptr_x_rel_canvas_center = (ptr_x_rel_view_center - currentPanX) / currentScale;
+        const ptr_y_rel_canvas_center = (ptr_y_rel_view_center - currentPanY) / currentScale;
+        
+        const canvasX = ptr_x_rel_canvas_center + canvasDimensions.width / 2;
+        const canvasY = ptr_y_rel_canvas_center + canvasDimensions.height / 2;
+
+        return { x: canvasX, y: canvasY };
+    }, [scale, panX, panY, canvasDimensions.width, canvasDimensions.height, canvasViewRef]);
+    
+    const drawBrushPoint = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number) => {
+        const radius = brushSize / 2;
+        if (radius <= 0) return;
+
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        
+        // For eraser, the color doesn't matter for the gradient, only the alpha channel.
+        // For brush, we use the selected color.
+        const color = (activeTool === 'brush') ? brushColor : '#000000';
+        
+        // We need RGBA strings to manipulate alpha for the gradient stops.
+        const colorOpaque = hexToRgba(color, 100);
+        const colorTransparent = hexToRgba(color, 0);
+        
+        // A linear hardness value (0-1) provides predictable control over the feather size.
+        const hardness = brushHardness / 100;
+        
+        gradient.addColorStop(0, colorOpaque);
+        gradient.addColorStop(hardness, colorOpaque);
+        gradient.addColorStop(1, colorTransparent);
+        
+        ctx.fillStyle = gradient;
+        // Use arc to draw a circular brush shape instead of a square.
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }, [brushSize, brushHardness, brushColor, activeTool]);
+
+    const handleActionStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
-        const coords = getCanvasCoords(e); if (!coords) return;
+        
+        const isPanning = activeTool === 'hand' || isSpacePanning;
+        
+        if (isPanning) {
+            const pointer = getPointerInView(e);
+            if (pointer && canvasViewRef.current) {
+                panStartRef.current = { pan: { x: panX.get(), y: panY.get() }, pointer };
+                canvasViewRef.current.style.cursor = 'grabbing';
+            }
+            return;
+        }
+
+        const coords = getCanvasCoords(e); 
+        if (!coords || coords.x < 0 || coords.x > canvasDimensions.width || coords.y < 0 || coords.y > canvasDimensions.height) {
+            return; // Click was outside the canvas content area
+        }
+        
         const nativeEvent = e.nativeEvent as MouseEvent;
 
         if (activeTool === null) {
@@ -507,10 +598,6 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
             if (mainCanvas) { tempCanvas.width = mainCanvas.width; tempCanvas.height = mainCanvas.height; }
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx?.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-            if (tempCtx) {
-                tempCtx.lineCap = 'round'; tempCtx.lineJoin = 'round'; tempCtx.lineWidth = brushSize;
-                tempCtx.strokeStyle = activeTool === 'brush' ? brushColor : '#000';
-            }
         } else if (activeTool === 'crop') {
             setIsDrawing(false);
             const handle = cropSelection ? getHandleAtPoint(coords, cropSelection) : null;
@@ -594,14 +681,42 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         }
     };
     
-    const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
-        const coords = getCanvasCoords(e); setCursorPosition(coords); if (!coords) return;
+
+        if (panStartRef.current) {
+            const pointer = getPointerInView(e);
+            if (pointer) {
+                const newX = panStartRef.current.pan.x + (pointer.x - panStartRef.current.pointer.x);
+                const newY = panStartRef.current.pan.y + (pointer.y - panStartRef.current.pointer.y);
+                panX.set(newX);
+                panY.set(newY);
+            }
+            return;
+        }
+
+        const coords = getCanvasCoords(e); 
+        setCursorPosition(coords); 
+        if (!coords) return;
+        
         if (isDrawing && (activeTool === 'brush' || activeTool === 'eraser')) {
             const tempCtx = tempDrawingCanvasRef.current?.getContext('2d');
             if (!tempCtx || !lastPointRef.current) return;
-            tempCtx.beginPath(); tempCtx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
-            tempCtx.lineTo(coords.x, coords.y); tempCtx.stroke();
+            
+            const dist = Math.hypot(coords.x - lastPointRef.current.x, coords.y - lastPointRef.current.y);
+            const angle = Math.atan2(coords.y - lastPointRef.current.y, coords.x - lastPointRef.current.x);
+
+            const step = Math.max(1, brushSize / 8);
+
+            // Interpolate points for a continuous line
+            for (let i = 0; i < dist; i += step) {
+                const x = lastPointRef.current.x + Math.cos(angle) * i;
+                const y = lastPointRef.current.y + Math.sin(angle) * i;
+                drawBrushPoint(tempCtx, x, y);
+            }
+            // Draw the final point to ensure the line reaches the cursor
+            drawBrushPoint(tempCtx, coords.x, coords.y);
+            
             lastPointRef.current = coords;
         } else if (activeTool === 'crop' && interactionStartRef.current) {
             const startInfo = interactionStartRef.current;
@@ -681,8 +796,13 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         }
     };
 
-    const handleActionEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const handleActionEnd = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         e.preventDefault();
+        
+        if (panStartRef.current) {
+            panStartRef.current = null;
+        }
+
         setIsShowingOriginal(false);
         if (isDrawing) {
             setIsDrawing(false); lastPointRef.current = null;
@@ -775,32 +895,39 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         }
     }, [isOpen, imageToEdit?.url, resetAll]);
     
-    useEffect(() => {
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = requestAnimationFrame(drawAdjustedImage);
-        return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current) };
-    }, [drawAdjustedImage]);
-
     const setupCanvas = useCallback(() => {
         if (!internalImageUrl || !previewCanvasRef.current || !drawingCanvasRef.current || !overlayCanvasRef.current) return;
-        const canvas = previewCanvasRef.current; const drawingCanvas = drawingCanvasRef.current; const overlayCanvas = overlayCanvasRef.current;
-        const container = canvas.parentElement; if (!container) return;
-        const image = new Image(); image.crossOrigin = "anonymous"; image.src = internalImageUrl;
+        const canvas = previewCanvasRef.current;
+        const drawingCanvas = drawingCanvasRef.current;
+        const overlayCanvas = overlayCanvasRef.current;
+        const container = canvasViewRef.current;
+        if (!container) return;
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.src = internalImageUrl;
         image.onload = () => {
             sourceImageRef.current = image;
-            const containerRect = container.getBoundingClientRect(); if (containerRect.width <= 0 || containerRect.height <= 0) return;
-            const isSwapped = rotation === 90 || rotation === 270;
-            const imageAspectRatio = isSwapped ? image.naturalHeight / image.naturalWidth : image.naturalWidth / image.naturalHeight;
+            const containerRect = container.getBoundingClientRect();
+            if (containerRect.width <= 0 || containerRect.height <= 0) return;
+            const imageAspectRatio = image.naturalWidth / image.naturalHeight;
             const containerAspectRatio = containerRect.width / containerRect.height;
             let canvasWidth, canvasHeight;
-            if (imageAspectRatio > containerAspectRatio) { canvasWidth = containerRect.width; canvasHeight = containerRect.width / imageAspectRatio; } 
-            else { canvasHeight = containerRect.height; canvasWidth = containerRect.height * imageAspectRatio; }
-            canvas.width = canvasWidth; canvas.height = canvasHeight;
-            drawingCanvas.width = canvasWidth; drawingCanvas.height = canvasHeight;
-            overlayCanvas.width = canvasWidth; overlayCanvas.height = canvasHeight;
-            drawAdjustedImage();
+            if (imageAspectRatio > containerAspectRatio) {
+                canvasWidth = containerRect.width;
+                canvasHeight = containerRect.width / imageAspectRatio;
+            } else {
+                canvasHeight = containerRect.height;
+                canvasWidth = containerRect.height * imageAspectRatio;
+            }
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            drawingCanvas.width = canvasWidth;
+            drawingCanvas.height = canvasHeight;
+            overlayCanvas.width = canvasWidth;
+            overlayCanvas.height = canvasHeight;
+            setCanvasDimensions({ width: canvasWidth, height: canvasHeight });
         };
-    }, [internalImageUrl, rotation, drawAdjustedImage]);
+    }, [internalImageUrl, canvasViewRef]);
 
     useEffect(() => {
         if (isOpen && internalImageUrl) {
@@ -810,6 +937,14 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
             return () => { clearTimeout(timeoutId); window.removeEventListener('resize', handleResize); };
         }
     }, [isOpen, internalImageUrl, setupCanvas]);
+
+    useEffect(() => {
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if(drawAdjustedImageRef.current) {
+            animationFrameRef.current = requestAnimationFrame(drawAdjustedImageRef.current);
+        }
+        return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current) };
+    }, [drawAdjustedImage, canvasDimensions]);
 
     const getFinalImage = useCallback((): Promise<string | null> => {
         return new Promise((resolve, reject) => {
@@ -1246,7 +1381,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
                 tempCtx.restore();
 
                 imageToSendUrl = tempCanvas.toDataURL('image/png');
-                promptToSend = `${aiEditPrompt}. **YÊU CẦU:** chỉ chỉnh sửa trong vùng tô màu đỏ mờ, sau đó xoá bỏ vùng tô mờ này.`;
+                promptToSend = `${aiEditPrompt}. **HƯỚNG DẪN DÀNH CHO AI:** Vùng được tô màu đỏ mờ trên ảnh là khu vực duy nhất bạn được phép chỉnh sửa. Vùng màu đỏ này chỉ là một MẶT NẠ (MASK) để chỉ định khu vực, không phải là một phần của ảnh. **YÊU CẦU QUAN TRỌNG NHẤT:** Kết quả cuối cùng TUYỆT ĐỐI không được chứa bất kỳ vùng màu đỏ mờ nào.`;
 
             } else {
                 imageToSendUrl = currentImageAsUrl;
@@ -1317,6 +1452,10 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
             const target = e.target as HTMLElement;
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
+            if (e.code === 'Space' && !e.repeat) {
+                e.preventDefault();
+                setIsSpacePanning(true);
+            }
             const isUndo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey;
             const isRedo = (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && e.shiftKey;
             const isSelectAll = (e.metaKey || e.ctrlKey) && e.code === 'KeyA';
@@ -1397,10 +1536,16 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
                 else if (isApplyToSelection) { e.preventDefault(); handleApplyAdjustmentsToSelection(); }
             } else if (isInverse) { e.preventDefault(); invertSelection(); }
         };
-        const handleKeyUp = (e: KeyboardEvent) => { if (!isOpen) return; if (e.key === 'Alt' && previousToolRef.current) { setActiveTool(previousToolRef.current); previousToolRef.current = null; } };
+        const handleKeyUp = (e: KeyboardEvent) => { 
+            if (!isOpen) return;
+            if (e.code === 'Space') {
+                setIsSpacePanning(false);
+            }
+            if (e.key === 'Alt' && previousToolRef.current) { setActiveTool(previousToolRef.current); previousToolRef.current = null; } 
+        };
         window.addEventListener('keydown', handleKeyDown); window.addEventListener('keyup', handleKeyUp);
         return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelPerspectiveCrop, commitState, handleApplyAdjustmentsToSelection]);
+    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelCrop, commitState, handleApplyAdjustmentsToSelection]);
     
     // --- Public API ---
     return {
@@ -1413,6 +1558,7 @@ export const useImageEditorState = (imageToEdit: ImageToEdit | null) => {
         hoveredPerspectiveHandleIndex,
         handleCancelPerspectiveCrop,
         handleApplyPerspectiveCrop,
+        panX, panY, scale, zoomDisplay, canvasDimensions, isSpacePanning,
         
         // Filters & Adjustments
         luminance, contrast, temp, tint, saturation, vibrance, hue, grain, clarity, dehaze, blur, rotation, flipHorizontal, flipVertical, isInverted,

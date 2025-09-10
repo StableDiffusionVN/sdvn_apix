@@ -29,12 +29,28 @@ export const handleFileUpload = (
 };
 
 /**
- * Triggers a browser download for a given URL.
- * @param url The URL of the file to download (can be a data URL).
- * @param filename The desired name for the downloaded file.
+ * Triggers a browser download for a given URL, automatically determining the file extension.
+ * @param url The URL of the file to download (can be a data URL or blob URL).
+ * @param filenameWithoutExtension The desired name for the downloaded file, without the extension.
  */
-export const downloadImage = (url: string, filename: string) => {
+export const downloadImage = (url: string, filenameWithoutExtension: string) => {
     if (!url) return;
+
+    // Determine extension from URL
+    let extension = 'jpg'; // Default extension
+    if (url.startsWith('data:image/png')) {
+        extension = 'png';
+    } else if (url.startsWith('data:image/jpeg')) {
+        extension = 'jpg';
+    } else if (url.startsWith('data:image/webp')) {
+        extension = 'webp';
+    } else if (url.startsWith('blob:')) {
+        // This is likely a video from video generation or a blob from another source.
+        // It's safer to assume mp4 for videos.
+        extension = 'mp4';
+    }
+
+    const filename = `${filenameWithoutExtension}.${extension}`;
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
@@ -42,6 +58,31 @@ export const downloadImage = (url: string, filename: string) => {
     link.click();
     document.body.removeChild(link);
 };
+
+/**
+ * Triggers a browser download for a JSON object.
+ * @param data The JavaScript object to download.
+ * @param filenameWithExtension The desired filename, including the .json extension.
+ */
+export const downloadJson = (data: object, filenameWithExtension: string) => {
+    try {
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filenameWithExtension;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Failed to create or download JSON file:", error);
+        alert("Could not download settings file.");
+    }
+};
+
 
 /**
  * Converts a data URL string to a Blob object.
@@ -452,4 +493,118 @@ export const combineImages = async (
     }
     
     return canvas.toDataURL('image/png');
+};
+
+
+// --- NEW: PNG Metadata Utilities for Import/Export ---
+
+const crc32 = (function() {
+    let table: number[] | undefined;
+
+    function makeTable() {
+        table = [];
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let j = 0; j < 8; j++) {
+                c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            }
+            table[i] = c;
+        }
+    }
+
+    return function(bytes: Uint8Array): number {
+        if (!table) makeTable();
+        let crc = -1;
+        for (let i = 0; i < bytes.length; i++) {
+            crc = (crc >>> 8) ^ table![(crc ^ bytes[i]) & 0xFF];
+        }
+        return (crc ^ -1) >>> 0;
+    };
+})();
+
+export const embedJsonInPng = async (imageDataUrl: string, jsonData: object): Promise<string> => {
+    // We can only add chunks to PNGs. If it's another format, return the original.
+    if (!imageDataUrl.startsWith('data:image/png;base64,')) {
+        console.warn('Cannot embed JSON in non-PNG image. Returning original.');
+        return imageDataUrl;
+    }
+    
+    try {
+        const blob = await dataURLtoBlob(imageDataUrl);
+        const buffer = await blob.arrayBuffer();
+        const view = new Uint8Array(buffer);
+
+        // The IEND chunk is always the last 12 bytes of a valid PNG.
+        const iendIndex = view.length - 12;
+
+        // Create custom chunk 'apIX' (aPix)
+        const chunkType = new TextEncoder().encode('apIX');
+        const chunkDataStr = JSON.stringify(jsonData);
+        const chunkData = new TextEncoder().encode(chunkDataStr);
+        const chunkLength = chunkData.length;
+
+        const fullChunk = new Uint8Array(4 + 4 + chunkLength + 4);
+        const chunkDataView = new DataView(fullChunk.buffer);
+        
+        chunkDataView.setUint32(0, chunkLength, false); // Length (Big Endian)
+        fullChunk.set(chunkType, 4); // Type
+        fullChunk.set(chunkData, 8); // Data
+        
+        const crcData = new Uint8Array(4 + chunkLength);
+        crcData.set(chunkType);
+        crcData.set(chunkData, 4);
+        const crc = crc32(crcData);
+        chunkDataView.setUint32(8 + chunkLength, crc, false); // CRC (Big Endian)
+
+        const newPngData = new Uint8Array(iendIndex + fullChunk.length + 12);
+        newPngData.set(view.slice(0, iendIndex)); // Data before IEND
+        newPngData.set(fullChunk, iendIndex); // Our custom chunk
+        newPngData.set(view.slice(iendIndex), iendIndex + fullChunk.length); // IEND chunk
+
+        const newBlob = new Blob([newPngData], { type: 'image/png' });
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(newBlob);
+        });
+    } catch (error) {
+        console.error("Failed to embed JSON in PNG:", error);
+        return imageDataUrl; // Return original URL on failure
+    }
+};
+
+export const extractJsonFromPng = async (file: File): Promise<object | null> => {
+    try {
+        const buffer = await file.arrayBuffer();
+        const view = new DataView(buffer);
+        const uint8View = new Uint8Array(buffer);
+
+        if (view.getUint32(0) !== 0x89504E47 || view.getUint32(4) !== 0x0D0A1A0A) {
+            console.error("Not a valid PNG file for extraction.");
+            return null;
+        }
+
+        let offset = 8;
+        while (offset < view.byteLength) {
+            const length = view.getUint32(offset, false);
+            const typeBytes = uint8View.slice(offset + 4, offset + 8);
+            const type = new TextDecoder().decode(typeBytes);
+
+            if (type === 'apIX') {
+                const dataBytes = uint8View.slice(offset + 8, offset + 8 + length);
+                const jsonString = new TextDecoder().decode(dataBytes);
+                return JSON.parse(jsonString);
+            }
+
+            if (type === 'IEND') {
+                break;
+            }
+            offset += 12 + length;
+        }
+    } catch (error) {
+        console.error("Failed to extract JSON from PNG:", error);
+    }
+    return null;
 };

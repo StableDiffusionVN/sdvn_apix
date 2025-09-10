@@ -18,6 +18,7 @@ import {
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface FreeGenerationProps {
@@ -128,13 +129,23 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 appState.image2 ?? undefined, 
                 appState.options.removeWatermark
             );
+
+            const settingsToEmbed = {
+                viewId: 'free-generation',
+                state: appState
+            };
+        
+            const urlsWithMetadata = await Promise.all(
+                resultUrls.map(url => embedJsonInPng(url, settingsToEmbed))
+            );
+
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImages: resultUrls,
-                historicalImages: [...appState.historicalImages, ...resultUrls],
+                generatedImages: urlsWithMetadata,
+                historicalImages: [...appState.historicalImages, ...urlsWithMetadata],
             });
-            addImagesToGallery(resultUrls);
+            addImagesToGallery(urlsWithMetadata);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });

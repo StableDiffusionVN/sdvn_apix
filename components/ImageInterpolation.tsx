@@ -17,6 +17,7 @@ import {
     PromptResultCard,
     useVideoGeneration,
     processAndDownloadAll,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface ImageInterpolationProps {
@@ -141,16 +142,20 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 appState.options.aspectRatio,
                 appState.options.removeWatermark
             );
-            const newHistory = [...appState.historicalImages, { url: resultUrl, prompt: finalPromptText }];
+
+            const settingsToEmbed = { viewId: 'image-interpolation', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+
+            const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: finalPromptText }];
             
             onStateChange({ 
                 ...appState, 
                 stage: 'results', 
-                generatedImage: resultUrl, 
+                generatedImage: urlWithMetadata, 
                 historicalImages: newHistory,
                 finalPrompt: finalPromptText, 
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -176,16 +181,19 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 appState.options.removeWatermark
             );
             
-            const newHistory = [...appState.historicalImages, { url: resultUrl, prompt: prompt }];
+            const settingsToEmbed = { viewId: 'image-interpolation', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+
+            const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: prompt }];
             
             onStateChange({ 
                 ...appState, 
                 stage: 'results', 
-                generatedImage: resultUrl, 
+                generatedImage: urlWithMetadata, 
                 historicalImages: newHistory,
                 finalPrompt: prompt,
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";

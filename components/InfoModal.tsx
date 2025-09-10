@@ -4,6 +4,7 @@
 */
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppControls } from './uiUtils';
 
 interface InfoModalProps {
     isOpen: boolean;
@@ -11,7 +12,7 @@ interface InfoModalProps {
 }
 
 const Shortcut: React.FC<{ keys: string }> = ({ keys }) => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-shrink-0">
         {keys.split('+').map(key => (
             <kbd key={key} className="px-2 py-1 text-xs font-semibold text-neutral-300 bg-neutral-900 border border-neutral-700 rounded-md">
                 {key.trim()}
@@ -22,6 +23,8 @@ const Shortcut: React.FC<{ keys: string }> = ({ keys }) => (
 
 
 const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
+    const { t } = useAppControls();
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -39,80 +42,132 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.9, opacity: 0, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="modal-content !max-w-4xl"
+                        className="modal-content md:!max-w-6xl lg:!max-w-7xl xl:!max-w-[90vw]"
                     >
                         <div className="flex justify-between items-center mb-4">
-                             <h3 className="base-font font-bold text-2xl text-yellow-400">Hướng dẫn & Phím tắt</h3>
-                             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Đóng hướng dẫn">
+                             <h3 className="base-font font-bold text-2xl text-yellow-400">{t('infoModal_title')}</h3>
+                             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label={t('infoModal_close')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                              </button>
                         </div>
                         
-                        <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 text-neutral-300 max-h-[65vh] overflow-y-auto pr-4 -mr-4">
-                            {/* Column 1 */}
-                            <div className="space-y-6">
-                                <div>
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Phím tắt chung</h4>
-                                    <p className="text-sm text-neutral-400 mb-3">Hoạt động ở mọi nơi trong ứng dụng.</p>
-                                    <ul className="space-y-2">
-                                        <li className="flex justify-between items-center"><span>Về trang chủ</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
-                                        <li className="flex justify-between items-center"><span>Tìm kiếm ứng dụng</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
-                                        <li className="flex justify-between items-center"><span>Mở thư viện ảnh</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
-                                        <li className="flex justify-between items-center"><span>Mở Trình chỉnh sửa ảnh</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
-                                        <li className="flex justify-between items-center"><span>Mở bảng hướng dẫn này</span> <Shortcut keys="Cmd/Ctrl + /" /></li>
+                        <div className="max-h-[65vh] overflow-y-auto pr-2">
+                            <div className="text-neutral-300 [column-width:19rem] [column-gap:2rem]">
+                                {/* Section 1 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_generalShortcuts_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_generalShortcuts_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.home')}</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.search')}</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.gallery')}</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.editor')}</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.layerComposer')}</span> <Shortcut keys="Cmd/Ctrl + L" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.info')}</span> <Shortcut keys="Cmd/Ctrl + /" /></li>
                                     </ul>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Điều hướng Ứng dụng</h4>
-                                    <p className="text-sm text-neutral-400 mb-3">Chỉ hoạt động khi Trình chỉnh sửa ảnh đang đóng.</p>
-                                    <ul className="space-y-2">
-                                        <li className="flex justify-between items-center"><span>Quay lại (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
-                                        <li className="flex justify-between items-center"><span>Tiến lên (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
+                                
+                                {/* Section 2 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_appNav_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_appNav_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_appNav_items.undo')}</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_appNav_items.redo')}</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
                                     </ul>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Hoàn tác</h4>
-                                    <p className="text-sm text-neutral-400 mb-3">Chỉ hoạt động khi Trình chỉnh sửa ảnh đang mở.</p>
-                                    <ul className="space-y-2">
-                                        <li className="flex justify-between items-center"><span>Hoàn tác (Undo)</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
-                                        <li className="flex justify-between items-center"><span>Làm lại (Redo)</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
-                                    </ul>
-                                </div>
-                            </div>
 
-                            {/* Column 2 */}
-                            <div className="space-y-6">
-                                <div>
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Công cụ</h4>
-                                    <ul className="space-y-2">
-                                        <li className="flex justify-between items-center"><span>Cắt ảnh (Crop)</span> <Shortcut keys="C" /></li>
-                                        <li className="flex justify-between items-center"><span>Chọn vùng (Lasso)</span> <Shortcut keys="L" /></li>
-                                        <li className="flex justify-between items-center"><span>Chọn vùng Chữ nhật (Marquee)</span> <Shortcut keys="M" /></li>
-                                        <li className="flex justify-between items-center"><span>Chọn vùng Elip (Ellipse)</span> <Shortcut keys="Shift + M" /></li>
-                                        <li className="flex justify-between items-center"><span>Công cụ Bút (Pen)</span> <Shortcut keys="P" /></li>
-                                        <li className="flex justify-between items-center"><span>Cọ vẽ (Brush)</span> <Shortcut keys="B" /></li>
-                                        <li className="flex justify-between items-center"><span>Tẩy (Eraser)</span> <Shortcut keys="E" /></li>
-                                        <li className="flex justify-between items-center"><span>Chấm màu (Color Picker)</span> <Shortcut keys="I" /></li>
-                                        <li className="flex justify-between items-center"><span>Tăng/Giảm kích thước cọ</span> <Shortcut keys="] / [" /></li>
-                                        <li className="flex justify-between items-center"><span>Chấm màu tạm thời</span> <Shortcut keys="Giữ Alt" /></li>
+                                 {/* Section 3 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_editorUndo_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_editorUndo_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorUndo_items.undo')}</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorUndo_items.redo')}</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
                                     </ul>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">Trình chỉnh sửa ảnh: Vùng chọn & Bút</h4>
-                                    <ul className="space-y-2">
-                                        <li className="flex justify-between items-center"><span>Thêm vào vùng chọn</span> <Shortcut keys="Giữ Shift + Vẽ" /></li>
-                                        <li className="flex justify-between items-center"><span>Trừ khỏi vùng chọn</span> <Shortcut keys="Giữ Alt + Vẽ" /></li>
-                                        <li className="flex justify-between items-center"><span>Xóa nội dung trong vùng chọn</span> <Shortcut keys="Delete / Backspace" /></li>
-                                        <li className="flex justify-between items-center"><span>Tô màu vào vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Delete" /></li>
-                                        <li className="flex justify-between items-center"><span>Áp dụng hiệu ứng vào vùng chọn</span> <Shortcut keys="Enter" /></li>
-                                        <li className="flex justify-between items-center"><span>Bỏ chọn</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
-                                        <li className="flex justify-between items-center"><span>Nghịch đảo vùng chọn</span> <Shortcut keys="Cmd/Ctrl + Shift + I" /></li>
-                                        <li className="flex justify-between items-center"><span>Hủy đường Bút (Pen)</span> <Shortcut keys="Esc" /></li>
+
+                                 {/* Section 4 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_editorTools_title')}</h4>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.crop')}</span> <Shortcut keys="C" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.lasso')}</span> <Shortcut keys="L" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.marquee')}</span> <Shortcut keys="M" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.ellipse')}</span> <Shortcut keys="Shift + M" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.pen')}</span> <Shortcut keys="P" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.brush')}</span> <Shortcut keys="B" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.eraser')}</span> <Shortcut keys="E" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.picker')}</span> <Shortcut keys="I" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.brushSize')}</span> <Shortcut keys="] / [" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 5 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_editorSelection_title')}</h4>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.add')}</span> <Shortcut keys="Giữ Shift + Vẽ" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.subtract')}</span> <Shortcut keys="Giữ Alt + Vẽ" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.delete')}</span> <Shortcut keys="Delete / Backspace" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.fill')}</span> <Shortcut keys="Cmd/Ctrl + Delete" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.apply')}</span> <Shortcut keys="Enter" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.deselect')}</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.invert')}</span> <Shortcut keys="Cmd/Ctrl + Shift + I" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.cancelPen')}</span> <Shortcut keys="Esc" /></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 6 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_usageTips_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_usageTips_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.dragDrop')}</span></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickDuplicate')}</span> <Shortcut keys="Giữ Alt + Kéo" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.multiSelect')}</span> <Shortcut keys="Giữ Shift" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.aiContext')}</span></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickEdit')}</span></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 7 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_layerComposerTools_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_layerComposerTools_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.select')}</span> <Shortcut keys="V" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.hand')}</span> <Shortcut keys="H" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.pen')}</span> <Shortcut keys="P" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.pan')}</span> <Shortcut keys="Giữ Space" /></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 8 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_layerComposerActions_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_layerComposerActions_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.delete')}</span> <Shortcut keys="Delete / Backspace" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.duplicate')}</span> <Shortcut keys="Cmd/Ctrl + J" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.deselect')}</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.export')}</span></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 9 */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_layerComposerPen_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_layerComposerPen_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerPen_items.finalize')}</span> <Shortcut keys="Enter" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerPen_items.cancel')}</span> <Shortcut keys="Esc" /></li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
-
                     </motion.div>
                 </motion.div>
             )}

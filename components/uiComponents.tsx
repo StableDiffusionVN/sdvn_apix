@@ -8,13 +8,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import PolaroidCard from './PolaroidCard';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
-// Fix: Import `useLightbox` from `uiHooks` instead of `uiContexts` to resolve module resolution error.
 import { useAppControls, useImageEditor } from './uiContexts';
 import { useLightbox } from './uiHooks';
 import { ImageThumbnail } from './ImageThumbnail';
 import { GalleryToolbar } from './GalleryToolbar';
 import { ImageThumbnailActions } from './ImageThumbnailActions';
-import { combineImages } from './uiFileUtilities';
+import { combineImages, downloadJson } from './uiFileUtilities';
 import Lightbox from './Lightbox';
 export * from './SearchableSelect'; // EXPORT THE NEW COMPONENT
 
@@ -220,6 +219,65 @@ interface ResultsViewProps {
  */
 export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
+    const { currentView, t } = useAppControls();
+
+    const getExportableState = (state: any) => {
+        // Create a deep copy to avoid mutating the original state
+        const exportableState = JSON.parse(JSON.stringify(state));
+
+        // Define keys that hold output data or large, non-essential data
+        const keysToRemove = [
+            'generatedImage', 
+            'generatedImages', 
+            'historicalImages', 
+            'finalPrompt',
+            'error',
+            // for image-interpolation
+            'generatedPrompt',
+            'promptSuggestions',
+        ];
+
+        // Recursively remove the keys from the state object
+        const removeKeys = (obj: any) => {
+            if (typeof obj !== 'object' || obj === null) {
+                return;
+            }
+
+            for (const key of keysToRemove) {
+                if (key in obj) {
+                    delete obj[key];
+                }
+            }
+            
+            // Also reset stage to a configurable one if it exists
+            if ('stage' in obj && (obj.stage === 'generating' || obj.stage === 'results' || obj.stage === 'prompting')) {
+                // Find a sensible default stage.
+                if (currentView.viewId === 'free-generation') {
+                    obj.stage = 'configuring';
+                } else if (
+                    ('uploadedImage' in obj && obj.uploadedImage) ||
+                    ('modelImage' in obj && obj.modelImage && 'clothingImage' in obj && obj.clothingImage) ||
+                    ('contentImage' in obj && obj.contentImage && 'styleImage' in obj && obj.styleImage) ||
+                    ('inputImage' in obj && obj.inputImage && 'outputImage' in obj && obj.outputImage)
+                ) {
+                     obj.stage = 'configuring';
+                } else {
+                    obj.stage = 'idle';
+                }
+            }
+
+
+            // Recurse into nested objects
+            for (const key in obj) {
+                if (typeof obj[key] === 'object') {
+                    removeKeys(obj[key]);
+                }
+            }
+        };
+
+        removeKeys(exportableState);
+        return exportableState;
+    };
     
     return (
         <div className="w-full flex-1 flex flex-col items-center justify-between pt-12">
@@ -287,6 +345,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5, duration: 0.5 }}
                     >
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => downloadJson({ viewId: currentView.viewId, state: getExportableState(currentView.state) }, `aPix-${currentView.viewId}-settings.json`)}
+                          title={t('common_exportSettings_tooltip')}
+                        >
+                            {t('common_exportSettings')}
+                        </button>
                         {actions}
                     </motion.div>
                 )}
@@ -459,7 +524,6 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         if (selectedIndices.length < 2) return;
         setIsCombining(true);
         try {
-            // FIX: The combineImages function expects an array of objects with url and label, and an options object.
             const itemsToCombine = selectedIndices.map(index => ({
                 url: images[index],
                 label: '' // Gallery picker doesn't manage labels, so they are empty.

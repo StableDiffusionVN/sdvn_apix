@@ -5,7 +5,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppControls } from './uiContexts';
 import { startVideoGenerationFromImage, pollVideoOperation } from '../services/geminiService';
-// FIX: Import 'VideoTask' type from 'uiTypes' to resolve the duplicate export error.
 import { type VideoTask } from './uiTypes';
 
 /**

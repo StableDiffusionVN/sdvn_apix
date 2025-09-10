@@ -4,7 +4,7 @@
 */
 
 // --- Types & Constants ---
-export type Tool = 'brush' | 'eraser' | 'crop' | 'selection' | 'pen' | 'colorpicker' | 'marquee' | 'ellipse' | 'perspective-crop';
+export type Tool = 'brush' | 'eraser' | 'crop' | 'selection' | 'pen' | 'colorpicker' | 'marquee' | 'ellipse' | 'perspective-crop' | 'hand';
 export type TransformToolId = 'rotate' | 'flipH' | 'flipV';
 export type HistoryToolId = 'undo' | 'redo';
 export type ColorToolId = 'colorSwatch';

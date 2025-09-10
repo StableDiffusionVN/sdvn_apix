@@ -193,6 +193,7 @@ interface AppControlContextType {
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
+    isLayerComposerOpen: boolean;
     language: 'vi' | 'en';
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
@@ -217,6 +218,9 @@ interface AppControlContextType {
     closeImageLayoutModal: () => void;
     openBeforeAfterModal: () => void;
     closeBeforeAfterModal: () => void;
+    openLayerComposer: () => void;
+    closeLayerComposer: () => void;
+    importSettingsAndNavigate: (settings: any) => void;
     t: (key: string, ...args: any[]) => any;
 }
 
@@ -239,6 +243,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isExtraToolsOpen, setIsExtraToolsOpen] = useState(false);
     const [isImageLayoutModalOpen, setIsImageLayoutModalOpen] = useState(false);
     const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
+    const [isLayerComposerOpen, setIsLayerComposerOpen] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
     const [settings, setSettings] = useState(null); // Initially null
 
@@ -296,16 +301,27 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, []);
 
     const t = useCallback((key: string, ...args: any[]): any => {
-        let translation = translations[key];
+        const keys = key.split('.');
+        let translation = keys.reduce((obj, keyPart) => {
+            if (obj && typeof obj === 'object' && keyPart in obj) {
+                return (obj as Record<string, any>)[keyPart];
+            }
+            return undefined;
+        }, translations as any);
+
         if (translation === undefined) {
             console.warn(`Translation key not found: ${key}`);
             return key;
         }
+
         if (typeof translation === 'string' && args.length > 0) {
+            let result = translation;
             args.forEach((arg, index) => {
-                translation = translation.replace(`{${index}}`, arg);
+                result = result.replace(`{${index}}`, String(arg));
             });
+            return result;
         }
+
         return translation;
     }, [translations]);
 
@@ -388,6 +404,33 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setHistoryIndex(newHistory.length - 1);
     }, [viewHistory, historyIndex]);
 
+    const importSettingsAndNavigate = useCallback((settings: any) => {
+        if (!settings || typeof settings.viewId !== 'string' || typeof settings.state !== 'object') {
+            alert('Invalid settings file.');
+            return;
+        }
+    
+        const { viewId, state: importedState } = settings;
+        
+        // This relies on getInitialStateForApp to know all valid viewIds
+        const initialState = getInitialStateForApp(viewId);
+        if (initialState.stage === 'home') { // a simple check if the viewId is valid
+            alert(`Unknown app in settings file: ${viewId}`);
+            return;
+        }
+    
+        // Merge states to ensure we have all required properties.
+        // Imported state overrides defaults.
+        const mergedState = { ...initialState, ...importedState };
+    
+        const newHistory = viewHistory.slice(0, historyIndex + 1);
+        newHistory.push({ viewId, state: mergedState } as ViewState);
+        
+        setViewHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+    
+    }, [viewHistory, historyIndex]);
+
     const handleSelectApp = useCallback((appId: string) => {
         if (settings) {
             const validAppIds = settings.apps.map((app: AppConfig) => app.id);
@@ -439,6 +482,11 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setIsExtraToolsOpen(false);
     }, []);
     const closeBeforeAfterModal = useCallback(() => setIsBeforeAfterModalOpen(false), []);
+    const openLayerComposer = useCallback(() => {
+        setIsLayerComposerOpen(true);
+        setIsExtraToolsOpen(false);
+    }, []);
+    const closeLayerComposer = useCallback(() => setIsLayerComposerOpen(false), []);
 
     const value: AppControlContextType = {
         currentView,
@@ -453,6 +501,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isExtraToolsOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
+        isLayerComposerOpen,
         language,
         addImagesToGallery,
         removeImageFromGallery,
@@ -477,6 +526,9 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         closeImageLayoutModal,
         openBeforeAfterModal,
         closeBeforeAfterModal,
+        openLayerComposer,
+        closeLayerComposer,
+        importSettingsAndNavigate,
         t,
     };
 

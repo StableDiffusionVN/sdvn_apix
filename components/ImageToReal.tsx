@@ -20,6 +20,7 @@ import {
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface ImageToRealProps {
@@ -80,13 +81,15 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
 
         try {
             const resultUrl = await convertImageToRealistic(appState.uploadedImage, appState.options);
+            const settingsToEmbed = { viewId: 'image-to-real', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
@@ -100,13 +103,15 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
         
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
+            const settingsToEmbed = { viewId: 'image-to-real', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });

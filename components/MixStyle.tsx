@@ -19,6 +19,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     PromptResultCard,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface MixStyleProps {
@@ -118,14 +119,16 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
 
         try {
             const { resultUrl, finalPrompt } = await mixImageStyle(appState.contentImage, appState.styleImage, appState.options);
+            const settingsToEmbed = { viewId: 'mix-style', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
                 finalPrompt: finalPrompt,
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage, finalPrompt: null });
@@ -139,14 +142,16 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
+            const settingsToEmbed = { viewId: 'mix-style', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
                 finalPrompt: prompt,
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage, finalPrompt: prompt });

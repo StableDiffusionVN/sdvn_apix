@@ -21,6 +21,7 @@ const AppToolbar: React.FC = () => {
         addImagesToGallery,
         isExtraToolsOpen,
         toggleExtraTools,
+        openLayerComposer,
     } = useAppControls();
 
     const { openEmptyImageEditor, imageToEdit } = useImageEditor();
@@ -50,6 +51,10 @@ const AppToolbar: React.FC = () => {
             addImagesToGallery([newUrl]);
         });
     }, [openEmptyImageEditor, addImagesToGallery]);
+    
+    const handleOpenLayerComposer = useCallback(() => {
+        openLayerComposer();
+    }, [openLayerComposer]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,6 +73,7 @@ const AppToolbar: React.FC = () => {
             const isHome = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
             const isInfo = (e.metaKey || e.ctrlKey) && e.key === '/';
             const isEditor = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e';
+            const isLayerComposer = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l';
 
             if (isUndo && !isEditorOpen) {
                 e.preventDefault();
@@ -90,6 +96,9 @@ const AppToolbar: React.FC = () => {
             } else if (isEditor) {
                 e.preventDefault();
                 handleOpenEditor();
+            } else if (isLayerComposer) {
+                e.preventDefault();
+                handleOpenLayerComposer();
             }
         };
 
@@ -97,7 +106,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, imageToEdit]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, handleOpenLayerComposer, imageToEdit]);
 
     return (
         <>
@@ -185,6 +194,19 @@ const AppToolbar: React.FC = () => {
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={handleOpenLayerComposer}
+                        className="btn-search"
+                        aria-label="Mở trình ghép layer (Cmd/Ctrl+L)"
+                        onMouseEnter={(e) => showTooltip("Ghép Layer (Cmd/Ctrl+L)", e)}
+                        onMouseLeave={hideTooltip}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 1.25l-10 5 10 5 10-5-10-5z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 11.25l10 5 10-5" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 16.25l10 5 10-5" />
                         </svg>
                     </button>
                     <button

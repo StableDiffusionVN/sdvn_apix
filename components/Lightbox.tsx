@@ -39,8 +39,7 @@ const Lightbox: React.FC<LightboxProps> = ({ images, selectedIndex, onClose, onN
     const handleDownloadCurrent = () => {
         if (selectedIndex !== null && images[selectedIndex]) {
             const url = images[selectedIndex];
-            const extension = url.startsWith('blob:') ? 'mp4' : 'jpg';
-            downloadImage(url, `aPix-image-${selectedIndex + 1}.${extension}`);
+            downloadImage(url, `aPix-image-${selectedIndex + 1}`);
         }
     };
 

@@ -4,7 +4,7 @@
 */
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type Tool } from '../ImageEditor.types';
+import { type Tool } from './ImageEditor.types';
 import { CROP_ASPECT_RATIO_OPTIONS } from './ImageEditor.constants';
 import { BasicAdjustments } from './components/BasicAdjustments';
 import { HslAdjustments } from './components/HslAdjustments';
@@ -48,6 +48,14 @@ export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) =
 
     return (
         <div className="flex-grow overflow-y-auto space-y-2 pr-2 -mr-2">
+            {/* --- Magic Tools (Always Open at the top) --- */}
+            <div className="border border-neutral-700 rounded-lg overflow-hidden">
+                <div className="w-full flex justify-between items-center p-3 bg-neutral-700">
+                    <h4 className="base-font font-bold text-neutral-200">Magic</h4>
+                </div>
+                <MagicTools {...props} />
+            </div>
+
             <AnimatePresence>
                 {isSelectionActive && <SelectionControls {...props} />}
             </AnimatePresence>
@@ -130,20 +138,6 @@ export const ImageEditorControls: React.FC<ImageEditorControlsProps> = (props) =
                     {openSection === 'effects' && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                             <EffectsAdjustments {...props} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            <div className="border border-neutral-700 rounded-lg overflow-hidden">
-                <button onClick={() => setOpenSection(s => s === 'magic' ? null : 'magic')} className={accordionHeaderClasses} aria-expanded={openSection === 'magic'}>
-                    <h4 className="base-font font-bold text-neutral-200">Magic</h4>
-                    <motion.div animate={{ rotate: openSection === 'magic' ? 180 : 0 }}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg></motion.div>
-                </button>
-                <AnimatePresence>
-                    {openSection === 'magic' && (
-                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <MagicTools {...props} />
                         </motion.div>
                     )}
                 </AnimatePresence>

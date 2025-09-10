@@ -22,8 +22,9 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         sessionGalleryImages,
         t
     } = useAppControls();
-    
-    const editorState = useImageEditorState(imageToEdit);
+
+    const canvasViewRef = useRef<HTMLDivElement>(null);
+    const editorState = useImageEditorState(imageToEdit, canvasViewRef);
     const { 
         internalImageUrl, 
         isLoading, 
@@ -37,15 +38,26 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         handleWebcamCapture,
         handleCreateBlank,
         getFinalImage,
+        panX, panY, scale, zoomDisplay,
+        history, historyIndex, handleUndo, handleRedo,
     } = editorState;
     
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [activeTooltip, setActiveTooltip] = useState<{ id: string; rect: DOMRect } | null>(null);
     const tooltipTimeoutRef = useRef<number | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [isConfirmingClose, setIsConfirmingClose] = useState(false);
 
     const isOpen = imageToEdit !== null;
     
+    const handleRequestClose = useCallback(() => {
+        if (internalImageUrl && historyIndex > 0) {
+            setIsConfirmingClose(true);
+        } else {
+            onClose();
+        }
+    }, [internalImageUrl, historyIndex, onClose]);
+
     const handleSave = useCallback(async () => {
         if (!imageToEdit) return;
         const finalUrl = await getFinalImage();
@@ -96,12 +108,52 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
         setActiveTooltip(null);
     };
+    
+    // --- Zoom and Pan Handlers ---
+    const handleFitCanvas = useCallback(() => {
+        if (canvasViewRef.current && editorState.previewCanvasRef.current) {
+           const viewWidth = canvasViewRef.current.clientWidth;
+           const viewHeight = canvasViewRef.current.clientHeight;
+           const canvasWidth = editorState.previewCanvasRef.current.width;
+           const canvasHeight = editorState.previewCanvasRef.current.height;
+           if (viewWidth <= 0 || viewHeight <= 0 || canvasWidth <= 0 || canvasHeight <= 0) return;
+           
+           const scaleX = viewWidth / canvasWidth;
+           const scaleY = viewHeight / canvasHeight;
+           const newZoom = Math.min(scaleX, scaleY) * 0.95;
+
+           scale.set(newZoom);
+           panX.set(0);
+           panY.set(0);
+       }
+   }, [scale, panX, panY, canvasViewRef, editorState.previewCanvasRef]);
+
+    const handleZoomChange = useCallback((direction: 'in' | 'out') => {
+        const currentZoom = scale.get();
+        const zoomFactor = 1.2;
+        const newZoom = direction === 'in' ? currentZoom * zoomFactor : currentZoom / zoomFactor;
+        const clampedZoom = Math.max(0.1, Math.min(newZoom, 5));
+        
+        const viewRect = canvasViewRef.current?.getBoundingClientRect();
+        if (!viewRect) return;
+
+        const viewCenter = { x: viewRect.width / 2, y: viewRect.height / 2 };
+        const oldPan = { x: panX.get(), y: panY.get() };
+        const scaleRatio = clampedZoom / currentZoom;
+    
+        const newPanX = viewCenter.x * (1 - scaleRatio) + oldPan.x * scaleRatio;
+        const newPanY = viewCenter.y * (1 - scaleRatio) + oldPan.y * scaleRatio;
+
+        scale.set(clampedZoom);
+        panX.set(newPanX);
+        panY.set(newPanY);
+    }, [scale, panX, panY, canvasViewRef]);
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="modal-overlay z-[60]" aria-modal="true" role="dialog">
-                    <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-7xl !h-[90vh] image-editor-modal-content relative" tabIndex={-1}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleRequestClose} className="modal-overlay z-[60]" aria-modal="true" role="dialog">
+                    <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-[95vw] !w-[95vw] !h-[95vh] image-editor-modal-content relative" tabIndex={-1}>
                         {!internalImageUrl ? (
                              <>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e: ChangeEvent<HTMLInputElement>) => handleFileSelected(e)} onClick={(e) => ((e.target as HTMLInputElement).value = '')} />
@@ -149,7 +201,15 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
 
                                 {/* Column 2: Preview Canvas */}
                                 <div className="flex-1 flex items-center justify-center min-h-0 relative">
-                                    <ImageEditorCanvas {...editorState} />
+                                    <ImageEditorCanvas
+                                        {...editorState}
+                                        canvasViewRef={canvasViewRef}
+                                        onZoomIn={() => handleZoomChange('in')}
+                                        onZoomOut={() => handleZoomChange('out')}
+                                        onFit={handleFitCanvas}
+                                        canUndo={historyIndex > 0}
+                                        canRedo={historyIndex < history.length - 1}
+                                    />
                                 </div>
 
                                 {/* Column 3: Controls and Actions */}
@@ -160,7 +220,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                     </div>
                                     <ImageEditorControls {...editorState} />
                                     <div className="flex justify-end items-center gap-2 mt-auto pt-4 border-t border-white/10 flex-shrink-0">
-                                        <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+                                        <button onClick={handleRequestClose} className="btn btn-secondary btn-sm">Cancel</button>
                                         <button onClick={editorState.handleApplyAllAdjustments} className="btn btn-secondary btn-sm" disabled={isLoading}>{isLoading ? 'Applying...' : 'Apply'}</button>
                                         <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save'}</button>
                                     </div>
@@ -189,6 +249,32 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                     </motion.div>
                 </motion.div>
             )}
+            <AnimatePresence>
+                 {isOpen && isConfirmingClose && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="modal-overlay z-[70]"
+                        aria-modal="true" role="dialog"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="modal-content !max-w-md"
+                        >
+                            <h3 className="base-font font-bold text-2xl text-yellow-400">{t('confirmClose_title')}</h3>
+                            <p className="text-neutral-300 my-2">{t('confirmClose_message')}</p>
+                            <div className="flex justify-end items-center gap-4 mt-4">
+                                <button onClick={() => setIsConfirmingClose(false)} className="btn btn-secondary btn-sm">{t('confirmClose_stay')}</button>
+                                <button onClick={() => { onClose(); setIsConfirmingClose(false); }} className="btn btn-primary btn-sm">{t('confirmClose_close')}</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </AnimatePresence>
     );
 };

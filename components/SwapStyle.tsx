@@ -21,6 +21,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     useAppControls,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface SwapStyleProps {
@@ -113,13 +114,15 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
 
         try {
             const resultUrl = await swapImageStyle(appState.uploadedImage, appState.options);
+            const settingsToEmbed = { viewId: 'swap-style', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
@@ -133,13 +136,15 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
+            const settingsToEmbed = { viewId: 'swap-style', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });

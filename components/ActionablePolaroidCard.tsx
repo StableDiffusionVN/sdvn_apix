@@ -80,8 +80,6 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     const isSwappable = type !== 'output' && type !== 'display';
     const isRegeneratable = type === 'output';
     const isGallerySelectable = type !== 'output' && type !== 'display';
-    // UPDATE: Align webcam capability with other input methods for consistency across all apps.
-    // Now, any card that allows image changes will also show the webcam option.
     const isWebcamSelectable = type !== 'output' && type !== 'display';
     
     const handleFileSelected = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -120,9 +118,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
 
     const handleDownloadClick = useCallback(() => {
         if (mediaUrl) {
-            const isVideo = mediaUrl.startsWith('blob:');
-            const extension = isVideo ? 'mp4' : 'jpg';
-            const filename = `${caption.replace(/[\s()]/g, '-')}.${extension}`;
+            const filename = `${caption.replace(/[\s()]/g, '-')}`;
             downloadImage(mediaUrl, filename);
         }
     }, [mediaUrl, caption]);

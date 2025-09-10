@@ -9,7 +9,6 @@ import Footer from './components/Footer';
 import Home from './components/Home';
 import ArchitectureIdeator from './components/ArchitectureIdeator';
 import AvatarCreator from './components/AvatarCreator';
-// FIX: Module '"file:///components/DressTheModel"' has no default export.
 import DressTheModel from './components/DressTheModel';
 import PhotoRestoration from './components/PhotoRestoration';
 import ImageToReal from './components/ImageToReal';
@@ -17,7 +16,6 @@ import SwapStyle from './components/SwapStyle';
 import MixStyle from './components/MixStyle';
 import FreeGeneration from './components/FreeGeneration';
 import ToyModelCreator from './components/ToyModelCreator';
-// FIX: Module '"file:///components/ImageInterpolation"' has no default export.
 import ImageInterpolation from './components/ImageInterpolation';
 import SearchModal from './components/SearchModal';
 import GalleryModal from './components/GalleryModal';
@@ -33,6 +31,7 @@ import {
     useAppControls,
     ImageLayoutModal,
     BeforeAfterModal,
+    LayerComposerModal,
     useAuth
 } from './components/uiUtils';
 
@@ -46,6 +45,7 @@ function App() {
         isInfoOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
+        isLayerComposerOpen,
         handleSelectApp,
         handleStateChange,
         addImagesToGallery,
@@ -56,11 +56,11 @@ function App() {
         handleCloseInfo,
         closeImageLayoutModal,
         closeBeforeAfterModal,
+        closeLayerComposer,
         t,
     } = useAppControls();
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
-    // FIX: Imported `useAuth` to resolve 'Cannot find name' error.
     const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
 
     const renderContent = () => {
@@ -314,6 +314,10 @@ function App() {
             <BeforeAfterModal
                 isOpen={isBeforeAfterModalOpen}
                 onClose={closeBeforeAfterModal}
+            />
+            <LayerComposerModal
+                isOpen={isLayerComposerOpen}
+                onClose={closeLayerComposer}
             />
             <Footer />
         </main>

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { type ColorChannel, type ToolId } from './ImageEditor.types';
+import { type ToolId, type ColorChannel } from './ImageEditor.types';
 
 export const CROP_ASPECT_RATIO_OPTIONS = ['Free', 'Original', '1:1', '2:3', '3:2', '4:5', '5:4', '3:4', '4:3', '9:16', '16:9'];
 export const HANDLE_SIZE = 10;
@@ -13,6 +13,7 @@ export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
     flipV: { name: 'Lật dọc', description: 'Lật ảnh theo chiều dọc.' },
     crop: { name: 'Cắt ảnh (C)', description: 'Chọn một vùng chữ nhật để cắt ảnh.' },
     'perspective-crop': { name: 'Cắt phối cảnh (Alt+C)', description: 'Chọn 4 điểm để cắt và chỉnh sửa phối cảnh.' },
+    hand: { name: 'Di chuyển (H, giữ Space)', description: 'Di chuyển và kéo canvas.' },
     selection: { name: 'Chọn vùng (L)', description: 'Vẽ tự do để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     marquee: { name: 'Chọn vùng Chữ nhật (M)', description: 'Vẽ một hình chữ nhật để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },
     ellipse: { name: 'Chọn vùng Elip', description: 'Vẽ một hình elip để tạo vùng chọn. Giữ Shift để thêm, Alt để trừ.' },

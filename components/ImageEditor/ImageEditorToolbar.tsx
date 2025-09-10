@@ -9,10 +9,6 @@ import { type Tool } from './ImageEditor.types';
 interface ImageEditorToolbarProps {
     activeTool: Tool | null;
     handleToolSelect: (tool: Tool) => void;
-    historyIndex: number;
-    history: unknown[];
-    handleUndo: () => void;
-    handleRedo: () => void;
     commitState: () => void;
     rotation: number;
     setRotation: (value: number | ((prev: number) => number)) => void;
@@ -26,7 +22,7 @@ interface ImageEditorToolbarProps {
 
 export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = (props) => {
     const {
-        activeTool, handleToolSelect, historyIndex, history, handleUndo, handleRedo, commitState,
+        activeTool, handleToolSelect, commitState,
         setRotation, setFlipHorizontal, setFlipVertical, brushColor, setBrushColor,
         showTooltip, hideTooltip
     } = props;
@@ -91,8 +87,6 @@ export const ImageEditorToolbar: React.FC<ImageEditorToolbarProps> = (props) => 
                 </button>
             </div>
             <div className="mt-auto flex flex-col items-center gap-2">
-                <button onMouseEnter={(e) => showTooltip('undo', e)} onMouseLeave={hideTooltip} onClick={handleUndo} disabled={historyIndex <= 0} className={cn(toolButtonClasses, inactiveToolButtonClasses, "disabled:opacity-50 disabled:cursor-not-allowed")} aria-label="Undo"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
-                <button onMouseEnter={(e) => showTooltip('redo', e)} onMouseLeave={hideTooltip} onClick={handleRedo} disabled={historyIndex >= history.length - 1} className={cn(toolButtonClasses, inactiveToolButtonClasses, "disabled:opacity-50 disabled:cursor-not-allowed")} aria-label="Redo"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" /></svg></button>
                 <div className="relative" onMouseEnter={(e) => showTooltip('colorSwatch', e)} onMouseLeave={hideTooltip}>
                     <label htmlFor="editor-color-picker" className="cursor-pointer block p-1 rounded-lg hover:bg-neutral-700 transition-colors" title="Chọn màu">
                         <div className="w-8 h-8 rounded-full border-2 border-white/50 shadow-lg" style={{ backgroundColor: brushColor }} />

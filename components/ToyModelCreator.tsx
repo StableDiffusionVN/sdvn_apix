@@ -22,6 +22,7 @@ import {
     getInitialStateForApp,
     SearchableSelect,
     useAppControls,
+    embedJsonInPng,
 } from './uiUtils';
 
 interface ToyModelCreatorProps {
@@ -169,13 +170,15 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         try {
             // No need to transform options, the service handles '' and 'Tự động' correctly
             const resultUrl = await generateToyModelImage(appState.uploadedImage, appState.concept, appState.options);
+            const settingsToEmbed = { viewId: 'toy-model-creator', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
@@ -187,13 +190,15 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
+            const settingsToEmbed = { viewId: 'toy-model-creator', state: appState };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
                 stage: 'results',
-                generatedImage: resultUrl,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                generatedImage: urlWithMetadata,
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
