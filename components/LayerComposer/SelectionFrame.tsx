@@ -32,7 +32,7 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
         if (isMultiSelect) {
             if (handle === 'tl' || handle === 'br') return 'nwse-resize';
             if (handle === 'tr' || handle === 'bl') return 'nesw-resize';
-            return 'default'; // Disable side handles for multi-select resize for simplicity
+            return 'default';
         }
         if (handle === 'tl' || handle === 'br') return 'nwse-resize';
         if (handle === 'tr' || handle === 'bl') return 'nesw-resize';
@@ -42,14 +42,8 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
     }
 
     const getHandleMotionStyle = (handle: Handle) => {
-        if (isMultiSelect && handle.length === 1) return { display: 'none' }; // Hide side handles for multi-select
-
-        const style: any = {
-            position: 'absolute', width: handleSize, height: handleSize,
-            borderStyle: 'solid', borderColor: '#FBBF24', borderWidth: handleBorderWidth,
-            backgroundColor: '#171717', borderRadius: '2px', pointerEvents: 'auto',
-            cursor: getHandleCursor(handle),
-        };
+        if (isMultiSelect && handle.length === 1) return { display: 'none' };
+        const style: any = { position: 'absolute', width: handleSize, height: handleSize, borderStyle: 'solid', borderColor: '#FBBF24', borderWidth: handleBorderWidth, backgroundColor: '#171717', borderRadius: '2px', pointerEvents: 'auto', cursor: getHandleCursor(handle) };
         if (handle.includes('t')) style.top = handleOffset;
         if (handle.includes('b')) style.bottom = handleOffset;
         if (handle.includes('l')) style.left = handleOffset;
@@ -60,11 +54,7 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
     };
 
     const getRotationHandleStyle = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
-        const style: any = {
-            position: 'absolute', width: rotationHandleSize, height: rotationHandleSize,
-            backgroundColor: '#FBBF24', borderStyle: 'solid', borderColor: '#171717',
-            borderWidth: rotationHandleBorderWidth, borderRadius: '50%', pointerEvents: 'auto', cursor: 'alias',
-        };
+        const style: any = { position: 'absolute', width: rotationHandleSize, height: rotationHandleSize, backgroundColor: '#FBBF24', borderStyle: 'solid', borderColor: '#171717', borderWidth: rotationHandleBorderWidth, borderRadius: '50%', pointerEvents: 'auto', cursor: 'alias' };
         if (corner === 'tl') { style.top = rotationHandleOffset; style.left = rotationHandleOffset; }
         if (corner === 'tr') { style.top = rotationHandleOffset; style.right = rotationHandleOffset; }
         if (corner === 'bl') { style.bottom = rotationHandleOffset; style.left = rotationHandleOffset; }
@@ -73,28 +63,10 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
     };
 
     return (
-        <motion.div
-            className="absolute pointer-events-none"
-            style={{ x: boundingBox.x, y: boundingBox.y, width: boundingBox.width, height: boundingBox.height, rotate: rotation, zIndex: 1000 }}
-        >
-            <motion.div 
-                className="absolute inset-0 border-dashed border-yellow-400"
-                style={{ borderWidth }}
-            />
-             {!isMultiSelect && ROTATION_CORNERS.map(corner => (
-                <motion.div
-                    key={`${corner}-rotate`}
-                    style={getRotationHandleStyle(corner)}
-                    onPointerDown={(e) => onRotatePointerDown(e)}
-                />
-            ))}
-            {HANDLES.map(handle => (
-                <motion.div
-                    key={handle}
-                    style={getHandleMotionStyle(handle)}
-                    onPointerDown={(e) => onHandlePointerDown(e, handle)}
-                />
-            ))}
+        <motion.div className="absolute pointer-events-none" style={{ x: boundingBox.x, y: boundingBox.y, width: boundingBox.width, height: boundingBox.height, rotate: rotation, zIndex: 1000 }} >
+            <motion.div className="absolute inset-0 border-dashed border-yellow-400" style={{ borderWidth }} />
+             {!isMultiSelect && ROTATION_CORNERS.map(corner => ( <motion.div key={`${corner}-rotate`} style={getRotationHandleStyle(corner)} onPointerDown={(e) => onRotatePointerDown(e)} /> ))}
+            {HANDLES.map(handle => ( <motion.div key={handle} style={getHandleMotionStyle(handle)} onPointerDown={(e) => onHandlePointerDown(e, handle)} /> ))}
         </motion.div>
     );
 };

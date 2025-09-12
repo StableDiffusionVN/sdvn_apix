@@ -10,12 +10,12 @@
   "freeGeneration_promptTitle": "Nhập yêu cầu (Prompt)",
   "freeGeneration_tipsTitle": "Mẹo sử dụng",
   "freeGeneration_tips": [
-    "Không input ảnh để sử dụng **Imagen**.",
+    "Không input ảnh để sử dụng **Imagen**. Prompt sẽ được phân tích thông minh để xác định số lượng, tỉ lệ.",
     "Input ảnh để sử dụng **Gemini Image** (chỉnh sửa ảnh).",
     "Trường hợp input nhiều ảnh, nên đặt ảnh chính làm ảnh cuối cùng.",
     "Ảnh input chính nên được crop đúng tỉ lệ mong muốn của ảnh output."
   ],
-  "freeGeneration_promptPlaceholder": "Ví dụ: một con mèo phi hành gia đang cưỡi ván trượt trên sao Hỏa, phong cách tranh sơn dầu...",
+  "freeGeneration_promptPlaceholder": "Ví dụ: một con mèo phi hành gia đang cưỡi ván trượt trên sao Hỏa, phong cách tranh sơn dầu, tạo 4 ảnh, tỉ lệ 16:9...",
   "freeGeneration_numImagesLabel": "Số lượng ảnh",
   "freeGeneration_numImagesAriaLabel": "Chọn số lượng ảnh",
   "freeGeneration_editModeWarning": "Chế độ sửa ảnh chỉ tạo 1 ảnh/lần.",
@@ -23,5 +23,6 @@
   "freeGeneration_createButton": "Tạo ảnh",
   "freeGeneration_regenTitle": "Tinh chỉnh ảnh hoặc Tạo video",
   "freeGeneration_regenDescription": "Thêm yêu cầu để cải thiện ảnh, hoặc dùng nó để tạo video",
-  "freeGeneration_regenPlaceholder": "Ví dụ: làm cho màu sắc tươi hơn..."
+  "freeGeneration_regenPlaceholder": "Ví dụ: làm cho màu sắc tươi hơn...",
+  "common_deleteImages": "Xóa ảnh"
 }

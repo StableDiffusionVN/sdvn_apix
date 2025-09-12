@@ -10,12 +10,12 @@
   "freeGeneration_promptTitle": "Enter Prompt",
   "freeGeneration_tipsTitle": "Usage Tips",
   "freeGeneration_tips": [
-    "No image input to use **Imagen**.",
+    "No image input to use **Imagen**. The prompt will be intelligently analyzed for quantity and ratio.",
     "Input an image to use **Gemini Image** (image editing).",
     "When inputting multiple images, the main image should be the last one.",
     "The main input image should be cropped to the desired output aspect ratio."
   ],
-  "freeGeneration_promptPlaceholder": "e.g., an astronaut cat skateboarding on Mars, oil painting style...",
+  "freeGeneration_promptPlaceholder": "e.g., an astronaut cat skateboarding on Mars, oil painting style, create 4 images, 16:9 ratio...",
   "freeGeneration_numImagesLabel": "Number of Images",
   "freeGeneration_numImagesAriaLabel": "Select number of images",
   "freeGeneration_editModeWarning": "Edit mode only creates 1 image at a time.",
@@ -23,5 +23,6 @@
   "freeGeneration_createButton": "Create",
   "freeGeneration_regenTitle": "Refine Image or Create Video",
   "freeGeneration_regenDescription": "Add a request to improve the image, or use it to create a video",
-  "freeGeneration_regenPlaceholder": "e.g., make the colors brighter..."
+  "freeGeneration_regenPlaceholder": "e.g., make the colors brighter...",
+  "common_deleteImages": "Delete Images"
 }

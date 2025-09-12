@@ -4,7 +4,7 @@
 */
 import React, { ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateFreeImage, editImageWithPrompt } from '../services/geminiService';
+import { generateFreeImage, editImageWithPrompt, analyzePromptForImageGenerationParams } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -19,6 +19,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     embedJsonInPng,
+    useAppControls,
 } from './uiUtils';
 
 interface FreeGenerationProps {
@@ -49,6 +50,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         ...headerProps
     } = props;
     
+    const { t } = useAppControls();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -116,19 +118,41 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             return;
         }
         
-        const numImages = appState.image1 ? 1 : appState.options.numberOfImages;
-        
         onStateChange({ ...appState, stage: 'generating', error: null, generatedImages: [] });
 
         try {
-            const resultUrls = await generateFreeImage(
-                appState.options.prompt, 
-                numImages, 
-                appState.options.aspectRatio, 
-                appState.image1 ?? undefined, 
-                appState.image2 ?? undefined, 
-                appState.options.removeWatermark
-            );
+            let resultUrls: string[];
+    
+            // Case 1: Text-to-Image (Imagen) with prompt analysis
+            if (!appState.image1) {
+                console.log("Analyzing prompt for Free Generation...");
+                const params = await analyzePromptForImageGenerationParams(appState.options.prompt);
+    
+                // Prompt overrides UI if it's not the default.
+                const numImages = params.numberOfImages > 1 ? params.numberOfImages : appState.options.numberOfImages;
+                const aspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : appState.options.aspectRatio;
+
+                console.log(`Generation params: num=${numImages}, ratio=${aspectRatio}, prompt="${params.refinedPrompt}"`);
+                
+                resultUrls = await generateFreeImage(
+                    params.refinedPrompt,
+                    numImages,
+                    aspectRatio,
+                    undefined,
+                    undefined,
+                    appState.options.removeWatermark
+                );
+            } else {
+                // Case 2: Image-to-Image (Gemini Image Editing)
+                resultUrls = await generateFreeImage(
+                    appState.options.prompt, 
+                    1, // Editing always produces 1 image
+                    appState.options.aspectRatio, 
+                    appState.image1, 
+                    appState.image2, 
+                    appState.options.removeWatermark
+                );
+            }
 
             const settingsToEmbed = {
                 viewId: 'free-generation',
@@ -266,27 +290,26 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     </div>
                      
                     <OptionsPanel>
-                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Nhập yêu cầu (Prompt)</h2>
+                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('freeGeneration_promptTitle')}</h2>
                         
                         <div className="bg-yellow-900/30 border border-yellow-400/50 rounded-lg p-3 my-4 text-sm text-neutral-300 space-y-1">
                             <div className="flex items-center gap-2 font-bold text-yellow-300">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                 </svg>
-                                <span>Mẹo sử dụng</span>
+                                <span>{t('freeGeneration_tipsTitle')}</span>
                             </div>
                             <ul className="list-disc list-inside pl-2 space-y-1 base-font">
-                                <li>Không input ảnh để sử dụng <strong>Imagen</strong>.</li>
-                                <li>Input ảnh để sử dụng <strong>Gemini Image</strong> (chỉnh sửa ảnh).</li>
-                                <li>Trường hợp input nhiều ảnh, nên đặt ảnh chính làm ảnh cuối cùng.</li>
-                                <li>Ảnh input chính nên được crop đúng tỉ lệ mong muốn của ảnh output.</li>
+                                {t('freeGeneration_tips').map((tip: string, index: number) => (
+                                    <li key={index} dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                ))}
                             </ul>
                         </div>
 
                         <div>
                             <textarea
                                 id="prompt" value={appState.options.prompt} onChange={(e) => handleOptionChange('prompt', e.target.value)}
-                                placeholder="Ví dụ: một con mèo phi hành gia đang cưỡi ván trượt trên sao Hỏa, phong cách tranh sơn dầu..."
+                                placeholder={t('freeGeneration_promptPlaceholder')}
                                 className="form-input !h-32"
                                 rows={5}
                             />
@@ -295,7 +318,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className={`transition-opacity duration-300 ${appState.image1 ? 'opacity-50' : 'opacity-100'}`}>
                                 <label htmlFor="number-of-images" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">
-                                    Số lượng ảnh
+                                    {t('freeGeneration_numImagesLabel')}
                                 </label>
                                 <select
                                     id="number-of-images"
@@ -303,14 +326,14 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     onChange={(e) => handleOptionChange('numberOfImages', parseInt(e.target.value, 10))}
                                     className="form-input"
                                     disabled={!!appState.image1}
-                                    aria-label="Chọn số lượng ảnh"
+                                    aria-label={t('freeGeneration_numImagesAriaLabel')}
                                 >
                                     {NUMBER_OF_IMAGES_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
-                                {appState.image1 && <p className="text-xs text-neutral-400 mt-1">Chế độ sửa ảnh chỉ tạo 1 ảnh/lần.</p>}
+                                {appState.image1 && <p className="text-xs text-neutral-400 mt-1">{t('freeGeneration_editModeWarning')}</p>}
                             </div>
                              <div>
-                                <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ khung ảnh</label>
+                                <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                                 <select
                                     id="aspect-ratio"
                                     value={appState.options.aspectRatio}
@@ -319,7 +342,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 >
                                     {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
-                                {!appState.image1 && <p className="text-xs text-neutral-400 mt-1">Tỉ lệ gần nhất được hỗ trợ sẽ được sử dụng.</p>}
+                                {!appState.image1 && <p className="text-xs text-neutral-400 mt-1">{t('freeGeneration_aspectRatioNote')}</p>}
                             </div>
                         </div>
 
@@ -330,19 +353,19 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 checked={appState.options.removeWatermark}
                                 onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                 className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                aria-label="Xóa watermark nếu có"
+                                aria-label={t('common_removeWatermark')}
                             />
                             <label htmlFor="remove-watermark-free" className="ml-3 block text-sm font-medium text-neutral-300">
-                                Xóa watermark (nếu có)
+                                {t('common_removeWatermark')}
                             </label>
                         </div>
 
                         <div className="flex items-center justify-end gap-4 pt-4">
                              { (appState.image1 || appState.image2) && <button onClick={() => { onStateChange({...appState, image1: null, image2: null}) }} className="btn btn-secondary">
-                                Xóa ảnh
+                                {t('common_deleteImages')}
                             </button> }
                             <button onClick={handleGenerate} className="btn btn-primary" disabled={isLoading || !appState.options.prompt.trim()}>
-                                {isLoading ? 'Đang tạo...' : 'Tạo ảnh'}
+                                {isLoading ? t('common_creating') : t('freeGeneration_createButton')}
                             </button>
                         </div>
                     </OptionsPanel>
@@ -359,16 +382,16 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     actions={(
                         <>
                             {appState.historicalImages.length > 0 && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>
+                                <button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>
                             )}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                            <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_edit')}</button>
+                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
                         </>
                     )}
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard type="multi-input" caption="Ảnh gốc 2" status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onImageChange={handleSaveImage2} />
+                            <ActionablePolaroidCard type="multi-input" caption={t('freeGeneration_originalImage2Caption')} status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onImageChange={handleSaveImage2} />
                         </motion.div>
                     )}
                     {
@@ -381,7 +404,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 + index * 0.1 }}
                             >
-                                <ActionablePolaroidCard type="output" caption={`Kết quả ${index + 1}`} status="pending" />
+                                <ActionablePolaroidCard type="output" caption={t('freeGeneration_resultCaption', index + 1)} status="pending" />
                             </motion.div>
                         ))
                        :
@@ -396,15 +419,15 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption={`Kết quả ${index + 1}`}
+                                    caption={t('freeGeneration_resultCaption', index + 1)}
                                     status={'done'}
                                     mediaUrl={url}
                                     onGenerateVideoFromPrompt={(prompt) => generateVideo(url, prompt)}
                                     onImageChange={handleSaveGeneratedImage(index)}
                                     onRegenerate={(prompt) => handleRegeneration(index, prompt)}
-                                    regenerationTitle="Tinh chỉnh ảnh hoặc Tạo video"
-                                    regenerationDescription="Thêm yêu cầu để cải thiện ảnh, hoặc dùng nó để tạo video"
-                                    regenerationPlaceholder="Ví dụ: làm cho màu sắc tươi hơn..."
+                                    regenerationTitle={t('freeGeneration_regenTitle')}
+                                    regenerationDescription={t('freeGeneration_regenDescription')}
+                                    regenerationPlaceholder={t('freeGeneration_regenPlaceholder')}
                                     onClick={() => openLightbox(lightboxImages.indexOf(url))}
                                     isMobile={isMobile}
                                 />
@@ -424,7 +447,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption="Video"
+                                    caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
@@ -444,7 +467,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         >
                             <ActionablePolaroidCard
                                 type="output"
-                                caption="Lỗi"
+                                caption={t('common_error')}
                                 status="error"
                                 error={appState.error}
                                 isMobile={isMobile}

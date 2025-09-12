@@ -16,19 +16,20 @@ interface LayerListProps {
     onLayerDelete: (id: string) => void;
     onLayerSelect: (id: string) => void;
     beginInteraction: () => void;
+    // FIX: Add missing props to satisfy parent component
+    editingMaskForLayerId: string | null;
+    setEditingMaskForLayerId: (id: string | null) => void;
 }
 
 export const LayerList: React.FC<LayerListProps> = ({
-    layers, selectedLayerId, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, beginInteraction
+    layers, selectedLayerId, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, beginInteraction,
+    // FIX: Accept new props
+    editingMaskForLayerId, setEditingMaskForLayerId
 }) => {
     const { t } = useAppControls();
 
     if (layers.length === 0) {
-        return (
-            <p className="text-sm text-neutral-500 text-center py-4">
-                {t('layerComposer_empty')}
-            </p>
-        );
+        return ( <p className="text-sm text-neutral-500 text-center py-4"> {t('layerComposer_empty')} </p> );
     }
     
     return (

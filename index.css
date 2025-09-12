@@ -821,3 +821,136 @@ body {
   padding: 0.25rem;
 }
 @media(min-width: 640px) { .before-after-sidebar-grid { column-count: 2; } }
+
+/* --- NEW: Layer Composer Infinite Canvas Background --- */
+.infinite-canvas-bg {
+  background-color: #22252a; /* A dark, slightly blue-gray */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* --- NEW: AI Process Logger --- */
+.ai-process-logger {
+  position: fixed;
+  bottom: 4.5rem; /* Above footer */
+  right: 1.5rem;
+  width: 100%;
+  max-width: 24rem; /* max-w-md */
+  background-color: rgba(30, 30, 30, 0.8);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem; /* rounded-xl */
+  padding: 1rem;
+  z-index: 100; /* Above most other UI */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ai-process-logger-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-process-logger-title {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 700;
+  color: #FBBF24; /* text-yellow-400 */
+}
+
+.ai-process-logger-close {
+  padding: 0.25rem;
+  border-radius: 9999px;
+  color: #a3a3a3; /* neutral-400 */
+  transition: background-color 0.2s;
+}
+.ai-process-logger-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.ai-process-logger-content {
+  max-height: 15rem; /* max-h-60 */
+  overflow-y: auto;
+  list-style-type: none;
+  padding: 0.5rem 0.25rem 0 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Custom scrollbar for logger */
+.ai-process-logger-content::-webkit-scrollbar {
+  width: 6px;
+}
+.ai-process-logger-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-process-logger-content::-webkit-scrollbar-thumb {
+  background-color: #737373; /* neutral-500 */
+  border-radius: 10px;
+}
+
+.ai-process-logger-item {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.4;
+}
+
+.log-item-info {
+  color: #d4d4d4; /* neutral-300 */
+}
+
+.log-item-spinner {
+  color: #d4d4d4; /* neutral-300 */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.log-item-prompt {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.75rem;
+  border-radius: 0.375rem; /* rounded-md */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e5e5; /* neutral-200 */
+  position: relative;
+}
+
+.log-item-prompt pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: monospace;
+}
+
+.log-item-prompt .copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: #a3a3a3; /* neutral-400 */
+  transition: all 0.2s;
+}
+.log-item-prompt .copy-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.log-item-success {
+  color: #4ade80; /* green-400 */
+  font-weight: 600;
+}
+
+.log-item-error {
+  color: #f87171; /* red-400 */
+  font-weight: 600;
+}

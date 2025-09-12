@@ -2,10 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useEffect } from 'react';
+import { motion, MotionValue } from 'framer-motion';
 import { cn } from '../../lib/utils';
-import { type Layer } from './LayerComposer.types';
+import { type Layer } from './LayerComposer/LayerComposer.types';
 
 interface LayerItemProps {
     layer: Layer;

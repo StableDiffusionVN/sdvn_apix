@@ -624,7 +624,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={handleClose}
-                    className="modal-overlay z-[70]"
+                    className="modal-overlay z-[80]"
                     aria-modal="true"
                     role="dialog"
                 >
@@ -844,7 +844,7 @@ export const WebcamCaptureModal: React.FC<WebcamCaptureModalProps> = ({ isOpen, 
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="modal-overlay z-[80]"
+                    className="modal-overlay z-[90]"
                     aria-modal="true"
                     role="dialog"
                 >

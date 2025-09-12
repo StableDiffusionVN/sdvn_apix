@@ -21,7 +21,9 @@ const AppToolbar: React.FC = () => {
         addImagesToGallery,
         isExtraToolsOpen,
         toggleExtraTools,
+        isLayerComposerOpen,
         openLayerComposer,
+        t,
     } = useAppControls();
 
     const { openEmptyImageEditor, imageToEdit } = useImageEditor();
@@ -93,7 +95,7 @@ const AppToolbar: React.FC = () => {
             } else if (isInfo) {
                 e.preventDefault();
                 handleOpenInfo();
-            } else if (isEditor) {
+            } else if (isEditor && !isLayerComposerOpen) {
                 e.preventDefault();
                 handleOpenEditor();
             } else if (isLayerComposer) {
@@ -106,7 +108,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, handleOpenLayerComposer, imageToEdit]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, handleOpenLayerComposer, imageToEdit, isLayerComposerOpen]);
 
     return (
         <>
@@ -115,9 +117,9 @@ const AppToolbar: React.FC = () => {
                 <button
                     onClick={handleGoHome}
                     className="btn-search"
-                    aria-label="Trở về trang chủ (Cmd/Ctrl+H)"
+                    aria-label={t('appToolbar_home')}
                     disabled={currentView.viewId === 'home'}
-                    onMouseEnter={(e) => showTooltip("Trang chủ (Cmd/Ctrl+H)", e)}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_home'), e)}
                     onMouseLeave={hideTooltip}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -127,9 +129,9 @@ const AppToolbar: React.FC = () => {
                 <button
                     onClick={handleGoBack}
                     className="btn-search"
-                    aria-label="Quay lại (Cmd/Ctrl+Z)"
+                    aria-label={t('appToolbar_back')}
                     disabled={historyIndex <= 0}
-                    onMouseEnter={(e) => showTooltip("Quay lại (Cmd/Ctrl+Z)", e)}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_back'), e)}
                     onMouseLeave={hideTooltip}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -139,9 +141,9 @@ const AppToolbar: React.FC = () => {
                 <button
                     onClick={handleGoForward}
                     className="btn-search"
-                    aria-label="Tiến lên (Cmd/Ctrl+Shift+Z)"
+                    aria-label={t('appToolbar_forward')}
                     disabled={historyIndex >= viewHistory.length - 1}
-                    onMouseEnter={(e) => showTooltip("Tiến lên (Cmd/Ctrl+Shift+Z)", e)}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_forward'), e)}
                     onMouseLeave={hideTooltip}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -151,8 +153,8 @@ const AppToolbar: React.FC = () => {
                 <button
                     onClick={handleOpenSearch}
                     className="btn-search"
-                    aria-label="Tìm kiếm ứng dụng (Cmd/Ctrl+F)"
-                    onMouseEnter={(e) => showTooltip("Tìm kiếm (Cmd/Ctrl+F)", e)}
+                    aria-label={t('appToolbar_search')}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_search'), e)}
                     onMouseLeave={hideTooltip}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -162,8 +164,8 @@ const AppToolbar: React.FC = () => {
                 <button
                     onClick={handleOpenInfo}
                     className="btn-search"
-                    aria-label="Mở hướng dẫn (Cmd/Ctrl+/)"
-                    onMouseEnter={(e) => showTooltip("Hướng dẫn (Cmd/Ctrl+/)", e)}
+                    aria-label={t('appToolbar_info')}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_info'), e)}
                     onMouseLeave={hideTooltip}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -177,8 +179,8 @@ const AppToolbar: React.FC = () => {
                     <button
                         onClick={handleOpenGallery}
                         className="btn-gallery"
-                        aria-label="Mở thư viện ảnh (Cmd/Ctrl+G)"
-                        onMouseEnter={(e) => showTooltip("Thư viện ảnh (Cmd/Ctrl+G)", e)}
+                        aria-label={t('appToolbar_gallery')}
+                        onMouseEnter={(e) => showTooltip(t('appToolbar_gallery'), e)}
                         onMouseLeave={hideTooltip}
                     >
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -188,8 +190,8 @@ const AppToolbar: React.FC = () => {
                     <button
                         onClick={handleOpenEditor}
                         className="btn-search"
-                        aria-label="Mở trình chỉnh sửa ảnh (Cmd/Ctrl+E)"
-                        onMouseEnter={(e) => showTooltip("Trình chỉnh sửa ảnh (Cmd/Ctrl+E)", e)}
+                        aria-label={t('appToolbar_editor')}
+                        onMouseEnter={(e) => showTooltip(t('appToolbar_editor'), e)}
                         onMouseLeave={hideTooltip}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -199,8 +201,8 @@ const AppToolbar: React.FC = () => {
                     <button
                         onClick={handleOpenLayerComposer}
                         className="btn-search"
-                        aria-label="Mở trình ghép layer (Cmd/Ctrl+L)"
-                        onMouseEnter={(e) => showTooltip("Ghép Layer (Cmd/Ctrl+L)", e)}
+                        aria-label={t('appToolbar_layerComposer')}
+                        onMouseEnter={(e) => showTooltip(t('appToolbar_layerComposer'), e)}
                         onMouseLeave={hideTooltip}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -212,8 +214,8 @@ const AppToolbar: React.FC = () => {
                     <button
                         onClick={toggleExtraTools}
                         className={cn("btn-search", isExtraToolsOpen && 'bg-white/20')}
-                        aria-label="Công cụ bổ sung"
-                        onMouseEnter={(e) => showTooltip("Công cụ bổ sung", e)}
+                        aria-label={t('appToolbar_extra')}
+                        onMouseEnter={(e) => showTooltip(t('appToolbar_extra'), e)}
                         onMouseLeave={hideTooltip}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

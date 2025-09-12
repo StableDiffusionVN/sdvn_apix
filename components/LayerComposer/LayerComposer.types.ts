@@ -31,7 +31,6 @@ export interface Layer {
 }
 
 export type Point = { x: number; y: number };
-export type PenNode = { anchor: Point; inHandle: Point; outHandle: Point };
 export type Handle = 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r';
 export type Interaction = {
     type: 'move' | 'resize' | 'rotate' | 'duplicate-move' | 'copy-selection-move' | 'marquee';
@@ -42,16 +41,24 @@ export type Interaction = {
     initialCenter?: Point;
     initialAngle?: number;
     hasActionStarted?: boolean;
-    // For marquee tool
     isShift?: boolean;
     initialSelectedIds?: string[];
 };
-
 
 export interface CanvasSettings {
     width: number;
     height: number;
     background: string;
+    grid: {
+        visible: boolean;
+        snap: boolean;
+        size: number;
+        color: string;
+    };
+    guides: {
+        enabled: boolean;
+        color: string;
+    };
 }
 
 export interface Rect {
@@ -65,42 +72,35 @@ export type MultiLayerAction =
     | 'align-top' | 'align-middle' | 'align-bottom'
     | 'align-left' | 'align-center' | 'align-right'
     | 'distribute-horizontal' | 'distribute-vertical'
-    | 'duplicate' | 'delete';
-// FIX: Add getBoundingBoxForLayers utility function here to be shared.
+    | 'duplicate' | 'delete' | 'merge' | 'export'
+    // FIX: Add 'create-mask' to allow this action from the toolbar
+    | 'create-mask';
+
+export interface Guide {
+    axis: 'x' | 'y';
+    position: number;
+    start: number;
+    end: number;
+}
+
+
+// --- UTILITY FUNCTIONS ---
+
 export const getBoundingBoxForLayers = (layersToBound: Layer[]): Rect | null => {
     if (layersToBound.length === 0) return null;
-
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
+    let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
     layersToBound.forEach(layer => {
         const { x, y, width, height, rotation } = layer;
-        const centerX = x + width / 2;
-        const centerY = y + height / 2;
-        const rad = rotation * (Math.PI / 180);
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-
-        const points = [
-            { x: x, y: y },
-            { x: x + width, y: y },
-            { x: x, y: y + height },
-            { x: x + width, y: y + height },
-        ];
-
+        const centerX = x + width / 2; const centerY = y + height / 2;
+        const rad = rotation * (Math.PI / 180); const cos = Math.cos(rad); const sin = Math.sin(rad);
+        const points = [ { x: x, y: y }, { x: x + width, y: y }, { x: x, y: y + height }, { x: x + width, y: y + height } ];
         points.forEach(p => {
-            const translatedX = p.x - centerX;
-            const translatedY = p.y - centerY;
+            const translatedX = p.x - centerX; const translatedY = p.y - centerY;
             const rotatedX = translatedX * cos - translatedY * sin + centerX;
             const rotatedY = translatedX * sin + translatedY * cos + centerY;
-            minX = Math.min(minX, rotatedX);
-            minY = Math.min(minY, rotatedY);
-            maxX = Math.max(maxX, rotatedX);
-            maxY = Math.max(maxY, rotatedY);
+            minX = Math.min(minX, rotatedX); minY = Math.min(minY, rotatedY);
+            maxX = Math.max(maxX, rotatedX); maxY = Math.max(maxY, rotatedY);
         });
     });
-
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };

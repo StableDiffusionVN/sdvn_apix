@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+import { GoogleGenAI, Type } from "@google/genai";
 import { 
     processApiError, 
     padImageToAspectRatio, 
@@ -153,5 +154,194 @@ export async function generateFromMultipleImages(
         const processedError = processApiError(error);
         console.error("Error during multi-image generation:", processedError);
         throw processedError;
+    }
+}
+
+
+/**
+ * Refines a user's prompt to be more descriptive, optionally using images for context.
+ * @param userPrompt The user's original prompt.
+ * @param imageDataUrls Optional array of image data URLs for context.
+ * @returns A promise that resolves to the refined prompt string.
+ */
+export async function refinePrompt(userPrompt: string, imageDataUrls?: string[]): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    let parts: any[] = [];
+    let metaPrompt = '';
+
+    if (imageDataUrls && imageDataUrls.length > 0) {
+        const imageParts = imageDataUrls.map(url => {
+            const { mimeType, data } = parseDataUrl(url);
+            return { inlineData: { mimeType, data } };
+        });
+        parts.push(...imageParts);
+        metaPrompt = `You are an expert prompt engineer for a generative AI model. Your task is to refine a user's prompt to make it more descriptive and effective, based on the context of the provided image(s).`;
+    } else {
+        metaPrompt = `You are an expert prompt engineer for a generative AI model. Your task is to take a user's potentially simple prompt and expand it into a highly descriptive and effective prompt for a generative AI model. Add details about style, lighting, composition, and mood.`;
+    }
+
+    metaPrompt += `\n\n**User's Prompt:** "${userPrompt}"\n\n**Instructions:**\n1. Generate a new, single, highly descriptive prompt in Vietnamese.\n2. **Output only the refined prompt text**, without any introductory phrases.`;
+    
+    parts.push({ text: metaPrompt });
+
+    try {
+        console.log("Attempting to refine prompt...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts },
+        });
+
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+
+        console.warn("AI did not return text for prompt refinement. Falling back to user prompt.");
+        return userPrompt;
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during prompt refinement:", processedError);
+        // Fallback to the original prompt on error
+        return userPrompt;
+    }
+}
+
+/**
+ * Analyzes a user's prompt to extract image generation parameters like count and aspect ratio.
+ * @param userPrompt The user's original prompt.
+ * @returns A promise resolving to an object with the number of images, aspect ratio, and a refined prompt.
+ */
+export async function analyzePromptForImageGenerationParams(
+    userPrompt: string
+): Promise<{ numberOfImages: number; aspectRatio: string; refinedPrompt: string; }> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const metaPrompt = `
+        You are an intelligent prompt analyzer for an image generation AI. Your task is to analyze the user's prompt to extract specific parameters for image generation.
+
+        Analyze the following prompt: "${userPrompt}"
+
+        Instructions:
+        1.  **Number of Images:** Look for requests for a specific number of images (e.g., "create 4 pictures", "tạo 2 ảnh", "make two variations"). If found, extract the number. The number must be between 1 and 4. If not specified, default to 1.
+        2.  **Aspect Ratio:** Look for requests for a specific aspect ratio (e.g., "16:9", "phone wallpaper", "ảnh dọc", "widescreen", "ảnh vuông"). Map common terms to the closest valid ratio. Valid ratios are "1:1", "3:4", "4:3", "9:16", "16:9".
+            - "square", "vuông" -> "1:1"
+            - "portrait", "phone wallpaper", "ảnh dọc", "ảnh cho điện thoại" -> "9:16"
+            - "widescreen", "landscape", "ảnh ngang" -> "16:9"
+            If not specified, default to "1:1".
+        3.  **Refined Prompt:** Return the user's original prompt but with the instructions for number of images and aspect ratio removed. This refined prompt will be sent to the image generation model. It should be clean and focused only on the visual description.
+
+        Return the result as a valid JSON object matching the provided schema.
+    `;
+
+    try {
+        console.log("Analyzing prompt for generation parameters...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: metaPrompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        numberOfImages: {
+                            type: Type.INTEGER,
+                            description: "The number of images to generate, from 1 to 4. Default is 1.",
+                        },
+                        aspectRatio: {
+                            type: Type.STRING,
+                            description: "The aspect ratio. Must be one of '1:1', '3:4', '4:3', '9:16', '16:9'. Default is '1:1'.",
+                        },
+                        refinedPrompt: {
+                            type: Type.STRING,
+                            description: "The user's prompt with parameter instructions removed.",
+                        },
+                    },
+                    required: ["numberOfImages", "aspectRatio", "refinedPrompt"],
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        if (jsonText) {
+            const parsed = JSON.parse(jsonText);
+            // Clamp numberOfImages just in case the model returns something out of bounds.
+            parsed.numberOfImages = Math.max(1, Math.min(4, parsed.numberOfImages || 1));
+            return parsed;
+        }
+        
+        throw new Error("AI did not return a valid JSON response for parameter analysis.");
+
+    } catch (error) {
+        console.error("Error during prompt parameter analysis, falling back to defaults:", error);
+        // Fallback to default values and the original prompt if analysis fails.
+        return {
+            numberOfImages: 1,
+            aspectRatio: '1:1',
+            refinedPrompt: userPrompt,
+        };
+    }
+}
+
+
+/**
+ * Refines a user's prompt into a detailed architectural prompt, using images for context.
+ * @param userPrompt The user's original prompt.
+ * @param imageDataUrls Array of image data URLs for context.
+ * @returns A promise that resolves to the refined architectural prompt string.
+ */
+export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls: string[]): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const imageParts = imageDataUrls.map(url => {
+        const { mimeType, data } = parseDataUrl(url);
+        return { inlineData: { mimeType, data } };
+    });
+
+    const metaPrompt = `
+        Bạn là một chuyên gia AI trong lĩnh vực kiến trúc. Nhiệm vụ của bạn là tạo ra một câu lệnh (prompt) chi tiết và hiệu quả để biến đổi (các) hình ảnh được cung cấp (thường là bản phác thảo) thành một bức ảnh phối cảnh kiến trúc chân thực, chất lượng cao.
+
+        **YÊU CẦU CỐT LÕI (KHÔNG THAY ĐỔI):** Prompt cuối cùng phải yêu cầu AI "giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất". Đây là nguyên tắc quan trọng nhất.
+
+        **Yêu cầu bổ sung từ người dùng:** "${userPrompt}"
+
+        **Hướng dẫn tạo prompt:**
+        1.  Bắt đầu prompt cuối cùng bằng cụm từ: "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này."
+        2.  Phân tích (các) hình ảnh để hiểu ý tưởng kiến trúc.
+        3.  Tích hợp "Yêu cầu bổ sung của người dùng" vào prompt một cách tự nhiên.
+        4.  Thêm các chi tiết chuyên ngành để làm cho prompt phong phú hơn, dựa trên cả hình ảnh và yêu cầu của người dùng, bao gồm:
+            - Phong cách kiến trúc (ví dụ: Hiện đại, Tối giản, Brutalist).
+            - Bối cảnh (ví dụ: Đô thị, Ven biển, Vùng núi).
+            - Vật liệu (ví dụ: Bê tông, Kính, Gỗ).
+            - Ánh sáng (ví dụ: Ánh sáng ban ngày, Giờ vàng).
+            - Không khí/Tâm trạng (ví dụ: Thanh bình, Hùng vĩ).
+    
+        **ĐẦU RA:**
+        - Chỉ xuất ra câu lệnh cuối cùng bằng tiếng Việt.
+        - Không thêm bất kỳ cụm từ giới thiệu nào.
+    `;
+    
+    const parts: any[] = [...imageParts, { text: metaPrompt }];
+
+    try {
+        console.log("Attempting to refine architecture prompt...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts },
+        });
+
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+
+        console.warn("AI did not return text for architecture prompt refinement. Falling back to user prompt.");
+        return `Tạo một bức ảnh kiến trúc chân thực, chất lượng cao. ${userPrompt}`;
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during architecture prompt refinement:", processedError);
+        return `Tạo một bức ảnh kiến trúc chân thực, chất lượng cao. ${userPrompt}`;
     }
 }

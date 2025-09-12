@@ -92,30 +92,11 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                     <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_editorTools_title')}</h4>
                                     <ul className="space-y-2 text-sm">
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.crop')}</span> <Shortcut keys="C" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.lasso')}</span> <Shortcut keys="L" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.marquee')}</span> <Shortcut keys="M" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.ellipse')}</span> <Shortcut keys="Shift + M" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.pen')}</span> <Shortcut keys="P" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.brush')}</span> <Shortcut keys="B" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.eraser')}</span> <Shortcut keys="E" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.picker')}</span> <Shortcut keys="I" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.brushSize')}</span> <Shortcut keys="] / [" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_editorTools_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
-                                    </ul>
-                                </div>
-
-                                 {/* Section 5 */}
-                                <div className="break-inside-avoid mb-6">
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_editorSelection_title')}</h4>
-                                    <ul className="space-y-2 text-sm">
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.add')}</span> <Shortcut keys="Giữ Shift + Vẽ" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.subtract')}</span> <Shortcut keys="Giữ Alt + Vẽ" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.delete')}</span> <Shortcut keys="Delete / Backspace" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.fill')}</span> <Shortcut keys="Cmd/Ctrl + Delete" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.apply')}</span> <Shortcut keys="Enter" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.deselect')}</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.invert')}</span> <Shortcut keys="Cmd/Ctrl + Shift + I" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_editorSelection_items.cancelPen')}</span> <Shortcut keys="Esc" /></li>
                                     </ul>
                                 </div>
 
@@ -140,7 +121,6 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                     <ul className="space-y-2 text-sm">
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.select')}</span> <Shortcut keys="V" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.hand')}</span> <Shortcut keys="H" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.pen')}</span> <Shortcut keys="P" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerTools_items.pan')}</span> <Shortcut keys="Giữ Space" /></li>
                                     </ul>
                                 </div>
@@ -152,18 +132,10 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                     <ul className="space-y-2 text-sm">
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.delete')}</span> <Shortcut keys="Delete / Backspace" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.duplicate')}</span> <Shortcut keys="Cmd/Ctrl + J" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.moveUp')}</span> <Shortcut keys="Cmd/Ctrl + ]" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.moveDown')}</span> <Shortcut keys="Cmd/Ctrl + [" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.deselect')}</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.export')}</span></li>
-                                    </ul>
-                                </div>
-
-                                 {/* Section 9 */}
-                                <div className="break-inside-avoid mb-6">
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_layerComposerPen_title')}</h4>
-                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_layerComposerPen_subtitle')}</p>
-                                    <ul className="space-y-2 text-sm">
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerPen_items.finalize')}</span> <Shortcut keys="Enter" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerPen_items.cancel')}</span> <Shortcut keys="Esc" /></li>
                                     </ul>
                                 </div>
                             </div>

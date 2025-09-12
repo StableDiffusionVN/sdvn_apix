@@ -4,10 +4,11 @@
 */
 import React from 'react';
 import { motion, useTransform, type MotionValue } from 'framer-motion';
-import { cn } from '../../lib/utils';
-import { type Layer } from './LayerComposer.types';
+import { cn } from '../lib/utils';
+import { type Layer } from './LayerComposer/LayerComposer.types';
 
-export type LayerAction = 'duplicate' | 'delete' | 'export';
+// FIX: Added 'edit' to LayerAction to match its usage in LayerComposerCanvas.
+export type LayerAction = 'duplicate' | 'delete' | 'export' | 'edit';
 
 interface FloatingLayerToolbarProps {
     layer: Layer;
@@ -62,6 +63,16 @@ export const FloatingLayerToolbar: React.FC<FloatingLayerToolbarProps> = ({ laye
             className="flex items-center gap-1 p-1.5 rounded-lg bg-neutral-900/60 backdrop-blur-sm border border-white/10 shadow-lg"
             onPointerDown={e => e.stopPropagation()} // Prevent deselecting layer when clicking toolbar
         >
+            {layer.type === 'image' && (
+                 <>
+                    <ToolButton label="Chỉnh sửa Layer" onClick={() => onAction('edit')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                           <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                        </svg>
+                    </ToolButton>
+                    <div className="w-px h-5 bg-white/20 mx-1 self-center" />
+                </>
+            )}
             {/* Export Action */}
             <ToolButton label="Xuất Layer (PNG)" onClick={() => onAction('export')}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

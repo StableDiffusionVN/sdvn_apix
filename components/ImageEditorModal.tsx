@@ -152,7 +152,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
     return (
         <AnimatePresence>
             {isOpen && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleRequestClose} className="modal-overlay z-[60]" aria-modal="true" role="dialog">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleRequestClose} className="modal-overlay z-[70]" aria-modal="true" role="dialog">
                     <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-[95vw] !w-[95vw] !h-[95vh] image-editor-modal-content relative" tabIndex={-1}>
                         {!internalImageUrl ? (
                              <>
@@ -255,7 +255,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="modal-overlay z-[70]"
+                        className="modal-overlay z-[80]"
                         aria-modal="true" role="dialog"
                     >
                         <motion.div

@@ -16,4 +16,4 @@ export { default as ActionablePolaroidCard } from './ActionablePolaroidCard';
 export { default as ExtraTools } from './ExtraTools';
 export { default as ImageLayoutModal } from './ImageLayoutModal';
 export { default as BeforeAfterModal } from './BeforeAfterModal';
-export { default as LayerComposerModal } from './LayerComposerModal';
+export { LayerComposerModal } from './LayerComposerModal';

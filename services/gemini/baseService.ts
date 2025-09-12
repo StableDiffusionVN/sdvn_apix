@@ -148,6 +148,7 @@ export async function callGeminiWithRetry(parts: object[]): Promise<GenerateCont
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             return await ai.models.generateContent({
+                // FIX: Corrected model name for image editing tasks.
                 model: 'gemini-2.5-flash-image-preview',
                 contents: { parts },
                 config: {

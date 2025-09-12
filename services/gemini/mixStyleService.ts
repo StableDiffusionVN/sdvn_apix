@@ -30,6 +30,7 @@ async function analyzeStyle(styleImageDataUrl: string): Promise<string> {
     
     try {
         const response = await ai.models.generateContent({
+            // FIX: Use vision model for image analysis
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, {text: prompt}] },
         });
