@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback } from 'react';
+import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generatePatrioticImage, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -20,6 +20,7 @@ import {
     processAndDownloadAll,
     useAppControls,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface AvatarCreatorProps {
@@ -51,6 +52,11 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
+    const [localPrompt, setLocalPrompt] = useState(appState.options.additionalPrompt);
+
+    useEffect(() => {
+        setLocalPrompt(appState.options.additionalPrompt);
+    }, [appState.options.additionalPrompt]);
     
     const IDEAS_BY_CATEGORY = t('avatarCreator_ideasByCategory');
     const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
@@ -124,7 +130,10 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const ideasQueue = [...ideasToGenerate];
         
         let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages };
-        const settingsToEmbed = { viewId: 'avatar-creator', state: appState };
+        const settingsToEmbed = {
+            viewId: 'avatar-creator',
+            state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
+        };
 
         const processIdea = async (idea: string) => {
             try {
@@ -185,7 +194,10 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(imageUrlToEdit, customPrompt);
-            const settingsToEmbed = { viewId: 'avatar-creator', state: appState };
+            const settingsToEmbed = {
+                viewId: 'avatar-creator',
+                state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -322,8 +334,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
                                 id="additional-prompt"
-                                value={appState.options.additionalPrompt}
-                                onChange={(e) => handleOptionChange('additionalPrompt', e.target.value)}
+                                value={localPrompt}
+                                onChange={(e) => setLocalPrompt(e.target.value)}
+                                onBlur={() => {
+                                    if (localPrompt !== appState.options.additionalPrompt) {
+                                        handleOptionChange('additionalPrompt', localPrompt);
+                                    }
+                                }}
                                 placeholder={t('avatarCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}

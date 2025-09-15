@@ -12,11 +12,6 @@ interface LayerPropertiesControlsProps {
     layer: Layer;
     onUpdate: (id: string, newProps: Partial<Layer>, isFinalChange: boolean) => void;
     beginInteraction: () => void;
-    // FIX: Add missing props to satisfy parent component
-    editingMaskForLayerId: string | null;
-    onReleaseMask: (layerId: string) => void;
-    rectBorderRadius: number;
-    onRectBorderRadiusChange: (radius: number) => void;
 }
 
 export const LayerPropertiesControls: React.FC<LayerPropertiesControlsProps> = ({ layer, onUpdate, beginInteraction }) => {

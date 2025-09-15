@@ -10,6 +10,7 @@ import { ImageEditorControls } from './ImageEditor/ImageEditorControls';
 import { ImageEditorCanvas } from './ImageEditor/ImageEditorCanvas';
 import { useImageEditorState } from './ImageEditor/useImageEditorState';
 import { TOOLTIPS } from './ImageEditor/ImageEditor.constants';
+import { CloudUploadIcon } from './icons';
 
 // --- Main Image Editor Modal Component ---
 interface ImageEditorModalProps {
@@ -28,6 +29,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
     const { 
         internalImageUrl, 
         isLoading, 
+        isProcessing,
+        setIsProcessing,
         isGalleryPickerOpen, 
         setIsGalleryPickerOpen,
         isWebcamModalOpen,
@@ -60,12 +63,19 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
 
     const handleSave = useCallback(async () => {
         if (!imageToEdit) return;
-        const finalUrl = await getFinalImage();
-        if (finalUrl) {
-            imageToEdit.onSave(finalUrl);
-            onClose();
+        setIsProcessing(true);
+        try {
+            const finalUrl = await getFinalImage();
+            if (finalUrl) {
+                imageToEdit.onSave(finalUrl);
+                onClose();
+            }
+        } catch (err) {
+            console.error("Failed to save image", err);
+        } finally {
+            setIsProcessing(false);
         }
-    }, [getFinalImage, imageToEdit, onClose]);
+    }, [getFinalImage, imageToEdit, onClose, setIsProcessing]);
 
     const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -149,6 +159,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         panY.set(newPanY);
     }, [scale, panX, panY, canvasViewRef]);
 
+    const isBusy = isLoading || isProcessing;
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -179,9 +191,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                </svg>
+                                                <CloudUploadIcon className="h-16 w-16 text-yellow-400 mb-4" strokeWidth={1} />
                                                 <p className="text-2xl font-bold text-yellow-400">{t('imageEditor_dropPrompt')}</p>
                                             </motion.div>
                                         )}
@@ -203,6 +213,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                 <div className="flex-1 flex items-center justify-center min-h-0 relative">
                                     <ImageEditorCanvas
                                         {...editorState}
+                                        isLoading={isLoading}
+                                        isProcessing={isProcessing}
                                         canvasViewRef={canvasViewRef}
                                         onZoomIn={() => handleZoomChange('in')}
                                         onZoomOut={() => handleZoomChange('out')}
@@ -221,8 +233,8 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                     <ImageEditorControls {...editorState} />
                                     <div className="flex justify-end items-center gap-2 mt-auto pt-4 border-t border-white/10 flex-shrink-0">
                                         <button onClick={handleRequestClose} className="btn btn-secondary btn-sm">Cancel</button>
-                                        <button onClick={editorState.handleApplyAllAdjustments} className="btn btn-secondary btn-sm" disabled={isLoading}>{isLoading ? 'Applying...' : 'Apply'}</button>
-                                        <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isLoading}>{isLoading ? 'Saving...' : 'Save'}</button>
+                                        <button onClick={editorState.handleApplyAllAdjustments} className="btn btn-secondary btn-sm" disabled={isBusy}>{isProcessing ? 'Applying...' : 'Apply'}</button>
+                                        <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={isBusy}>{isBusy ? 'Saving...' : 'Save'}</button>
                                     </div>
                                 </div>
                             </div>
@@ -236,7 +248,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                     transition={{ duration: 0.2 }}
                                     className="absolute z-10 p-2 text-xs text-center text-white bg-neutral-800 border border-neutral-600 rounded-md shadow-lg w-48"
                                     style={{
-                                        left: activeTooltip.rect.left - 200, // Position to the left of the button
+                                        left: activeTooltip.rect.right + 12, // Position to the right of the button
                                         top: activeTooltip.rect.top + activeTooltip.rect.height / 2,
                                         transform: 'translateY(-50%)',
                                     }}

@@ -6,6 +6,17 @@ import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls, useImageEditor, ExtraTools } from './uiUtils';
 import { cn } from '../lib/utils';
+import { 
+    HomeIcon, 
+    BackIcon, 
+    ForwardIcon, 
+    SearchIcon, 
+    InfoIcon, 
+    GalleryIcon, 
+    EditorIcon, 
+    LayerComposerIcon, 
+    EllipsisIcon 
+} from './icons';
 
 const AppToolbar: React.FC = () => {
     const {
@@ -122,9 +133,7 @@ const AppToolbar: React.FC = () => {
                     onMouseEnter={(e) => showTooltip(t('appToolbar_home'), e)}
                     onMouseLeave={hideTooltip}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
+                    <HomeIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
                 <button
                     onClick={handleGoBack}
@@ -134,9 +143,7 @@ const AppToolbar: React.FC = () => {
                     onMouseEnter={(e) => showTooltip(t('appToolbar_back'), e)}
                     onMouseLeave={hideTooltip}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15l-6-6m0 0l6-6m-6 6h13.5a5.5 5.5 0 010 11H10" />
-                    </svg>
+                    <BackIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
                 <button
                     onClick={handleGoForward}
@@ -146,9 +153,7 @@ const AppToolbar: React.FC = () => {
                     onMouseEnter={(e) => showTooltip(t('appToolbar_forward'), e)}
                     onMouseLeave={hideTooltip}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H6.5a5.5 5.5 0 000 11H10" />
-                    </svg>
+                    <ForwardIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
                 <button
                     onClick={handleOpenSearch}
@@ -157,9 +162,7 @@ const AppToolbar: React.FC = () => {
                     onMouseEnter={(e) => showTooltip(t('appToolbar_search'), e)}
                     onMouseLeave={hideTooltip}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <SearchIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
                 <button
                     onClick={handleOpenInfo}
@@ -168,9 +171,7 @@ const AppToolbar: React.FC = () => {
                     onMouseEnter={(e) => showTooltip(t('appToolbar_info'), e)}
                     onMouseLeave={hideTooltip}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <InfoIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
                 
                 {/* --- Group 2: Creation & Tools (Hidden on mobile) --- */}
@@ -183,9 +184,7 @@ const AppToolbar: React.FC = () => {
                         onMouseEnter={(e) => showTooltip(t('appToolbar_gallery'), e)}
                         onMouseLeave={hideTooltip}
                     >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                         <GalleryIcon className="h-5 w-5" strokeWidth={2} />
                     </button>
                     <button
                         onClick={handleOpenEditor}
@@ -194,9 +193,7 @@ const AppToolbar: React.FC = () => {
                         onMouseEnter={(e) => showTooltip(t('appToolbar_editor'), e)}
                         onMouseLeave={hideTooltip}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
-                        </svg>
+                        <EditorIcon className="h-5 w-5" />
                     </button>
                     <button
                         onClick={handleOpenLayerComposer}
@@ -205,11 +202,7 @@ const AppToolbar: React.FC = () => {
                         onMouseEnter={(e) => showTooltip(t('appToolbar_layerComposer'), e)}
                         onMouseLeave={hideTooltip}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 1.25l-10 5 10 5 10-5-10-5z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 11.25l10 5 10-5" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 16.25l10 5 10-5" />
-                        </svg>
+                        <LayerComposerIcon className="h-5 w-5" strokeWidth="1.5" />
                     </button>
                     <button
                         onClick={toggleExtraTools}
@@ -218,9 +211,7 @@ const AppToolbar: React.FC = () => {
                         onMouseEnter={(e) => showTooltip(t('appToolbar_extra'), e)}
                         onMouseLeave={hideTooltip}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                        </svg>
+                        <EllipsisIcon className="h-5 w-5" strokeWidth={2} />
                     </button>
                 </div>
             </div>

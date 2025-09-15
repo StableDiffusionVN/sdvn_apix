@@ -20,6 +20,7 @@ import {
     processAndDownloadAll,
     useAppControls,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface PhotoRestorationProps {
@@ -50,6 +51,11 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
     const [nationalitySearch, setNationalitySearch] = useState('');
     const [isNationalityDropdownOpen, setNationalityDropdownOpen] = useState(false);
     const nationalityDropdownRef = useRef<HTMLDivElement>(null);
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     const COUNTRIES = t('countries');
@@ -111,7 +117,10 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
 
         try {
             const resultUrl = await restoreOldPhoto(appState.uploadedImage, appState.options);
-            const settingsToEmbed = { viewId: 'photo-restoration', state: appState };
+            const settingsToEmbed = {
+                viewId: 'photo-restoration',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -133,7 +142,10 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'photo-restoration', state: appState };
+            const settingsToEmbed = {
+                viewId: 'photo-restoration',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -267,8 +279,19 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                             </div>
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('photoRestoration_notesLabel')}</label>
-                                <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder={t('photoRestoration_notesPlaceholder')} className="form-input h-24" rows={3} />
+                                <textarea
+                                    id="notes"
+                                    value={localNotes}
+                                    onChange={(e) => setLocalNotes(e.target.value)}
+                                    onBlur={() => {
+                                        if (localNotes !== appState.options.notes) {
+                                            handleOptionChange('notes', localNotes);
+                                        }
+                                    }}
+                                    placeholder={t('photoRestoration_notesPlaceholder')}
+                                    className="form-input h-24"
+                                    rows={3}
+                                />
                             </div>
                             <div className="flex flex-col sm:flex-row gap-4 pt-2">
                                 <div className="flex items-center">

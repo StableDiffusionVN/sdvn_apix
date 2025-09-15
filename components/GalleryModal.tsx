@@ -8,6 +8,7 @@ import { downloadAllImagesAsZip, ImageForZip, useLightbox, useAppControls, useIm
 import Lightbox from './Lightbox';
 import { ImageThumbnail } from './ImageThumbnail';
 import { GalleryToolbar } from './GalleryToolbar';
+import { CloudUploadIcon } from './icons';
 
 interface GalleryModalProps {
     isOpen: boolean;
@@ -199,7 +200,7 @@ const GalleryModal: React.FC<GalleryModalProps> = ({ isOpen, onClose, images }) 
                              <AnimatePresence>
                                 {isDraggingOver && (
                                     <motion.div className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                        <CloudUploadIcon className="h-16 w-16 text-yellow-400 mb-4" strokeWidth={1} />
                                         <p className="text-2xl font-bold text-yellow-400">Thả ảnh vào đây để tải lên</p>
                                     </motion.div>
                                 )}

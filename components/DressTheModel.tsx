@@ -21,6 +21,7 @@ import {
     SearchableSelect,
     useAppControls,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface DressTheModelProps {
@@ -53,6 +54,11 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
     
     const BACKGROUND_OPTIONS = t('dressTheModel_backgroundOptions');
     const POSE_OPTIONS = t('dressTheModel_poseOptions');
@@ -121,7 +127,10 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         try {
             // No need to transform options, the service handles '' and 'Tự động' correctly
             const resultUrl = await generateDressedModelImage(appState.modelImage, appState.clothingImage, appState.options);
-            const settingsToEmbed = { viewId: 'dress-the-model', state: appState };
+            const settingsToEmbed = {
+                viewId: 'dress-the-model',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
@@ -136,7 +145,10 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'dress-the-model', state: appState };
+            const settingsToEmbed = {
+                viewId: 'dress-the-model',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
@@ -253,7 +265,19 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                         </div>
                         <div>
                             <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotes')}</label>
-                            <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)} placeholder={t('dressTheModel_notesPlaceholder')} className="form-input h-24" rows={3} />
+                            <textarea
+                                id="notes"
+                                value={localNotes}
+                                onChange={(e) => setLocalNotes(e.target.value)}
+                                onBlur={() => {
+                                    if (localNotes !== appState.options.notes) {
+                                        handleOptionChange('notes', localNotes);
+                                    }
+                                }}
+                                placeholder={t('dressTheModel_notesPlaceholder')}
+                                className="form-input h-24"
+                                rows={3}
+                            />
                         </div>
                         <div className="flex items-center pt-2">
                             <input type="checkbox" id="remove-watermark-dress" checked={appState.options.removeWatermark} onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" aria-label={t('common_removeWatermark')} />

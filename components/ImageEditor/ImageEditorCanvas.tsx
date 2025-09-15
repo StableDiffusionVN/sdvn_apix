@@ -7,6 +7,7 @@ import { motion, AnimatePresence, MotionValue } from 'framer-motion';
 import { type Point, type Rect, type CropResizeHandle, type Tool } from './ImageEditor.types';
 import { getCursorForHandle, isPointInRect } from './ImageEditor.utils';
 import { cn } from '../../lib/utils';
+import { UndoIcon, RedoIcon, ZoomOutIcon, ZoomInIcon, HandIcon, LoadingSpinnerIcon } from '../icons';
 
 // --- Reusable Floating Toolbar ---
 interface ImageEditorCanvasToolbarProps {
@@ -27,12 +28,12 @@ const ImageEditorCanvasToolbar: React.FC<ImageEditorCanvasToolbarProps> = ({
 }) => {
     return (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 p-1.5 rounded-lg bg-neutral-900/60 backdrop-blur-sm border border-white/10 shadow-lg">
-            <button onClick={onUndo} disabled={!canUndo} title="Undo (Cmd+Z)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg></button>
-            <button onClick={onRedo} disabled={!canRedo} title="Redo (Cmd+Shift+Z)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" /></svg></button>
+            <button onClick={onUndo} disabled={!canUndo} title="Undo (Cmd+Z)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><UndoIcon className="h-5 w-5" strokeWidth={1.5} /></button>
+            <button onClick={onRedo} disabled={!canRedo} title="Redo (Cmd+Shift+Z)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><RedoIcon className="h-5 w-5" strokeWidth={1.5} /></button>
             <div className="w-px h-5 bg-white/20 mx-1" />
-            <button onClick={onZoomOut} title="Zoom Out (-)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" /></svg></button>
+            <button onClick={onZoomOut} title="Zoom Out (-)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors"><ZoomOutIcon className="h-5 w-5" strokeWidth={2} /></button>
             <button onClick={onFit} className="px-3 py-2 text-sm font-semibold rounded-md hover:bg-neutral-700 transition-colors">{zoomDisplay}%</button>
-            <button onClick={onZoomIn} title="Zoom In (+)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg></button>
+            <button onClick={onZoomIn} title="Zoom In (+)" className="p-2 rounded-md hover:bg-neutral-700 transition-colors"><ZoomInIcon className="h-5 w-5" strokeWidth={2} /></button>
             <div className="w-px h-5 bg-white/20 mx-1" />
             <button
                 onClick={onHandToolSelect}
@@ -42,7 +43,7 @@ const ImageEditorCanvasToolbar: React.FC<ImageEditorCanvasToolbarProps> = ({
                     activeTool === 'hand' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-700'
                 )}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11" /></svg>
+                <HandIcon className="h-5 w-5" strokeWidth="1.5"/>
             </button>
         </div>
     );
@@ -74,6 +75,7 @@ interface ImageEditorCanvasProps {
     brushOpacity: number;
     brushColor: string;
     isLoading: boolean;
+    isProcessing: boolean;
     
     // Selection related states for drawing overlays
     isSelectionActive: boolean;
@@ -112,7 +114,7 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         handleActionStart, handleCanvasMouseMove, handleActionEnd,
         setIsCursorOverCanvas, setHoveredCropHandle,
         activeTool, handleToolSelect, isDrawing, isCursorOverCanvas, cursorPosition, cropSelection, hoveredCropHandle,
-        brushSize, brushHardness, brushOpacity, brushColor, isLoading,
+        brushSize, brushHardness, brushOpacity, brushColor, isLoading, isProcessing,
         isSelectionActive, selectionPath, interactionState, currentDrawingPointsRef, marqueeRect,
         ellipseRect, penPathPoints, currentPenDrag, perspectiveCropPoints, hoveredPerspectiveHandleIndex,
         panX, panY, scale, zoomDisplay, canvasViewRef, canvasDimensions, isSpacePanning,
@@ -494,12 +496,22 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
-                        <svg className="animate-spin h-10 w-10 text-yellow-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <LoadingSpinnerIcon className="animate-spin h-10 w-10 text-yellow-400 mb-4" />
                         <p className="font-bold text-lg">Đang xử lý bằng AI...</p>
                         <p className="text-sm text-neutral-300">Quá trình này có thể mất một vài giây.</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+             <AnimatePresence>
+                {isProcessing && (
+                    <motion.div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center text-center text-white z-10 rounded-md"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <LoadingSpinnerIcon className="animate-spin h-10 w-10 text-yellow-400 mb-4" />
+                        <p className="font-bold text-lg">Đang xử lý...</p>
                     </motion.div>
                 )}
             </AnimatePresence>

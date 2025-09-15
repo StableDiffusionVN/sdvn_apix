@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useEffect, ChangeEvent, useRef } from 'react';
+import React, { useEffect, ChangeEvent, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analyzeImagePairForPrompt, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -18,6 +18,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface ImageInterpolationProps {
@@ -51,12 +52,22 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
 
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
+    const [localGeneratedPrompt, setLocalGeneratedPrompt] = useState(appState.generatedPrompt);
+    const [localAdditionalNotes, setLocalAdditionalNotes] = useState(appState.additionalNotes);
     const lightboxImages = [appState.inputImage, appState.outputImage, appState.referenceImage, ...appState.historicalImages.map(h => h.url)].filter((img): img is string => !!img);
     
     const appStateRef = useRef(appState);
     useEffect(() => {
         appStateRef.current = appState;
     });
+
+    useEffect(() => {
+        setLocalGeneratedPrompt(appState.generatedPrompt);
+    }, [appState.generatedPrompt]);
+
+    useEffect(() => {
+        setLocalAdditionalNotes(appState.additionalNotes);
+    }, [appState.additionalNotes]);
 
     const handleInputImageChange = (url: string) => {
         const currentAppState = appStateRef.current;
@@ -143,7 +154,10 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 appState.options.removeWatermark
             );
 
-            const settingsToEmbed = { viewId: 'image-interpolation', state: appState };
+            const settingsToEmbed = {
+                viewId: 'image-interpolation',
+                state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: finalPromptText }];
@@ -181,7 +195,10 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 appState.options.removeWatermark
             );
             
-            const settingsToEmbed = { viewId: 'image-interpolation', state: appState };
+            const settingsToEmbed = {
+                viewId: 'image-interpolation',
+                state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: prompt }];
@@ -298,8 +315,13 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                     <label htmlFor="generated-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Prompt chính</label>
                                                     <textarea 
                                                         id="generated-prompt" 
-                                                        value={appState.generatedPrompt} 
-                                                        onChange={(e) => onStateChange({...appState, generatedPrompt: e.target.value})} 
+                                                        value={localGeneratedPrompt} 
+                                                        onChange={(e) => setLocalGeneratedPrompt(e.target.value)}
+                                                        onBlur={() => {
+                                                            if (localGeneratedPrompt !== appState.generatedPrompt) {
+                                                                onStateChange({ ...appState, generatedPrompt: localGeneratedPrompt });
+                                                            }
+                                                        }}
                                                         className="form-input !h-28" 
                                                         rows={4}
                                                     />
@@ -332,7 +354,19 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                         <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh & Tạo ảnh</h2>
                                         <div>
                                             <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú (Tùy chỉnh Prompt)</label>
-                                            <textarea id="additional-notes" value={appState.additionalNotes} onChange={(e) => onStateChange({...appState, additionalNotes: e.target.value})} placeholder="Ví dụ: thay đổi tông màu thành xanh dương..." className="form-input h-20" rows={2} />
+                                            <textarea
+                                                id="additional-notes"
+                                                value={localAdditionalNotes}
+                                                onChange={(e) => setLocalAdditionalNotes(e.target.value)}
+                                                onBlur={() => {
+                                                    if (localAdditionalNotes !== appState.additionalNotes) {
+                                                        onStateChange({ ...appState, additionalNotes: localAdditionalNotes });
+                                                    }
+                                                }}
+                                                placeholder="Ví dụ: thay đổi tông màu thành xanh dương..."
+                                                className="form-input h-20"
+                                                rows={2}
+                                            />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                             <div>

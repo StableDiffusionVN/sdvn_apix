@@ -72,9 +72,7 @@ export type MultiLayerAction =
     | 'align-top' | 'align-middle' | 'align-bottom'
     | 'align-left' | 'align-center' | 'align-right'
     | 'distribute-horizontal' | 'distribute-vertical'
-    | 'duplicate' | 'delete' | 'merge' | 'export'
-    // FIX: Add 'create-mask' to allow this action from the toolbar
-    | 'create-mask';
+    | 'duplicate' | 'delete' | 'merge' | 'export';
 
 export interface Guide {
     axis: 'x' | 'y';

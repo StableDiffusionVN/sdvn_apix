@@ -5,6 +5,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls } from './uiUtils';
+import { LayoutIcon, BeforeAfterIcon } from './icons';
 
 const ExtraTools: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
     const { openImageLayoutModal, openBeforeAfterModal, t } = useAppControls();
@@ -14,22 +15,13 @@ const ExtraTools: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
             id: 'image-layout',
             label: t('extraTools_layout'),
             action: openImageLayoutModal,
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:text-yellow-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-            ),
+            icon: <LayoutIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" strokeWidth={2} />,
         },
         {
             id: 'before-after',
             label: t('extraTools_beforeAfter'),
             action: openBeforeAfterModal,
-            icon: (
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:text-yellow-400 transition-colors" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2 4h9v1H3v15h8v1H2zm10 19h1V2h-1zM8.283 10.283l-.566-.566L4.934 12.5l2.783 2.783.566-.566L6.566 13H11v-1H6.566zM14 12h4.08l-1.54-1.54.92-.92 2.96 2.96-2.96 2.96-.92-.92L18.08 13H14v8h9V4h-9z"/>
-                    <path fill="none" d="M0 0h24v24H0z"/>
-                </svg>
-            ),
+            icon: <BeforeAfterIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" />,
         }
     ];
 

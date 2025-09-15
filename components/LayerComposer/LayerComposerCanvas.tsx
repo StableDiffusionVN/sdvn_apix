@@ -49,6 +49,7 @@ interface LayerComposerCanvasProps {
     deleteSelectedLayers: () => void;
     duplicateSelectedLayers: () => Layer[];
     handleExportSelectedLayers: () => Promise<void>;
+    handleBakeSelectedLayer: () => Promise<void>;
     captureLayer: (layer: Layer) => Promise<string>;
 }
 
@@ -68,7 +69,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     onUpdateLayers, beginInteraction, duplicateLayer, exportSelectedLayer, deleteLayer,
     setSelectedLayerIds, onFilesDrop, onMultiLayerAction,
     onDuplicateForDrag, handleMergeLayers, openImageEditor,
-    deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers,
+    deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers, handleBakeSelectedLayer,
     captureLayer
 }) => {
     const { t } = useAppControls();
@@ -77,9 +78,34 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     const [cursorPosition, setCursorPosition] = useState<{x:number, y:number} | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [activeGuides, setActiveGuides] = useState<Guide[]>([]);
+    const [isCommandKeyPressed, setIsCommandKeyPressed] = useState(false);
 
     const selectedLayer = selectedLayers.length === 1 ? selectedLayers[0] : null;
     
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey) {
+                setIsCommandKeyPressed(true);
+            }
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (!e.metaKey && !e.ctrlKey) {
+                setIsCommandKeyPressed(false);
+            }
+        };
+        const handleBlur = () => {
+            setIsCommandKeyPressed(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleBlur);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, []);
+
     const getPointerInCanvas = useCallback((e: React.PointerEvent) => {
         const view = canvasViewRef.current;
         if (!view) return null;
@@ -126,6 +152,9 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                 break;
             case 'export':
                 exportSelectedLayer();
+                break;
+            case 'bake':
+                handleBakeSelectedLayer();
                 break;
             case 'edit':
                 if (layer.type === 'image' && layer.url) {
@@ -631,6 +660,10 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             backgroundSize: `${canvasSettings.grid.size}px ${canvasSettings.grid.size}px`,
         };
     }, [isInfiniteCanvas, canvasSettings]);
+    
+    const inverseScale = useTransform(scale, s => 1 / s);
+    const yOffset = useTransform(scale, s => 10 / s);
+    const xOffset = useTransform(scale, s => 10 / s);
 
     return (
         <main
@@ -720,6 +753,47 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                     onAction={onMultiLayerAction}
                     selectedLayerCount={selectedLayers.length}
                 />}
+                <AnimatePresence>
+                    {isCommandKeyPressed && selectionBoundingBox && selectedLayers.length > 0 && (
+                        <>
+                            {/* Width Label */}
+                            <motion.div
+                                className="absolute z-[1003] flex items-center justify-center bg-yellow-400 text-black text-sm font-bold font-mono px-2 py-1 rounded-md pointer-events-none shadow-lg"
+                                style={{
+                                    scale: inverseScale,
+                                    left: selectionBoundingBox.x + selectionBoundingBox.width / 2,
+                                    top: selectionBoundingBox.y + selectionBoundingBox.height,
+                                    x: '-50%',
+                                    y: yOffset,
+                                }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.1 }}
+                            >
+                                {Math.round(selectionBoundingBox.width)}
+                            </motion.div>
+                            
+                            {/* Height Label */}
+                            <motion.div
+                                className="absolute z-[1003] flex items-center justify-center bg-yellow-400 text-black text-sm font-bold font-mono px-2 py-1 rounded-md pointer-events-none shadow-lg"
+                                style={{
+                                    scale: inverseScale,
+                                    left: selectionBoundingBox.x + selectionBoundingBox.width,
+                                    top: selectionBoundingBox.y + selectionBoundingBox.height / 2,
+                                    x: xOffset,
+                                    y: '-50%',
+                                }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.1 }}
+                            >
+                                {Math.round(selectionBoundingBox.height)}
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             {/* Preview Canvas for ephemeral drawings like marquee, pen path preview etc. */}

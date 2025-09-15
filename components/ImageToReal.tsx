@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { ChangeEvent, useCallback } from 'react';
+import React, { ChangeEvent, useCallback, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { convertImageToRealistic, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -21,6 +21,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface ImageToRealProps {
@@ -48,6 +49,11 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
     
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
 
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
@@ -81,7 +87,10 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
 
         try {
             const resultUrl = await convertImageToRealistic(appState.uploadedImage, appState.options);
-            const settingsToEmbed = { viewId: 'image-to-real', state: appState };
+            const settingsToEmbed = {
+                viewId: 'image-to-real',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -103,7 +112,10 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
         
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'image-to-real', state: appState };
+            const settingsToEmbed = {
+                viewId: 'image-to-real',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -181,8 +193,19 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
                             />
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
-                                <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder="Ví dụ: phong cách ảnh chụp buổi tối, ánh sáng neon..." className="form-input h-24" rows={3} />
+                                <textarea
+                                    id="notes"
+                                    value={localNotes}
+                                    onChange={(e) => setLocalNotes(e.target.value)}
+                                    onBlur={() => {
+                                        if (localNotes !== appState.options.notes) {
+                                            handleOptionChange('notes', localNotes);
+                                        }
+                                    }}
+                                    placeholder="Ví dụ: phong cách ảnh chụp buổi tối, ánh sáng neon..."
+                                    className="form-input h-24"
+                                    rows={3}
+                                />
                             </div>
                             <div className="flex items-center pt-2">
                                 <input type="checkbox" id="remove-watermark-real" checked={appState.options.removeWatermark}

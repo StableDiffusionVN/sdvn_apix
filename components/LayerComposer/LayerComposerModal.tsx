@@ -6,8 +6,8 @@ import React, { useState, useEffect, useCallback, useRef, ChangeEvent, useMemo }
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionValue, useMotionValueEvent } from 'framer-motion';
-import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor } from './uiUtils';
-import { generateFreeImage, editImageWithPrompt, generateFromMultipleImages, refinePrompt, refineArchitecturePrompt, analyzePromptForImageGenerationParams } from '../services/geminiService';
+import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor } from '../uiUtils';
+import { generateFreeImage, editImageWithPrompt, generateFromMultipleImages, refinePrompt, refineArchitecturePrompt, analyzePromptForImageGenerationParams } from '../../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
@@ -374,18 +374,8 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 newY = nextY;
                 nextY += initialHeight + 20; // Stack vertically if multiple images are added this way
             } else {
-                if (canvasViewRef.current) {
-                    const viewWidth = canvasViewRef.current.clientWidth;
-                    const viewHeight = canvasViewRef.current.clientHeight;
-                    const canvasCenterX = (-panX.get() / scale.get()) + (canvasSettingsToUpdate.width / 2);
-                    const canvasCenterY = (-panY.get() / scale.get()) + (canvasSettingsToUpdate.height / 2);
-                    newX = canvasCenterX - initialWidth / 2;
-                    newY = canvasCenterY - initialHeight / 2;
-                } else {
-                    // Fallback to canvas center if view ref is not available
-                    newX = (canvasSettingsToUpdate.width - initialWidth) / 2;
-                    newY = (canvasSettingsToUpdate.height - initialHeight) / 2;
-                }
+                newX = (canvasSettingsToUpdate.width - initialWidth) / 2;
+                newY = (canvasSettingsToUpdate.height - initialHeight) / 2;
             }
 
             const newLayer: Layer = {
@@ -416,7 +406,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
         interactionStartHistoryState.current = null;
-    }, [layers, canvasInitialized, canvasSettings, history, historyIndex, beginInteraction, panX, panY, scale, canvasViewRef]);
+    }, [layers, canvasInitialized, canvasSettings, history, historyIndex, beginInteraction]);
 
     const handleAddImage = useCallback((url: string, referenceBounds?: Rect | null) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
@@ -453,7 +443,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         const fileReadPromises = imageFiles.map(file => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onloadend = () => { if (typeof reader.result === 'string') resolve(reader.result); else reject(new Error('Failed to read file')); }; reader.onerror = reject; reader.readAsDataURL(file); }));
         Promise.all(fileReadPromises).then(dataUrls => {
             const imageLoadPromises = dataUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => { const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url; }));
-            Promise.all(imageLoadPromises).then(loadedImages => addImagesAsLayers(loadedImages)).catch(err => { console.error("Error loading images:", err); setError(t('layerComposer_error', err instanceof Error ? err.message : "Image loading failed.")); });
+            Promise.all(imageLoadPromises).then(addImagesAsLayers).catch(err => { console.error("Error loading images:", err); setError(t('layerComposer_error', err instanceof Error ? err.message : "Image loading failed.")); });
         }).catch(err => { console.error("Error reading files:", err); setError(t('layerComposer_error', err instanceof Error ? err.message : "File reading failed.")); });
     };
 

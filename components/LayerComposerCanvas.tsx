@@ -4,14 +4,14 @@
 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, MotionValue, useMotionValueEvent, useTransform, AnimatePresence } from 'framer-motion';
-import { cn } from '../../lib/utils';
-import { type Layer, type CanvasSettings, type Interaction, type Handle, type Rect, type MultiLayerAction, getBoundingBoxForLayers } from './LayerComposer/LayerComposer.types';
+import { cn } from '../lib/utils';
+import { type Layer, type CanvasSettings, type Interaction, type Handle, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type Guide } from './LayerComposer/LayerComposer.types';
 import { LayerItem } from './LayerComposer/LayerItem';
 import { SelectionFrame } from './LayerComposer/SelectionFrame';
 import { CanvasToolbar } from './LayerComposer/CanvasToolbar';
 import { FloatingLayerToolbar, type LayerAction } from './LayerComposer/FloatingLayerToolbar';
 import { FloatingMultiLayerToolbar } from './LayerComposer/FloatingMultiLayerToolbar';
-import { useAppControls } from '../uiUtils';
+import { useAppControls } from './uiUtils';
 
 interface LayerComposerCanvasProps {
     canvasViewRef: React.RefObject<HTMLDivElement>;
@@ -49,8 +49,16 @@ interface LayerComposerCanvasProps {
     deleteSelectedLayers: () => void;
     duplicateSelectedLayers: () => Layer[];
     handleExportSelectedLayers: () => Promise<void>;
+    // FIX: Add missing handleBakeSelectedLayer prop to fix type error.
+    handleBakeSelectedLayer: () => Promise<void>;
     captureLayer: (layer: Layer) => Promise<string>;
 }
+
+const snap = (value: number, gridSize: number) => {
+    return Math.round(value / gridSize) * gridSize;
+};
+
+const SNAP_THRESHOLD = 6;
 
 export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     canvasViewRef, layers, canvasSettings, isInfiniteCanvas, selectedLayerIds, selectedLayers, 
@@ -62,7 +70,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     onUpdateLayers, beginInteraction, duplicateLayer, exportSelectedLayer, deleteLayer,
     setSelectedLayerIds, onFilesDrop, onMultiLayerAction,
     onDuplicateForDrag, handleMergeLayers, openImageEditor,
-    deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers,
+    deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers, handleBakeSelectedLayer,
     captureLayer
 }) => {
     const { t } = useAppControls();
@@ -70,9 +78,35 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     const [marqueeRect, setMarqueeRect] = useState<Rect | null>(null);
     const [cursorPosition, setCursorPosition] = useState<{x:number, y:number} | null>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [activeGuides, setActiveGuides] = useState<Guide[]>([]);
+    const [isCommandKeyPressed, setIsCommandKeyPressed] = useState(false);
 
     const selectedLayer = selectedLayers.length === 1 ? selectedLayers[0] : null;
     
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey) {
+                setIsCommandKeyPressed(true);
+            }
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (!e.metaKey && !e.ctrlKey) {
+                setIsCommandKeyPressed(false);
+            }
+        };
+        const handleBlur = () => {
+            setIsCommandKeyPressed(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleBlur);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, []);
+
     const getPointerInCanvas = useCallback((e: React.PointerEvent) => {
         const view = canvasViewRef.current;
         if (!view) return null;
@@ -120,6 +154,9 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             case 'export':
                 exportSelectedLayer();
                 break;
+            case 'bake':
+                handleBakeSelectedLayer();
+                break;
             case 'edit':
                 if (layer.type === 'image' && layer.url) {
                     openImageEditor(layer.url, (newUrl) => {
@@ -137,6 +174,113 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                 }
                 break;
         }
+    };
+
+    const findGuides = (movingBox: Rect, targets: Rect[]): { guides: Guide[], snapOffset: {x: number, y: number} } => {
+        const guides: Guide[] = [];
+        let snapOffsetX = 0;
+        let snapOffsetY = 0;
+        let minSnapX = Infinity;
+        let minSnapY = Infinity;
+
+        const movingPoints = {
+            l: movingBox.x,
+            cx: movingBox.x + movingBox.width / 2,
+            r: movingBox.x + movingBox.width,
+            t: movingBox.y,
+            cy: movingBox.y + movingBox.height / 2,
+            b: movingBox.y + movingBox.height,
+        };
+
+        targets.forEach(target => {
+            const targetPoints = {
+                l: target.x,
+                cx: target.x + target.width / 2,
+                r: target.x + target.width,
+                t: target.y,
+                cy: target.y + target.height / 2,
+                b: target.y + target.height,
+            };
+
+            const checks = [
+                { moving: movingPoints.l, target: targetPoints.l, axis: 'x' },
+                { moving: movingPoints.l, target: targetPoints.cx, axis: 'x' },
+                { moving: movingPoints.l, target: targetPoints.r, axis: 'x' },
+                { moving: movingPoints.cx, target: targetPoints.l, axis: 'x' },
+                { moving: movingPoints.cx, target: targetPoints.cx, axis: 'x' },
+                { moving: movingPoints.cx, target: targetPoints.r, axis: 'x' },
+                { moving: movingPoints.r, target: targetPoints.l, axis: 'x' },
+                { moving: movingPoints.r, target: targetPoints.cx, axis: 'x' },
+                { moving: movingPoints.r, target: targetPoints.r, axis: 'x' },
+                { moving: movingPoints.t, target: targetPoints.t, axis: 'y' },
+                { moving: movingPoints.t, target: targetPoints.cy, axis: 'y' },
+                { moving: movingPoints.t, target: targetPoints.b, axis: 'y' },
+                { moving: movingPoints.cy, target: targetPoints.t, axis: 'y' },
+                { moving: movingPoints.cy, target: targetPoints.cy, axis: 'y' },
+                { moving: movingPoints.cy, target: targetPoints.b, axis: 'y' },
+                { moving: movingPoints.b, target: targetPoints.t, axis: 'y' },
+                { moving: movingPoints.b, target: targetPoints.cy, axis: 'y' },
+                { moving: movingPoints.b, target: targetPoints.b, axis: 'y' },
+            ];
+
+            checks.forEach(check => {
+                const diff = check.target - check.moving;
+                const absDiff = Math.abs(diff);
+
+                if (absDiff < SNAP_THRESHOLD / scale.get()) {
+                    if (check.axis === 'x') {
+                        if (absDiff < minSnapX) {
+                            minSnapX = absDiff;
+                            snapOffsetX = diff;
+                        }
+                    } else {
+                        if (absDiff < minSnapY) {
+                            minSnapY = absDiff;
+                            snapOffsetY = diff;
+                        }
+                    }
+                }
+            });
+        });
+
+        // After finding best snaps, generate guide lines
+        if (minSnapX !== Infinity) {
+             const finalMovingXPoints = {
+                l: movingPoints.l + snapOffsetX,
+                cx: movingPoints.cx + snapOffsetX,
+                r: movingPoints.r + snapOffsetX
+            };
+            targets.forEach(target => {
+                const targetPoints = { l: target.x, cx: target.x + target.width / 2, r: target.x + target.width };
+                for (const mKey of ['l', 'cx', 'r'] as const) {
+                    for (const tKey of ['l', 'cx', 'r'] as const) {
+                        if (Math.abs(finalMovingXPoints[mKey] - targetPoints[tKey]) < 0.1) {
+                            guides.push({ axis: 'x', position: targetPoints[tKey], start: Math.min(movingBox.y, target.y), end: Math.max(movingBox.y + movingBox.height, target.y + target.height) });
+                        }
+                    }
+                }
+            });
+        }
+         if (minSnapY !== Infinity) {
+            const finalMovingYPoints = {
+                t: movingPoints.t + snapOffsetY,
+                cy: movingPoints.cy + snapOffsetY,
+                b: movingPoints.b + snapOffsetY
+            };
+            targets.forEach(target => {
+                const targetPoints = { t: target.y, cy: target.y + target.height / 2, b: target.y + target.height };
+                for (const mKey of ['t', 'cy', 'b'] as const) {
+                    for (const tKey of ['t', 'cy', 'b'] as const) {
+                        if (Math.abs(finalMovingYPoints[mKey] - targetPoints[tKey]) < 0.1) {
+                            guides.push({ axis: 'y', position: targetPoints[tKey], start: Math.min(movingBox.x, target.x), end: Math.max(movingBox.x + movingBox.width, target.x + target.width) });
+                        }
+                    }
+                }
+            });
+        }
+
+
+        return { guides, snapOffset: { x: snapOffsetX, y: snapOffsetY } };
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -172,36 +316,67 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
         if (!currentInteraction) return;
         const currentPointer = getPointerInCanvas(e);
         if (!currentPointer) return;
-        const dx = currentPointer.x - currentInteraction.initialPointer.x;
-        const dy = currentPointer.y - currentInteraction.initialPointer.y;
 
         if (currentInteraction.type === 'move' && currentInteraction.initialLayers) {
+            let dx = currentPointer.x - currentInteraction.initialPointer.x;
+            let dy = currentPointer.y - currentInteraction.initialPointer.y;
+            
+            let finalGuides: Guide[] = [];
+            const bbox = getBoundingBoxForLayers(currentInteraction.initialLayers);
+            if(bbox) {
+                const movingBox: Rect = { x: bbox.x + dx, y: bbox.y + dy, width: bbox.width, height: bbox.height };
+                
+                // Smart Guides Snapping
+                if (canvasSettings.guides.enabled && !e.altKey) {
+                    const otherLayers = layers.filter(l => !selectedLayerIds.includes(l.id) && l.isVisible);
+                    let targets: Rect[] = otherLayers.map(l => ({ x: l.x, y: l.y, width: l.width, height: l.height }));
+                    if (!isInfiniteCanvas) {
+                        targets.push({ x: 0, y: 0, width: canvasSettings.width, height: 0 }); // Top Edge
+                        targets.push({ x: 0, y: canvasSettings.height / 2, width: canvasSettings.width, height: 0 }); // V Center
+                        targets.push({ x: 0, y: canvasSettings.height, width: canvasSettings.width, height: 0 }); // Bottom Edge
+                        targets.push({ x: 0, y: 0, width: 0, height: canvasSettings.height }); // Left Edge
+                        targets.push({ x: canvasSettings.width / 2, y: 0, width: 0, height: canvasSettings.height }); // H Center
+                        targets.push({ x: canvasSettings.width, y: 0, width: 0, height: canvasSettings.height }); // Right Edge
+                    }
+                    const { guides, snapOffset } = findGuides(movingBox, targets);
+                    dx += snapOffset.x;
+                    dy += snapOffset.y;
+                    finalGuides = guides;
+                }
+                
+                // Grid Snapping (only if smart guides didn't snap)
+                if (canvasSettings.grid.snap && !e.altKey && (finalGuides.length === 0 || (dx === 0 && dy === 0))) {
+                    const initialBbox = currentInteraction.initialBoundingBox;
+                    if(initialBbox) {
+                        const newBboxX = initialBbox.x + dx;
+                        const newBboxY = initialBbox.y + dy;
+                        const snappedX = snap(newBboxX, canvasSettings.grid.size);
+                        const snappedY = snap(newBboxY, canvasSettings.grid.size);
+                        dx = snappedX - initialBbox.x;
+                        dy = snappedY - initialBbox.y;
+                    }
+                }
+            }
+            setActiveGuides(finalGuides);
             const updates = currentInteraction.initialLayers.map(layer => ({ id: layer.id, props: { x: layer.x + dx, y: layer.y + dy } }));
             onUpdateLayers(updates, false);
+
         } else if (currentInteraction.type === 'resize' && currentInteraction.handle && currentInteraction.initialBoundingBox && currentInteraction.initialLayers) {
             const { initialLayers, handle, initialBoundingBox: bbox } = currentInteraction;
+            
+            const dx = currentPointer.x - currentInteraction.initialPointer.x;
+            const dy = currentPointer.y - currentInteraction.initialPointer.y;
+            
             const maintainAspectRatio = e.shiftKey;
 
             let scaleX = 1, scaleY = 1, pivotX = 0.5, pivotY = 0.5;
 
-            if (handle.includes('r')) {
-                scaleX = (bbox.width + dx) / bbox.width;
-                pivotX = 0;
-            }
-            if (handle.includes('l')) {
-                scaleX = (bbox.width - dx) / bbox.width;
-                pivotX = 1;
-            }
-            if (handle.includes('b')) {
-                scaleY = (bbox.height + dy) / bbox.height;
-                pivotY = 0;
-            }
-            if (handle.includes('t')) {
-                scaleY = (bbox.height - dy) / bbox.height;
-                pivotY = 1;
-            }
+            if (handle.includes('r')) { scaleX = (bbox.width + dx) / bbox.width; pivotX = 0; }
+            if (handle.includes('l')) { scaleX = (bbox.width - dx) / bbox.width; pivotX = 1; }
+            if (handle.includes('b')) { scaleY = (bbox.height + dy) / bbox.height; pivotY = 0; }
+            if (handle.includes('t')) { scaleY = (bbox.height - dy) / bbox.height; pivotY = 1; }
             
-            if (maintainAspectRatio) {
+            if (maintainAspectRatio && bbox.height > 0) {
                 if (handle.length === 2) { // Corner handles
                     const ar = bbox.width / bbox.height;
                     if (Math.abs(dx * (1/ar)) > Math.abs(dy)) {
@@ -219,14 +394,17 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             const updates = initialLayers.map(layer => {
                 const relativeX = layer.x - bbox.x;
                 const relativeY = layer.y - bbox.y;
-
                 const newX = bbox.x + (relativeX - bbox.width * pivotX) * scaleX + bbox.width * pivotX;
                 const newY = bbox.y + (relativeY - bbox.height * pivotY) * scaleY + bbox.height * pivotY;
-                const newWidth = layer.width * scaleX;
-                const newHeight = layer.height * scaleY;
+                let newWidth = layer.width * scaleX;
+                let newHeight = layer.height * scaleY;
+
+                if (canvasSettings.grid.snap && !e.altKey) {
+                    newWidth = snap(newWidth, canvasSettings.grid.size);
+                    newHeight = snap(newHeight, canvasSettings.grid.size);
+                }
 
                 const newProps: Partial<Layer> = { x: newX, y: newY, width: newWidth, height: newHeight };
-
                 return { id: layer.id, props: newProps };
             });
             onUpdateLayers(updates, false);
@@ -237,7 +415,9 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             const currentAngle = Math.atan2(currentPointer.y - initialCenter.y, currentPointer.x - initialCenter.x);
             const angleDiff = currentAngle - initialAngle;
             let newRotation = initialLayers[0].rotation + (angleDiff * 180 / Math.PI);
-            if (e.shiftKey) newRotation = Math.round(newRotation / 45) * 45;
+            if (e.shiftKey) { // Snap rotation to 15-degree increments
+                newRotation = Math.round(newRotation / 15) * 15;
+            }
             onUpdateLayers([{id: initialLayers[0].id, props: { rotation: newRotation }}], false);
         } else if (currentInteraction.type === 'marquee') {
             if (!currentInteraction.hasActionStarted) {
@@ -276,6 +456,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
 
     const handlePointerUp = (e: React.PointerEvent) => {
         if (panStartRef.current) panStartRef.current = null;
+        setActiveGuides([]); // Clear guides on mouse up
         if (interaction) {
             if (interaction.type === 'marquee') {
                 if (!interaction.hasActionStarted) {
@@ -468,6 +649,23 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
         return () => cancelAnimationFrame(animId);
     }, [redrawPreview]);
     
+    const gridStyle = useMemo(() => {
+        if (isInfiniteCanvas || !canvasSettings.grid.visible) return {};
+        return {
+            width: canvasSettings.width,
+            height: canvasSettings.height,
+            backgroundImage: `
+                linear-gradient(${canvasSettings.grid.color} 1px, transparent 1px),
+                linear-gradient(90deg, ${canvasSettings.grid.color} 1px, transparent 1px)
+            `,
+            backgroundSize: `${canvasSettings.grid.size}px ${canvasSettings.grid.size}px`,
+        };
+    }, [isInfiniteCanvas, canvasSettings]);
+    
+    const inverseScale = useTransform(scale, s => 1 / s);
+    const yOffset = useTransform(scale, s => 10 / s);
+    const xOffset = useTransform(scale, s => 10 / s);
+
     return (
         <main
             ref={canvasViewRef}
@@ -497,6 +695,33 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                     scale
                 }}
             >
+                {activeGuides.map((guide, index) => (
+                    <div
+                        key={`guide-${index}`}
+                        className="absolute pointer-events-none"
+                        style={{
+                            ...(guide.axis === 'x'
+                                ? {
+                                    left: guide.position,
+                                    top: guide.start,
+                                    height: guide.end - guide.start,
+                                    borderLeft: `${1 / scale.get()}px dashed ${canvasSettings.guides.color}`
+                                  }
+                                : {
+                                    top: guide.position,
+                                    left: guide.start,
+                                    width: guide.end - guide.start,
+                                    borderTop: `${1 / scale.get()}px dashed ${canvasSettings.guides.color}`
+                                  })
+                        }}
+                    />
+                ))}
+                {!isInfiniteCanvas && canvasSettings.grid.visible && (
+                    <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={gridStyle}
+                    />
+                )}
                 {layers.map((layer, index) => {
                     return (
                         <LayerItem
@@ -529,6 +754,47 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                     onAction={onMultiLayerAction}
                     selectedLayerCount={selectedLayers.length}
                 />}
+                <AnimatePresence>
+                    {isCommandKeyPressed && selectionBoundingBox && selectedLayers.length > 0 && (
+                        <>
+                            {/* Width Label */}
+                            <motion.div
+                                className="absolute z-[1003] flex items-center justify-center bg-yellow-400 text-black text-sm font-bold font-mono px-2 py-1 rounded-md pointer-events-none shadow-lg"
+                                style={{
+                                    scale: inverseScale,
+                                    left: selectionBoundingBox.x + selectionBoundingBox.width / 2,
+                                    top: selectionBoundingBox.y + selectionBoundingBox.height,
+                                    x: '-50%',
+                                    y: yOffset,
+                                }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.1 }}
+                            >
+                                {Math.round(selectionBoundingBox.width)}
+                            </motion.div>
+                            
+                            {/* Height Label */}
+                            <motion.div
+                                className="absolute z-[1003] flex items-center justify-center bg-yellow-400 text-black text-sm font-bold font-mono px-2 py-1 rounded-md pointer-events-none shadow-lg"
+                                style={{
+                                    scale: inverseScale,
+                                    left: selectionBoundingBox.x + selectionBoundingBox.width,
+                                    top: selectionBoundingBox.y + selectionBoundingBox.height / 2,
+                                    x: xOffset,
+                                    y: '-50%',
+                                }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.1 }}
+                            >
+                                {Math.round(selectionBoundingBox.height)}
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             {/* Preview Canvas for ephemeral drawings like marquee, pen path preview etc. */}

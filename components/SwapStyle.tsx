@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { ChangeEvent, useCallback, useRef, useEffect } from 'react';
+import React, { ChangeEvent, useCallback, useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { swapImageStyle, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -22,6 +22,7 @@ import {
     processAndDownloadAll,
     useAppControls,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface SwapStyleProps {
@@ -53,6 +54,11 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const [styleSearch, setStyleSearch] = React.useState('');
     const [isStyleDropdownOpen, setStyleDropdownOpen] = React.useState(false);
     const styleDropdownRef = useRef<HTMLDivElement>(null);
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
     
     const STYLE_OPTIONS_LIST = t('styles');
     const STYLE_STRENGTH_LEVELS = t('style_strengthLevels');
@@ -114,7 +120,10 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
 
         try {
             const resultUrl = await swapImageStyle(appState.uploadedImage, appState.options);
-            const settingsToEmbed = { viewId: 'swap-style', state: appState };
+            const settingsToEmbed = {
+                viewId: 'swap-style',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -136,7 +145,10 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'swap-style', state: appState };
+            const settingsToEmbed = {
+                viewId: 'swap-style',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -246,8 +258,19 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                             </div>
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotes')}</label>
-                                <textarea id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
-                                    placeholder={t('swapStyle_notesPlaceholder')} className="form-input h-24" rows={3} />
+                                <textarea
+                                    id="notes"
+                                    value={localNotes}
+                                    onChange={(e) => setLocalNotes(e.target.value)}
+                                    onBlur={() => {
+                                        if (localNotes !== appState.options.notes) {
+                                            handleOptionChange('notes', localNotes);
+                                        }
+                                    }}
+                                    placeholder={t('swapStyle_notesPlaceholder')}
+                                    className="form-input h-24"
+                                    rows={3}
+                                />
                             </div>
                             <div className="flex items-center pt-2">
                                 <input type="checkbox" id="remove-watermark-swap" checked={appState.options.removeWatermark}

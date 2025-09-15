@@ -300,7 +300,7 @@ export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls
     });
 
     const metaPrompt = `
-        Bạn là một chuyên gia AI trong lĩnh vực kiến trúc. Nhiệm vụ của bạn là tạo ra một câu lệnh (prompt) chi tiết và hiệu quả để biến đổi (các) hình ảnh được cung cấp (thường là bản phác thảo) thành một bức ảnh phối cảnh kiến trúc chân thực, chất lượng cao.
+        Bạn là một chuyên gia AI trong lĩnh vực kiến trúc. Nhiệm vụ của bạn là tạo ra một câu lệnh (prompt) ngắn gọn và hiệu quả để biến đổi (các) hình ảnh được cung cấp (thường là bản phác thảo) thành một bức ảnh phối cảnh kiến trúc chân thực, chất lượng cao.
 
         **YÊU CẦU CỐT LÕI (KHÔNG THAY ĐỔI):** Prompt cuối cùng phải yêu cầu AI "giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất". Đây là nguyên tắc quan trọng nhất.
 
@@ -310,12 +310,7 @@ export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls
         1.  Bắt đầu prompt cuối cùng bằng cụm từ: "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này."
         2.  Phân tích (các) hình ảnh để hiểu ý tưởng kiến trúc.
         3.  Tích hợp "Yêu cầu bổ sung của người dùng" vào prompt một cách tự nhiên.
-        4.  Thêm các chi tiết chuyên ngành để làm cho prompt phong phú hơn, dựa trên cả hình ảnh và yêu cầu của người dùng, bao gồm:
-            - Phong cách kiến trúc (ví dụ: Hiện đại, Tối giản, Brutalist).
-            - Bối cảnh (ví dụ: Đô thị, Ven biển, Vùng núi).
-            - Vật liệu (ví dụ: Bê tông, Kính, Gỗ).
-            - Ánh sáng (ví dụ: Ánh sáng ban ngày, Giờ vàng).
-            - Không khí/Tâm trạng (ví dụ: Thanh bình, Hùng vĩ).
+        4.  Dựa vào hình ảnh và yêu cầu, xác định phong cách kiến trúc chính và bối cảnh tổng thể. Tích hợp các yếu tố này vào prompt một cách ngắn gọn.
     
         **ĐẦU RA:**
         - Chỉ xuất ra câu lệnh cuối cùng bằng tiếng Việt.

@@ -22,6 +22,8 @@ import {
     SearchableSelect,
     useAppControls,
     embedJsonInPng,
+    // FIX: Import getInitialStateForApp to resolve 'Cannot find name' error.
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface ArchitectureIdeatorProps {
@@ -48,6 +50,11 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
     
     const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
@@ -85,7 +92,11 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         try {
             // No need to transform options, the service handles '' and 'Tự động' correctly
             const resultUrl = await generateArchitecturalImage(appState.uploadedImage, appState.options);
-            const settingsToEmbed = { viewId: 'architecture-ideator', state: appState };
+            const settingsToEmbed = { 
+                viewId: 'architecture-ideator', 
+                // Embed the state that led to this result, but clear the results themselves.
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -107,7 +118,11 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'architecture-ideator', state: appState };
+             const settingsToEmbed = { 
+                viewId: 'architecture-ideator', 
+                // Embed the state that led to this result, but clear the results themselves.
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -229,8 +244,13 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('architectureIdeator_notesLabel')}</label>
                                 <textarea
                                     id="notes"
-                                    value={appState.options.notes}
-                                    onChange={(e) => handleOptionChange('notes', e.target.value)}
+                                    value={localNotes}
+                                    onChange={(e) => setLocalNotes(e.target.value)}
+                                    onBlur={() => {
+                                        if (localNotes !== appState.options.notes) {
+                                            handleOptionChange('notes', localNotes);
+                                        }
+                                    }}
                                     placeholder={t('architectureIdeator_notesPlaceholder')}
                                     className="form-input h-24"
                                     rows={3}

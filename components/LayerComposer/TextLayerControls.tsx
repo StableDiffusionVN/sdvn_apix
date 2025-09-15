@@ -6,6 +6,7 @@ import React from 'react';
 import { type Layer } from './LayerComposer.types';
 import { useAppControls } from '../uiUtils';
 import { cn } from '../../lib/utils';
+import { BoldIcon, ItalicIcon, UppercaseIcon, AlignLeftIcon, AlignCenterIcon, AlignRightIcon } from '../icons';
 
 interface TextLayerControlsProps {
     layer: Layer;
@@ -46,19 +47,19 @@ export const TextLayerControls: React.FC<TextLayerControlsProps> = ({ layer, onU
             <div className="flex items-center justify-between gap-4 pt-2">
                 <div className="flex items-center gap-1 bg-neutral-700/50 p-1 rounded-md">
                     <button onClick={() => { beginInteraction(); onUpdate(layer.id, { fontWeight: layer.fontWeight === '700' ? '400' : '700' }, true); }} className={cn("p-1.5 rounded", layer.fontWeight === '700' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title={t('layerComposer_textControls_bold')}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4.25-4H7v14h7.04c2.1 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/></svg>
+                        <BoldIcon className="h-4 w-4" />
                     </button>
                     <button onClick={() => { beginInteraction(); onUpdate(layer.id, { fontStyle: layer.fontStyle === 'italic' ? 'normal' : 'italic' }, true); }} className={cn("p-1.5 rounded", layer.fontStyle === 'italic' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title={t('layerComposer_textControls_italic')}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"/></svg>
+                        <ItalicIcon className="h-4 w-4" />
                     </button>
                     <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textTransform: layer.textTransform === 'uppercase' ? 'none' : 'uppercase' }, true); }} className={cn("p-1.5 rounded", layer.textTransform === 'uppercase' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title={t('layerComposer_textControls_uppercase')}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h2.5l2.5 6h2.5l-2.5-6H11v12h2V4h2.5l2.5 6h2.5l-2.5-6H21v14h2V2h-8.25L12 8.25 9.25 2H1v18h2z"/></svg>
+                        <UppercaseIcon className="h-4 w-4" />
                     </button>
                 </div>
                 <div className="flex items-center gap-1 bg-neutral-700/50 p-1 rounded-md">
-                     <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'left' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'left' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Left"> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg> </button>
-                    <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'center' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'center' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Center"> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 15v2h10v-2H7zm-4 6h18v-2H3v2zm0-8h18v-2H3v2zm4-6v2h10V7H7zM3 3v2h18V3H3z"/></svg> </button>
-                    <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'right' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'right' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Right"> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg> </button>
+                     <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'left' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'left' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Left"> <AlignLeftIcon className="h-4 w-4" /> </button>
+                    <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'center' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'center' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Center"> <AlignCenterIcon className="h-4 w-4" /> </button>
+                    <button onClick={() => { beginInteraction(); onUpdate(layer.id, { textAlign: 'right' }, true); }} className={cn("p-1.5 rounded", layer.textAlign === 'right' ? 'bg-yellow-400 text-black' : 'hover:bg-neutral-600')} title="Align Right"> <AlignRightIcon className="h-4 w-4" /> </button>
                 </div>
                 <div className="flex items-center gap-2">
                     <label htmlFor={`color-${layer.id}`} className="text-sm font-medium text-neutral-300 sr-only">{t('layerComposer_textControls_color')}</label>

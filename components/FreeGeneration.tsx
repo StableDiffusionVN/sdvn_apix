@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateFreeImage, editImageWithPrompt, analyzePromptForImageGenerationParams } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -20,6 +20,7 @@ import {
     processAndDownloadAll,
     embedJsonInPng,
     useAppControls,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface FreeGenerationProps {
@@ -54,6 +55,11 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     const { videoTasks, generateVideo } = useVideoGeneration();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
+    const [localPrompt, setLocalPrompt] = useState(appState.options.prompt);
+
+    useEffect(() => {
+        setLocalPrompt(appState.options.prompt);
+    }, [appState.options.prompt]);
 
     const lightboxImages = [appState.image1, appState.image2, ...appState.historicalImages].filter((img): img is string => !!img);
 
@@ -156,7 +162,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
             const settingsToEmbed = {
                 viewId: 'free-generation',
-                state: appState
+                state: { ...appState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
             };
         
             const urlsWithMetadata = await Promise.all(
@@ -308,7 +314,14 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
                         <div>
                             <textarea
-                                id="prompt" value={appState.options.prompt} onChange={(e) => handleOptionChange('prompt', e.target.value)}
+                                id="prompt"
+                                value={localPrompt}
+                                onChange={(e) => setLocalPrompt(e.target.value)}
+                                onBlur={() => {
+                                    if (localPrompt !== appState.options.prompt) {
+                                        handleOptionChange('prompt', localPrompt);
+                                    }
+                                }}
                                 placeholder={t('freeGeneration_promptPlaceholder')}
                                 className="form-input !h-32"
                                 rows={5}

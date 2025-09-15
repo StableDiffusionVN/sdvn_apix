@@ -16,15 +16,10 @@ interface LayerListProps {
     onLayerDelete: (id: string) => void;
     onLayerSelect: (id: string) => void;
     beginInteraction: () => void;
-    // FIX: Add missing props to satisfy parent component
-    editingMaskForLayerId: string | null;
-    setEditingMaskForLayerId: (id: string | null) => void;
 }
 
 export const LayerList: React.FC<LayerListProps> = ({
-    layers, selectedLayerId, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, beginInteraction,
-    // FIX: Accept new props
-    editingMaskForLayerId, setEditingMaskForLayerId
+    layers, selectedLayerId, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, beginInteraction
 }) => {
     const { t } = useAppControls();
 
@@ -39,7 +34,8 @@ export const LayerList: React.FC<LayerListProps> = ({
                     key={layer.id}
                     layer={layer}
                     onUpdate={onLayerUpdate}
-                    onDelete={onLayerDelete}
+                    // FIX: Changed onDelete to onLayerDelete to match the prop name.
+                    onLayerDelete={onLayerDelete}
                     onSelect={onLayerSelect}
                     isSelected={selectedLayerId === layer.id}
                     beginInteraction={beginInteraction}

@@ -8,6 +8,7 @@ import { useAppControls, useImageEditor, combineImages, useLightbox } from './ui
 import { cn } from '../lib/utils';
 import Lightbox from './Lightbox';
 import { ImageThumbnailActions } from './ImageThumbnailActions';
+import { CloudUploadIcon } from './icons';
 
 interface ImageLayoutModalProps {
     isOpen: boolean;
@@ -383,9 +384,7 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                        </svg>
+                                        <CloudUploadIcon className="h-16 w-16 text-yellow-400 mb-4" strokeWidth={1} />
                                         <p className="text-2xl font-bold text-yellow-400">Thả ảnh vào đây để thêm vào thư viện</p>
                                     </motion.div>
                                 )}

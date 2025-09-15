@@ -10,6 +10,7 @@ import { LayerList } from './LayerList';
 import { TextLayerControls } from './TextLayerControls';
 import { LayerPropertiesControls } from './LayerPropertiesControls';
 import { cn } from '../../lib/utils';
+import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon } from '../icons';
 
 interface LayerComposerSidebarProps {
     layers: Layer[];
@@ -18,8 +19,6 @@ interface LayerComposerSidebarProps {
     setIsInfiniteCanvas: (isInfinite: boolean) => void;
     selectedLayerId: string | null;
     selectedLayerIds: string[];
-    editingMaskForLayerId: string | null;
-    setEditingMaskForLayerId: (id: string | null) => void;
     isLoading: boolean;
     error: string | null;
     aiPrompt: string;
@@ -40,9 +39,6 @@ interface LayerComposerSidebarProps {
     onSave: () => void;
     onClose: () => void;
     beginInteraction: () => void;
-    rectBorderRadius: number;
-    onRectBorderRadiusChange: (radius: number) => void;
-    onReleaseMask: (layerId: string) => void;
     hasAiLog: boolean;
     isLogVisible: boolean;
     setIsLogVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -55,7 +51,7 @@ const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () =>
             <div className="flex items-center gap-2">
                 {rightContent}
                 <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    <AccordionArrowIcon className="h-5 w-5" />
                 </motion.div>
             </div>
         </button>
@@ -66,7 +62,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
     const {
         layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, isLoading, error, aiPrompt, setAiPrompt, onGenerateAILayer,
         onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose,
-        beginInteraction, editingMaskForLayerId, setEditingMaskForLayerId, onReleaseMask, rectBorderRadius, onRectBorderRadiusChange,
+        beginInteraction,
         isSimpleImageMode, setIsSimpleImageMode, aiPreset, setAiPreset,
         hasAiLog, isLogVisible, setIsLogVisible
     } = props;
@@ -136,9 +132,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         <label htmlFor="simple-image-mode" className="text-sm font-medium text-neutral-200 flex items-center gap-2">
                                             {t('layerComposer_ai_simpleMode')}
                                             <span title={t('layerComposer_ai_simpleMode_tooltip')} className="cursor-help text-neutral-400">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                                </svg>
+                                                <InfoIcon className="h-4 w-4" />
                                             </span>
                                         </label>
                                         <input 
@@ -185,87 +179,13 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                 </div>
                 <div className="border border-neutral-700 rounded-lg overflow-hidden">
                     <AccordionHeader title={t('layerComposer_canvasSettings')} isOpen={openSection === 'canvas'} onClick={() => toggleSection('canvas')} />
-                     <AnimatePresence>
-                        {openSection === 'canvas' && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50">
-                                <div className="p-3">
-                                    <div className={cn("grid grid-cols-3 gap-3 text-sm items-end transition-opacity", isInfiniteCanvas && "opacity-50 pointer-events-none")}>
-                                        <div>
-                                            <label htmlFor="canvas-w">{t('layerComposer_width')}</label>
-                                            <input id="canvas-w" type="number" value={canvasSettings.width} onChange={e => onCanvasSettingsChange(s => ({...s, width: Number(e.target.value)}))} className="form-input !p-1.5 !text-sm" disabled={isInfiniteCanvas}/>
-                                        </div>
-                                        <div>
-                                            <label htmlFor="canvas-h">{t('layerComposer_height')}</label>
-                                            <input id="canvas-h" type="number" value={canvasSettings.height} onChange={e => onCanvasSettingsChange(s => ({...s, height: Number(e.target.value)}))} className="form-input !p-1.5 !text-sm" disabled={isInfiniteCanvas}/>
-                                        </div>
-                                        <div className="flex justify-center items-center h-full pb-1">
-                                            <div className="relative w-8 h-8" title={t('layerComposer_background')}>
-                                                <input id="canvas-bg" type="color" value={canvasSettings.background} onChange={e => onCanvasSettingsChange(s => ({...s, background: e.target.value}))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isInfiniteCanvas}/>
-                                                <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: canvasSettings.background }} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-700">
-                                        <label htmlFor="infinite-canvas-toggle" className="text-sm font-medium text-neutral-200">{t('layerComposer_infiniteCanvas')}</label>
-                                        <input type="checkbox" id="infinite-canvas-toggle" checked={isInfiniteCanvas} onChange={(e) => setIsInfiniteCanvas(e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                    </div>
-                                    <div className="mt-4 pt-4 border-t border-neutral-700/50 space-y-4">
-                                        <h5 className="text-sm font-bold text-neutral-300">Grid & Snapping</h5>
-                                        <div className="flex items-center justify-between">
-                                            <label htmlFor="grid-visible-toggle" className="text-sm font-medium text-neutral-200">Show Grid</label>
-                                            <input type="checkbox" id="grid-visible-toggle" checked={canvasSettings.grid.visible} onChange={(e) => onCanvasSettingsChange(s => ({...s, grid: {...s.grid, visible: e.target.checked}}))} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <label htmlFor="grid-snap-toggle" className="text-sm font-medium text-neutral-200">Snap to Grid</label>
-                                            <input type="checkbox" id="grid-snap-toggle" checked={canvasSettings.grid.snap} onChange={(e) => onCanvasSettingsChange(s => ({...s, grid: {...s.grid, snap: e.target.checked}}))} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <label htmlFor="guides-snap-toggle" className="text-sm font-medium text-neutral-200">Smart Guides</label>
-                                            <input type="checkbox" id="guides-snap-toggle" checked={canvasSettings.guides.enabled} onChange={(e) => onCanvasSettingsChange(s => ({...s, guides: {...s.guides, enabled: e.target.checked}}))} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-3 text-sm items-end pt-3 border-t border-neutral-700/50">
-                                            <div className="col-span-2">
-                                                <label htmlFor="grid-size">Grid Size</label>
-                                                <input id="grid-size" type="number" value={canvasSettings.grid.size} onChange={e => onCanvasSettingsChange(s => ({...s, grid: {...s.grid, size: Math.max(1, Number(e.target.value))}}))} className="form-input !p-1.5 !text-sm" />
-                                            </div>
-                                            <div className="flex justify-center items-center h-full pb-1">
-                                                <div className="relative w-8 h-8" title="Grid Color">
-                                                    <input id="grid-color" type="color" value={canvasSettings.grid.color} onChange={e => onCanvasSettingsChange(s => ({...s, grid: {...s.grid, color: e.target.value}}))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                                    <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: canvasSettings.grid.color }} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                     <AnimatePresence> {openSection === 'canvas' && ( <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50"> <div className="p-3"> <div className={cn("grid grid-cols-3 gap-3 text-sm items-end transition-opacity", isInfiniteCanvas && "opacity-50 pointer-events-none")}> <div><label htmlFor="canvas-w">{t('layerComposer_width')}</label><input id="canvas-w" type="number" value={canvasSettings.width} onChange={e => onCanvasSettingsChange(s => ({...s, width: Number(e.target.value)}))} className="form-input !p-1.5 !text-sm" disabled={isInfiniteCanvas}/></div> <div><label htmlFor="canvas-h">{t('layerComposer_height')}</label><input id="canvas-h" type="number" value={canvasSettings.height} onChange={e => onCanvasSettingsChange(s => ({...s, height: Number(e.target.value)}))} className="form-input !p-1.5 !text-sm" disabled={isInfiniteCanvas}/></div> <div className="flex justify-center items-center h-full pb-1"> <div className="relative w-8 h-8" title={t('layerComposer_background')}> <input id="canvas-bg" type="color" value={canvasSettings.background} onChange={e => onCanvasSettingsChange(s => ({...s, background: e.target.value}))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={isInfiniteCanvas}/> <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: canvasSettings.background }} /> </div> </div> </div> <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-700"> <label htmlFor="infinite-canvas-toggle" className="text-sm font-medium text-neutral-200">{t('layerComposer_infiniteCanvas')}</label> <input type="checkbox" id="infinite-canvas-toggle" checked={isInfiniteCanvas} onChange={(e) => setIsInfiniteCanvas(e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" /> </div> </div> </motion.div> )} </AnimatePresence>
                 </div>
                 <div className="border border-neutral-700 rounded-lg overflow-hidden">
-                     <AccordionHeader title={t('layerComposer_layers')} isOpen={openSection === 'layers'} onClick={() => toggleSection('layers')} rightContent={ <> <button onClick={(e) => { e.stopPropagation(); onAddText(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addText')} title={t('layerComposer_addText')} > <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg> </button> <button onClick={(e) => { e.stopPropagation(); onAddImage(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addImage')} title={t('layerComposer_addImage')} > <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}> <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" /> </svg> </button> </> } />
-                     <AnimatePresence>
-                        {openSection === 'layers' && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50">
-                                <div className="p-3">
-                                    <LayerList
-                                        layers={layers}
-                                        selectedLayerId={selectedLayerId}
-                                        onLayersReorder={onLayersReorder}
-                                        onLayerUpdate={onLayerUpdate}
-                                        onLayerDelete={onLayerDelete}
-                                        onLayerSelect={onLayerSelect}
-                                        beginInteraction={beginInteraction}
-                                        editingMaskForLayerId={editingMaskForLayerId}
-                                        setEditingMaskForLayerId={setEditingMaskForLayerId}
-                                    />
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                     <AccordionHeader title={t('layerComposer_layers')} isOpen={openSection === 'layers'} onClick={() => toggleSection('layers')} rightContent={ <> <button onClick={(e) => { e.stopPropagation(); onAddText(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addText')} title={t('layerComposer_addText')} > <AddTextIcon className="h-4 w-4" /> </button> <button onClick={(e) => { e.stopPropagation(); onAddImage(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addImage')} title={t('layerComposer_addImage')} > <AddIcon className="h-4 w-4" strokeWidth={2.5} /> </button> </> } />
+                     <AnimatePresence> {openSection === 'layers' && ( <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50"> <div className="p-3"> <LayerList layers={layers} selectedLayerId={selectedLayerId} onLayersReorder={onLayersReorder} onLayerUpdate={onLayerUpdate} onLayerDelete={onLayerDelete} onLayerSelect={onLayerSelect} beginInteraction={beginInteraction} /> </div> </motion.div> )} </AnimatePresence>
                 </div>
-                 {selectedLayer && ( <div className="mt-2 border border-neutral-700 rounded-lg"> <div className="flex border-b border-neutral-700 bg-neutral-800 rounded-t-lg"> <button onClick={() => setActiveTab('properties')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'properties' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_properties')} </button> {selectedLayer.type === 'text' && ( <button onClick={() => setActiveTab('text')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'text' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_text')} </button> )} </div> <div className="bg-neutral-800/50"> <AnimatePresence mode="wait"> <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} > {activeTab === 'properties' && (
-<LayerPropertiesControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} editingMaskForLayerId={editingMaskForLayerId} onReleaseMask={onReleaseMask} rectBorderRadius={rectBorderRadius} onRectBorderRadiusChange={onRectBorderRadiusChange} />
-)} {activeTab === 'text' && selectedLayer.type === 'text' && ( <TextLayerControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} </motion.div> </AnimatePresence> </div> </div> )}
+                 {selectedLayer && ( <div className="mt-2 border border-neutral-700 rounded-lg"> <div className="flex border-b border-neutral-700 bg-neutral-800 rounded-t-lg"> <button onClick={() => setActiveTab('properties')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'properties' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_properties')} </button> {selectedLayer.type === 'text' && ( <button onClick={() => setActiveTab('text')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'text' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_text')} </button> )} </div> <div className="bg-neutral-800/50"> <AnimatePresence mode="wait"> <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} > {activeTab === 'properties' && ( <LayerPropertiesControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} {activeTab === 'text' && selectedLayer.type === 'text' && ( <TextLayerControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} </motion.div> </AnimatePresence> </div> </div> )}
             </div>
             
             <div className="flex-shrink-0 pt-6 border-t border-white/10">

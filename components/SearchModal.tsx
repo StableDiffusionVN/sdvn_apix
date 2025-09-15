@@ -4,6 +4,7 @@
 */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CloseIcon, SearchIcon } from './icons';
 
 interface AppConfig {
   id: string;
@@ -55,7 +56,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onSelectApp,
                         <div className="flex justify-between items-center">
                              <h3 className="base-font font-bold text-2xl text-yellow-400">Tìm kiếm ứng dụng</h3>
                              <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Đóng tìm kiếm">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                <CloseIcon className="h-6 w-6" />
                              </button>
                         </div>
                         <div className="relative">
@@ -67,7 +68,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onSelectApp,
                                 className="form-input !pl-10"
                                 autoFocus
                             />
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                             <SearchIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" strokeWidth={2} />
                         </div>
                         <div className="max-h-96 overflow-y-auto mt-4 pr-2 -mr-2 space-y-2">
                              {filteredApps.length > 0 ? (

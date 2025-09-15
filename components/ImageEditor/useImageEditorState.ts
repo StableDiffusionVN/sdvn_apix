@@ -83,6 +83,7 @@ export const useImageEditorState = (
     // --- State & Refs ---
     const [internalImageUrl, setInternalImageUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // History states
     const [history, setHistory] = useState<EditorStateSnapshot[]>([]);
@@ -463,7 +464,7 @@ export const useImageEditorState = (
             unblurredCanvas.height = canvas.height;
             const unblurredCtx = unblurredCanvas.getContext('2d');
             if (!unblurredCtx) return;
-            unblurredCtx.drawImage(canvas, 0, 0);
+            unblurredCtx.drawImage(canvas, 0, 0); // Capture the state after adjustments
     
             const blurredCanvas = document.createElement('canvas');
             blurredCanvas.width = canvas.width;
@@ -475,17 +476,27 @@ export const useImageEditorState = (
             blurredCtx.drawImage(unblurredCanvas, 0, 0);
     
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
+            
             if (isSelectionActive && selectionPath) {
+                // If there's a selection, composite blurred and unblurred versions using a feathered mask.
+                const maskCanvas = createFeatheredMask(selectionPath, canvas.width, canvas.height, featherAmount);
+
+                // Start with the unblurred image on the main canvas
                 ctx.drawImage(unblurredCanvas, 0, 0);
-                ctx.clip(selectionPath);
+
+                // Now, "cut out" the blurred image using the feathered mask
+                blurredCtx.globalCompositeOperation = 'destination-in';
+                blurredCtx.drawImage(maskCanvas, 0, 0);
+
+                // Finally, draw the masked blurred image on top of the unblurred one.
                 ctx.drawImage(blurredCanvas, 0, 0);
+
             } else {
+                // No selection, just draw the fully blurred image.
                 ctx.drawImage(blurredCanvas, 0, 0);
             }
-            ctx.restore();
         }
-    }, [rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur, isSelectionActive, selectionPath, isShowingOriginal]);
+    }, [rotation, flipHorizontal, flipVertical, applyPixelAdjustments, blur, isSelectionActive, selectionPath, isShowingOriginal, featherAmount]);
 
     useEffect(() => {
         if(drawAdjustedImageRef) {
@@ -1081,7 +1092,7 @@ export const useImageEditorState = (
 
     const handleApplyAllAdjustments = useCallback(() => {
         if (!internalImageUrl || !sourceImageRef.current || !previewCanvasRef.current || !drawingCanvasRef.current) return;
-        setIsLoading(true);
+        setIsProcessing(true);
         setTimeout(() => {
             try {
                 const image = sourceImageRef.current!;
@@ -1160,14 +1171,14 @@ export const useImageEditorState = (
                 console.error("Error applying adjustments:", error);
                 alert("An error occurred while applying adjustments.");
             } finally {
-                setIsLoading(false);
+                setIsProcessing(false);
             }
         }, 50);
     }, [ internalImageUrl, sourceImageRef, previewCanvasRef, drawingCanvasRef, cropSelection, rotation, flipHorizontal, flipVertical, blur, applyPixelAdjustments, pushHistory, deselect, brushHardness, brushOpacity ]);
 
     const handleApplyAdjustmentsToSelection = useCallback(() => {
         if (!isSelectionActive || !selectionPath || !previewCanvasRef.current || !drawingCanvasRef.current || !sourceImageRef.current) return;
-        setIsLoading(true);
+        setIsProcessing(true);
         setTimeout(() => {
             try {
                 const previewCanvas = previewCanvasRef.current!;
@@ -1236,7 +1247,7 @@ export const useImageEditorState = (
             } catch (error) {
                 console.error("Error applying adjustments to selection:", error);
             } finally {
-                setIsLoading(false);
+                setIsProcessing(false);
             }
         }, 50);
     }, [isSelectionActive, selectionPath, previewCanvasRef, drawingCanvasRef, sourceImageRef, rotation, flipHorizontal, flipVertical, pushHistory, brushHardness, brushOpacity, featherAmount]);
@@ -1273,7 +1284,7 @@ export const useImageEditorState = (
     
     const deleteImageContentInSelection = useCallback(() => {
         if (!selectionPath || !previewCanvasRef.current || !drawingCanvasRef.current) return;
-        setIsLoading(true);
+        setIsProcessing(true);
         setTimeout(() => {
             try {
                 const previewCanvas = previewCanvasRef.current!;
@@ -1295,7 +1306,7 @@ export const useImageEditorState = (
                 const bakedState: EditorStateSnapshot = { imageUrl: newDataUrl, luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0, grain: 0, clarity: 0, dehaze: 0, blur: 0, rotation: 0, flipHorizontal: false, flipVertical: false, isInverted: false, brushHardness: brushHardness, brushOpacity: brushOpacity, colorAdjustments: INITIAL_COLOR_ADJUSTMENTS, drawingCanvasDataUrl: null, };
                 pushHistory(bakedState); restoreState(bakedState); deselect();
             } catch (error) { console.error("Error deleting content:", error); alert("An error occurred while deleting the selected content."); } 
-            finally { setIsLoading(false); }
+            finally { setIsProcessing(false); }
         }, 50);
     }, [selectionPath, featherAmount, pushHistory, restoreState, deselect, previewCanvasRef, drawingCanvasRef, brushHardness, brushOpacity]);
     
@@ -1423,7 +1434,7 @@ export const useImageEditorState = (
     
     const handleSave = useCallback(async () => {
         if (!imageToEdit) return;
-        setIsLoading(true);
+        setIsProcessing(true);
         try {
             const finalUrl = await getFinalImage();
             if (finalUrl) {
@@ -1433,17 +1444,67 @@ export const useImageEditorState = (
             console.error("Error saving image:", err);
             alert("An error occurred while saving the image.");
         } finally {
-            setIsLoading(false);
-            if (imageToEdit) { // Check again in case it changed
-                // The original logic closed the modal on save. Let's keep that.
-                // Assuming imageToEdit.onSave is synchronous or we don't wait for it.
-                 const { onClose } = (imageToEdit as any)._private || {}; // A bit of a hack to get onClose
-                 if (typeof onClose === 'function') {
-                    onClose();
-                 }
-            }
+            setIsProcessing(false);
         }
     }, [getFinalImage, imageToEdit]);
+
+    const handleRotateCanvas = useCallback(async () => {
+        if (!internalImageUrl) return;
+        setIsProcessing(true);
+        try {
+            const currentImageAsUrl = await getFinalImage();
+            if (!currentImageAsUrl) throw new Error("Could not get current image data.");
+    
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            
+            const newDataUrl = await new Promise<string>((resolve, reject) => {
+                img.onload = () => {
+                    const rotateCanvas = document.createElement('canvas');
+                    rotateCanvas.width = img.height;
+                    rotateCanvas.height = img.width;
+                    const rotateCtx = rotateCanvas.getContext('2d');
+                    if (!rotateCtx) {
+                        reject(new Error("Could not create rotate canvas context"));
+                        return;
+                    }
+    
+                    rotateCtx.translate(rotateCanvas.width / 2, rotateCanvas.height / 2);
+                    rotateCtx.rotate(90 * Math.PI / 180);
+                    rotateCtx.drawImage(img, -img.width / 2, -img.height / 2);
+                    
+                    resolve(rotateCanvas.toDataURL('image/png'));
+                };
+                img.onerror = reject;
+                img.src = currentImageAsUrl;
+            });
+    
+            const postRotateState: EditorStateSnapshot = {
+                imageUrl: newDataUrl,
+                luminance: 0, contrast: 0, temp: 0, tint: 0, saturation: 0, vibrance: 0, hue: 0,
+                grain: 0, clarity: 0, dehaze: 0, blur: 0,
+                rotation: 0, 
+                flipHorizontal: false, flipVertical: false, isInverted: false,
+                brushHardness: brushHardness,
+                brushOpacity: brushOpacity,
+                colorAdjustments: INITIAL_COLOR_ADJUSTMENTS,
+                drawingCanvasDataUrl: null, 
+            };
+            
+            pushHistory(postRotateState);
+            restoreState(postRotateState);
+            
+            if (drawingCanvasRef.current) {
+                drawingCanvasRef.current.getContext('2d')?.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+            }
+    
+        } catch (err) {
+            console.error("Error during canvas rotation:", err);
+            alert("An error occurred while rotating the image.");
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [internalImageUrl, getFinalImage, pushHistory, restoreState, brushHardness, brushOpacity, drawingCanvasRef]);
 
 
     useEffect(() => {
@@ -1514,8 +1575,7 @@ export const useImageEditorState = (
                     case 'KeyC': handleToolSelect('crop'); handled = true; break;
                     case 'KeyE': handleToolSelect('eraser'); handled = true; break;
                     case 'KeyR':
-                        setRotation(r => (r + 90) % 360);
-                        commitState();
+                        handleRotateCanvas();
                         handled = true;
                         break;
                     case 'BracketLeft': if (activeTool === 'brush' || activeTool === 'eraser') { setBrushSize(s => Math.max(1, s - (s > 30 ? 5 : 1))); handled = true; } break;
@@ -1545,12 +1605,12 @@ export const useImageEditorState = (
         };
         window.addEventListener('keydown', handleKeyDown); window.addEventListener('keyup', handleKeyUp);
         return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
-    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelCrop, commitState, handleApplyAdjustmentsToSelection]);
+    }, [isOpen, isSelectionActive, fillSelection, deselect, invertSelection, deleteImageContentInSelection, handleToolSelect, activeTool, cropSelection, handleApplyCrop, handleCancelCrop, handleUndo, handleRedo, penPathPoints.length, perspectiveCropPoints, handleApplyPerspectiveCrop, handleCancelCrop, handleRotateCanvas, handleApplyAdjustmentsToSelection]);
     
     // --- Public API ---
     return {
         // State
-        internalImageUrl, isLoading, openSection, activeTool, brushSize, brushColor, brushHardness, brushOpacity, cropSelection, cropAspectRatio,
+        internalImageUrl, isLoading, isProcessing, setIsProcessing, openSection, activeTool, brushSize, brushColor, brushHardness, brushOpacity, cropSelection, cropAspectRatio,
         cursorPosition, isCursorOverCanvas, isDrawing, isSelectionActive, isSelectionInverted, penPathPoints, currentPenDrag, marqueeRect,
         ellipseRect, interactionState, hoveredCropHandle, historyIndex, history, isGalleryPickerOpen, isWebcamModalOpen, featherAmount,
         selectionPath, aiEditPrompt,
@@ -1576,6 +1636,7 @@ export const useImageEditorState = (
         handleActionStart, handleCanvasMouseMove, handleActionEnd,
         handleUndo, handleRedo, commitState, resetAll, getFinalImage, handleSave,
         handleToolSelect, handleCancelCrop, handleApplyCrop, handleAiEdit,
+        handleRotateCanvas,
         handleFile,
         handleFileSelected: (e: ChangeEvent<HTMLInputElement>) => handleFileUpload(e, setupNewImage),
         handleGallerySelect: (newUrl: string) => {

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useCallback, ChangeEvent } from 'react';
+import React, { useCallback, ChangeEvent, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mixImageStyle, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
@@ -20,6 +20,7 @@ import {
     processAndDownloadAll,
     PromptResultCard,
     embedJsonInPng,
+    getInitialStateForApp,
 } from './uiUtils';
 
 interface MixStyleProps {
@@ -52,6 +53,11 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
+    const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    useEffect(() => {
+        setLocalNotes(appState.options.notes);
+    }, [appState.options.notes]);
 
     const lightboxImages = [appState.contentImage, appState.styleImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
@@ -119,7 +125,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
 
         try {
             const { resultUrl, finalPrompt } = await mixImageStyle(appState.contentImage, appState.styleImage, appState.options);
-            const settingsToEmbed = { viewId: 'mix-style', state: appState };
+            const settingsToEmbed = {
+                viewId: 'mix-style',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -142,7 +151,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
-            const settingsToEmbed = { viewId: 'mix-style', state: appState };
+            const settingsToEmbed = {
+                viewId: 'mix-style',
+                state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
+            };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
             onStateChange({
                 ...appState,
@@ -269,7 +281,14 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                         <div>
                             <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú bổ sung</label>
                             <textarea
-                                id="notes" value={appState.options.notes} onChange={(e) => handleOptionChange('notes', e.target.value)}
+                                id="notes"
+                                value={localNotes}
+                                onChange={(e) => setLocalNotes(e.target.value)}
+                                onBlur={() => {
+                                    if (localNotes !== appState.options.notes) {
+                                        handleOptionChange('notes', localNotes);
+                                    }
+                                }}
                                 placeholder="Ví dụ: nhấn mạnh vào màu đỏ, giữ lại chi tiết mắt..."
                                 className="form-input h-24" rows={3}
                             />
