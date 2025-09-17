@@ -214,6 +214,7 @@ export interface ToyModelCreatorState {
 
 export interface ImageInterpolationState {
     stage: 'idle' | 'prompting' | 'configuring' | 'generating' | 'results';
+    analysisMode: 'general' | 'detailed';
     inputImage: string | null;
     outputImage: string | null;
     referenceImage: string | null;
@@ -329,7 +330,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
                 error: null 
             };
         case 'image-interpolation':
-             return { stage: 'idle', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', promptSuggestions: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+             return { stage: 'idle', analysisMode: 'general', inputImage: null, outputImage: null, referenceImage: null, generatedPrompt: '', promptSuggestions: '', additionalNotes: '', finalPrompt: null, generatedImage: null, historicalImages: [], options: { removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         default:
             return { stage: 'home' };
     }

@@ -83,6 +83,78 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
 }
 
 /**
+ * Analyzes a pair of images to generate a DETAILED descriptive prompt for the transformation.
+ * @param inputImageDataUrl Data URL of the "before" image.
+ * @param outputImageDataUrl Data URL of the "after" image.
+ * @returns A promise resolving to an object with the detailed main prompt and suggestions.
+ */
+export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
+    const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
+
+    const inputImagePart = { inlineData: { mimeType: inputMime, data: inputData } };
+    const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
+
+    const prompt = `
+        Bạn là một chuyên gia phân tích hình ảnh. Nhiệm vụ của bạn là so sánh tỉ mỉ hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và tạo ra một câu lệnh (prompt) **CHI TIẾT** và **MÔ TẢ** bằng tiếng Việt. Prompt này phải nắm bắt được sự biến đổi hình ảnh cụ thể, cho phép AI tái tạo lại hình ảnh 'Sau' từ một ảnh tham chiếu khác.
+
+        **TƯ DUY CỐT LÕI:** Tập trung mô tả **KẾT QUẢ (ảnh 'Sau')** trong mối quan hệ với **ảnh 'Trước'**. Hãy cụ thể về những gì đã thay đổi, những gì được thêm vào và thẩm mỹ cuối cùng.
+
+        **CÁC KHÍA CẠNH CẦN PHÂN TÍCH (chi tiết):**
+        1.  **Biến đổi Phong cách:** Phong cách nghệ thuật chính xác của ảnh 'Sau' là gì? (ví dụ: 'Một bức tranh kỹ thuật số siêu thực với ánh sáng điện ảnh', 'Một bức ảnh polaroid cổ điển từ những năm 1980 với màu sắc bạc và vệt sáng').
+        2.  **Thay đổi Nội dung & Bố cục:** Những đối tượng hoặc yếu tố cụ thể nào đã được thêm, bớt hoặc thay đổi? Bố cục đã thay đổi như thế nào? (ví dụ: 'Chủ thể giờ đang đội vương miện bạc, và các hạt ma thuật phát sáng đang bay lơ lửng xung quanh họ. Nền được thay thế bằng một khu rừng mê hoặc tối tăm.').
+        3.  **Màu sắc & Ánh sáng:** Mô tả chi tiết bảng màu và ánh sáng cuối cùng. (ví dụ: 'Cảnh bị chi phối bởi sự tương phản mạnh giữa màu xanh lam đậm và màu cam rực rỡ. Một luồng sáng chính mạnh mẽ chiếu từ trên cùng bên phải, tạo ra những cái bóng dài và mềm mại.').
+        4.  **Kết cấu & Chi tiết:** Mô tả kết cấu và các chi tiết nhỏ. (ví dụ: 'Kết cấu quần áo của chủ thể giờ là vải canvas thô, và có những vết nứt có thể nhìn thấy trên bức tường đá phía sau họ.').
+        
+        **ĐẦU RA (JSON):**
+        - Bắt buộc trả về một đối tượng JSON hợp lệ.
+        - **mainPrompt**: Câu lệnh CHI TIẾT bằng tiếng Việt, nắm bắt bản chất của sự biến đổi đã phân tích.
+        - **suggestions**: Một chuỗi văn bản chứa các gợi ý sáng tạo để chỉnh sửa hoặc mở rộng 'mainPrompt'. Mỗi gợi ý bắt đầu bằng một gạch đầu dòng và dấu cách "- ". Cung cấp ít nhất 3 gợi ý về các khía cạnh khác nhau như:
+            - Thay đổi một chi tiết nhỏ trong nội dung.
+            - Điều chỉnh một khía cạnh của ánh sáng.
+            - Gợi ý một phong cách nghệ thuật tương tự.
+        - Ví dụ về chuỗi suggestions: "- Thay vương miện bạc bằng vương miện vàng\\n- Thay đổi hướng ánh sáng chính sang bên trái\\n- Thử áp dụng phong cách tranh sơn dầu thời Phục hưng"
+
+        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra đối tượng JSON theo yêu cầu.
+    `;
+    const textPart = { text: prompt };
+    
+    try {
+        console.log("Attempting to analyze image pair for DETAILED prompt...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [textPart, inputImagePart, outputImagePart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        mainPrompt: { type: Type.STRING, description: "Câu lệnh chi tiết mô tả sự biến đổi." },
+                        suggestions: { type: Type.STRING, description: "Các gợi ý để mở rộng prompt, mỗi gợi ý trên một dòng và bắt đầu bằng '- '." },
+                    },
+                    required: ["mainPrompt", "suggestions"],
+                }
+            }
+        });
+        
+        const jsonText = response.text.trim();
+        if (jsonText) {
+            return JSON.parse(jsonText);
+        }
+
+        console.error("API did not return text. Response:", response);
+        throw new Error("The AI model did not return a valid JSON response.");
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during detailed prompt generation from image pair:", processedError);
+        throw processedError;
+    }
+}
+
+
+/**
  * Merges a base prompt with user's notes into a new, cohesive prompt.
  * @param basePrompt The initial prompt generated from image analysis.
  * @param userNotes The user's additional modification requests.

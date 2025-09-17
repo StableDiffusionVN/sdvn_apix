@@ -4,7 +4,7 @@
 */
 import React, { useEffect, ChangeEvent, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { analyzeImagePairForPrompt, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
+import { analyzeImagePairForPrompt, analyzeImagePairForPromptDetailed, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -19,6 +19,7 @@ import {
     processAndDownloadAll,
     embedJsonInPng,
     getInitialStateForApp,
+    useAppControls,
 } from './uiUtils';
 
 interface ImageInterpolationProps {
@@ -49,7 +50,8 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         addImagesToGallery, appState, onStateChange, onReset,
         ...headerProps
     } = props;
-
+    
+    const { t } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const [localGeneratedPrompt, setLocalGeneratedPrompt] = useState(appState.generatedPrompt);
@@ -80,7 +82,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
             finalPrompt: null,
             generatedImage: null,
             historicalImages: [],
-            error: wasConfiguring ? 'Ảnh Input đã thay đổi. Vui lòng Phân tích lại.' : null,
+            error: wasConfiguring ? t('imageInterpolation_inputChangedError') : null,
             stage: wasConfiguring ? 'configuring' : 'idle',
         });
         addImagesToGallery([url]);
@@ -97,7 +99,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
             finalPrompt: null,
             generatedImage: null,
             historicalImages: [],
-            error: wasConfiguring ? 'Ảnh Output đã thay đổi. Vui lòng Phân tích lại.' : null,
+            error: wasConfiguring ? t('imageInterpolation_outputChangedError') : null,
             stage: wasConfiguring ? 'configuring' : 'idle',
         });
         addImagesToGallery([url]);
@@ -121,16 +123,18 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         });
     };
 
-    const handleAnalyzeClick = async () => {
+    const handleAnalyzeClick = async (mode: 'general' | 'detailed') => {
         if (!appState.inputImage || !appState.outputImage) return;
 
-        onStateChange({ ...appStateRef.current, stage: 'prompting', error: null });
+        onStateChange({ ...appStateRef.current, stage: 'prompting', error: null, analysisMode: mode });
         try {
-            const result = await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
+            const result = mode === 'detailed'
+                ? await analyzeImagePairForPromptDetailed(appState.inputImage, appState.outputImage)
+                : await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
             onStateChange({ ...appStateRef.current, stage: 'configuring', generatedPrompt: result.mainPrompt, promptSuggestions: result.suggestions || '' });
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            onStateChange({ ...appStateRef.current, stage: 'idle', generatedPrompt: '', promptSuggestions: '', error: `Lỗi phân tích ảnh: ${errorMessage}` });
+            onStateChange({ ...appStateRef.current, stage: 'idle', generatedPrompt: '', promptSuggestions: '', error: t('imageInterpolation_analysisError', errorMessage) });
         }
     };
 
@@ -239,6 +243,10 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     };
 
     const isLoading = appState.stage === 'prompting' || appState.stage === 'generating';
+    const getAnalyzingText = () => {
+        if (appState.stage !== 'prompting') return '';
+        return appState.analysisMode === 'detailed' ? t('imageInterpolation_analyzingDetailed') : t('imageInterpolation_analyzingGeneral');
+    };
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -290,9 +298,14 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                     </div>
 
                     <div className="flex flex-col items-center mt-4">
-                        <button onClick={handleAnalyzeClick} className="btn btn-primary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
-                            {appState.stage === 'prompting' ? 'Đang phân tích...' : (appState.generatedPrompt ? 'Phân tích lại' : 'Phân tích sự biến đổi')}
-                        </button>
+                        <div className="flex items-center gap-4">
+                             <button onClick={() => handleAnalyzeClick('general')} className="btn btn-secondary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
+                                {appState.stage === 'prompting' && appState.analysisMode === 'general' ? getAnalyzingText() : t('imageInterpolation_analyzeGeneral')}
+                            </button>
+                            <button onClick={() => handleAnalyzeClick('detailed')} className="btn btn-primary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
+                                {appState.stage === 'prompting' && appState.analysisMode === 'detailed' ? getAnalyzingText() : t('imageInterpolation_analyzeDetailed')}
+                            </button>
+                        </div>
                         {appState.error && <p className="text-yellow-300 text-sm mt-2 max-w-md text-center">{appState.error}</p>}
                     </div>
 
@@ -306,13 +319,13 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                             >
                                 <OptionsPanel className="max-w-4xl flex flex-col gap-8">
                                     <div className="space-y-4">
-                                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Prompt được tạo ra</h2>
+                                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('imageInterpolation_generatedPromptTitle')}</h2>
                                         {appState.stage === 'prompting' ? (
                                             <div className="flex items-center justify-center h-48"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div></div>
                                         ) : (
                                             <>
                                                 <div>
-                                                    <label htmlFor="generated-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Prompt chính</label>
+                                                    <label htmlFor="generated-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('imageInterpolation_mainPromptLabel')}</label>
                                                     <textarea 
                                                         id="generated-prompt" 
                                                         value={localGeneratedPrompt} 
@@ -328,7 +341,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                 </div>
                                                 {appState.promptSuggestions && (
                                                     <div>
-                                                        <h4 className="base-font font-bold text-lg text-neutral-200 mb-2">Gợi ý sáng tạo</h4>
+                                                        <h4 className="base-font font-bold text-lg text-neutral-200 mb-2">{t('imageInterpolation_suggestionsTitle')}</h4>
                                                         <div className="flex flex-wrap gap-2">
                                                             {appState.promptSuggestions.split('\n').map((suggestion, index) => {
                                                                 const cleanSuggestion = suggestion.replace(/^- /, '').trim();
@@ -338,7 +351,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                                         key={index}
                                                                         onClick={() => onStateChange({ ...appState, additionalNotes: `${appState.additionalNotes.trim()} ${cleanSuggestion}`.trim() })}
                                                                         className="bg-yellow-400/10 text-yellow-300 text-sm px-3 py-1 rounded-full border border-yellow-400/20 hover:bg-yellow-400/20 transition-colors"
-                                                                        title="Thêm gợi ý này vào ô ghi chú"
+                                                                        title={t('imageInterpolation_addSuggestionTooltip')}
                                                                     >
                                                                         {cleanSuggestion}
                                                                     </button>
@@ -351,9 +364,9 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                         )}
                                     </div>
                                     <div className="space-y-4">
-                                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">Tùy chỉnh & Tạo ảnh</h2>
+                                        <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('imageInterpolation_customizeTitle')}</h2>
                                         <div>
-                                            <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Ghi chú (Tùy chỉnh Prompt)</label>
+                                            <label htmlFor="additional-notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('imageInterpolation_notesLabel')}</label>
                                             <textarea
                                                 id="additional-notes"
                                                 value={localAdditionalNotes}
@@ -363,26 +376,26 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                         onStateChange({ ...appState, additionalNotes: localAdditionalNotes });
                                                     }
                                                 }}
-                                                placeholder="Ví dụ: thay đổi tông màu thành xanh dương..."
+                                                placeholder={t('imageInterpolation_notesPlaceholder')}
                                                 className="form-input h-20"
                                                 rows={2}
                                             />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                             <div>
-                                                <label htmlFor="aspect-ratio-interp" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">Tỉ lệ khung ảnh</label>
+                                                <label htmlFor="aspect-ratio-interp" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                                                 <select id="aspect-ratio-interp" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
                                                     {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                                 </select>
                                             </div>
                                             <div className="flex items-center pb-3">
                                                 <input type="checkbox" id="remove-watermark-interp" checked={appState.options.removeWatermark} onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                                <label htmlFor="remove-watermark-interp" className="ml-3 block text-sm font-medium text-neutral-300">Xóa watermark</label>
+                                                <label htmlFor="remove-watermark-interp" className="ml-3 block text-sm font-medium text-neutral-300">{t('common_removeWatermark')}</label>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-end gap-4 pt-4">
-                                            <button onClick={onReset} className="btn btn-secondary">Bắt đầu lại</button>
-                                            <button onClick={handleGenerate} className="btn btn-primary" disabled={!appState.referenceImage || !appState.generatedPrompt || isLoading}>{isLoading ? 'Đang tạo...' : 'Tạo ảnh'}</button>
+                                            <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
+                                            <button onClick={handleGenerate} className="btn btn-primary" disabled={!appState.referenceImage || !appState.generatedPrompt || isLoading}>{isLoading ? t('common_creating') : t('imageInterpolation_createButton')}</button>
                                         </div>
                                     </div>
                                 </OptionsPanel>
@@ -400,24 +413,24 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                     error={appState.error}
                     actions={(
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>)}
-                            <button onClick={() => onStateChange({...appState, stage: 'configuring'})} className="btn btn-secondary">Chỉnh sửa</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                            <button onClick={() => onStateChange({...appState, stage: 'configuring'})} className="btn btn-secondary">{t('common_edit')}</button>
+                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
                         </>
                     )}
                 >
                     <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-interp" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.2 }}>
                         <ActionablePolaroidCard
                             type="output"
-                            caption="Kết quả"
+                            caption={t('common_result')}
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
-                            regenerationTitle="Tinh chỉnh ảnh"
-                            regenerationDescription="Thêm ghi chú để cải thiện ảnh"
-                            regenerationPlaceholder="Ví dụ: thêm hiệu ứng ánh sáng..."
+                            regenerationTitle={t('common_regenTitle')}
+                            regenerationDescription={t('common_regenDescription')}
+                            regenerationPlaceholder={t('imageInterpolation_regenPlaceholder')}
                             onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                         />
                     </motion.div>
@@ -445,7 +458,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                             <motion.div className="w-full md:w-auto flex-shrink-0" key={`${sourceUrl}-video`} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption="Video"
+                                    caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
