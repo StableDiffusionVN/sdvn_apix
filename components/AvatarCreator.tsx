@@ -48,7 +48,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         ...headerProps
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -138,7 +138,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const processIdea = async (idea: string) => {
             try {
                 const resultUrl = await generatePatrioticImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
-                const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+                const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
                 
                 currentAppState = {
                     ...currentAppState,
@@ -198,7 +198,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 viewId: 'avatar-creator',
                 state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },

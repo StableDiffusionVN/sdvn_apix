@@ -1,3 +1,4 @@
+
 {
   "footer_theme": "Giao diện",
   "footer_feedback": "Góp ý",
@@ -46,7 +47,7 @@
   "galleryModal_cannotEditVideo": "Không thể chỉnh sửa video.",
   "galleryModal_title": "Thư viện ảnh",
   "galleryModal_empty": "Chưa có ảnh nào được tạo trong phiên này.",
-  "galleryModal_empty_dragDrop": "Bạn có thể kéo và thả ảnh vào đây để tải lên.",
+  "galleryModal_empty_dragDrop": "Bạn có thể kéo và thả ảnh vào đây hoặc nhấn nút Tải lên.",
   "galleryModal_dropPrompt": "Thả ảnh vào đây để tải lên",
   "galleryModal_combineError": "Lỗi: Không thể ghép ảnh. {0}",
   "galleryToolbar_selected": "Đã chọn: {0}",
@@ -54,6 +55,8 @@
   "galleryToolbar_combineVertical": "Ghép dọc",
   "galleryToolbar_combining": "Đang ghép...",
   "galleryToolbar_close": "Đóng thư viện",
+  "galleryToolbar_upload": "Tải ảnh lên",
+  "galleryToolbar_uploadTooltip": "Tải lên một hoặc nhiều ảnh từ máy tính của bạn",
   "lightbox_download": "Tải ảnh này",
   "imageEditor_mobileWarning": "Chức năng chỉnh sửa ảnh không khả dụng trên thiết bị di động.",
   "imageEditor_startTitle": "Mở hoặc tạo ảnh",

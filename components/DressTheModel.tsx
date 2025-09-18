@@ -50,7 +50,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         ...headerProps
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -131,7 +131,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 viewId: 'dress-the-model',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
         } catch (err) {
@@ -149,7 +149,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 viewId: 'dress-the-model',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
         } catch (err) {

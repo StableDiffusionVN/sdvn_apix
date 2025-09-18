@@ -47,7 +47,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         ...headerProps 
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const [localNotes, setLocalNotes] = useState(appState.options.notes);
@@ -97,7 +97,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 // Embed the state that led to this result, but clear the results themselves.
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -123,7 +123,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 // Embed the state that led to this result, but clear the results themselves.
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

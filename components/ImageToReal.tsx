@@ -20,6 +20,7 @@ import {
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
+    useAppControls,
     embedJsonInPng,
     getInitialStateForApp,
 } from './uiUtils';
@@ -47,6 +48,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
         ...headerProps 
     } = props;
     
+    const { settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const [localNotes, setLocalNotes] = useState(appState.options.notes);
@@ -91,7 +93,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
                 viewId: 'image-to-real',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -116,7 +118,7 @@ const ImageToReal: React.FC<ImageToRealProps> = (props) => {
                 viewId: 'image-to-real',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

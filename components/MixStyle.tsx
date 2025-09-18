@@ -19,6 +19,7 @@ import {
     useVideoGeneration,
     processAndDownloadAll,
     PromptResultCard,
+    useAppControls,
     embedJsonInPng,
     getInitialStateForApp,
 } from './uiUtils';
@@ -50,6 +51,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         ...headerProps
     } = props;
 
+    const { settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -129,7 +131,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 viewId: 'mix-style',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -155,7 +157,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 viewId: 'mix-style',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

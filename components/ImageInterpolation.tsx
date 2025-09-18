@@ -51,7 +51,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         ...headerProps
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const [localGeneratedPrompt, setLocalGeneratedPrompt] = useState(appState.generatedPrompt);
@@ -162,7 +162,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 viewId: 'image-interpolation',
                 state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: finalPromptText }];
             
@@ -203,7 +203,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 viewId: 'image-interpolation',
                 state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: prompt }];
             

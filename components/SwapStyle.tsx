@@ -46,7 +46,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         ...headerProps
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     
@@ -124,7 +124,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 viewId: 'swap-style',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -149,7 +149,7 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                 viewId: 'swap-style',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
-            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed);
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

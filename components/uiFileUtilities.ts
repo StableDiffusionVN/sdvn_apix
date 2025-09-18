@@ -522,7 +522,11 @@ const crc32 = (function() {
     };
 })();
 
-export const embedJsonInPng = async (imageDataUrl: string, jsonData: object): Promise<string> => {
+export const embedJsonInPng = async (imageDataUrl: string, jsonData: object, enabled: boolean): Promise<string> => {
+    if (!enabled) {
+        return imageDataUrl;
+    }
+    
     // We can only add chunks to PNGs. If it's another format, return the original.
     if (!imageDataUrl.startsWith('data:image/png;base64,')) {
         console.warn('Cannot embed JSON in non-PNG image. Returning original.');

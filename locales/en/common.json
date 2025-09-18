@@ -1,3 +1,4 @@
+
 {
   "footer_theme": "Theme",
   "footer_feedback": "Feedback",
@@ -46,7 +47,7 @@
   "galleryModal_cannotEditVideo": "Cannot edit videos.",
   "galleryModal_title": "Image Gallery",
   "galleryModal_empty": "No images have been created in this session.",
-  "galleryModal_empty_dragDrop": "You can drag and drop images here to upload.",
+  "galleryModal_empty_dragDrop": "You can drag and drop images here or click the Upload button.",
   "galleryModal_dropPrompt": "Drop images here to upload",
   "galleryModal_combineError": "Error: Could not combine images. {0}",
   "galleryToolbar_selected": "Selected: {0}",
@@ -54,6 +55,8 @@
   "galleryToolbar_combineVertical": "Combine V",
   "galleryToolbar_combining": "Combining...",
   "galleryToolbar_close": "Close gallery",
+  "galleryToolbar_upload": "Upload",
+  "galleryToolbar_uploadTooltip": "Upload one or more images from your computer",
   "lightbox_download": "Download this image",
   "imageEditor_mobileWarning": "The image editor is not available on mobile devices.",
   "imageEditor_startTitle": "Open or Create Image",

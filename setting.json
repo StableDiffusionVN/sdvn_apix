@@ -1,4 +1,5 @@
 {
+  "enableImageMetadata": false,
   "home": {
     "mainTitleKey": "home_mainTitle",
     "subtitleKey": "home_subtitle",

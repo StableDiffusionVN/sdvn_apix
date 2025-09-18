@@ -51,7 +51,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         ...headerProps
     } = props;
     
-    const { t } = useAppControls();
+    const { t, settings } = useAppControls();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
@@ -166,7 +166,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             };
         
             const urlsWithMetadata = await Promise.all(
-                resultUrls.map(url => embedJsonInPng(url, settingsToEmbed))
+                resultUrls.map(url => embedJsonInPng(url, settingsToEmbed, settings.enableImageMetadata))
             );
 
             onStateChange({
@@ -192,17 +192,22 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
         try {
             const resultUrl = await editImageWithPrompt(url, prompt);
+            const settingsToEmbed = {
+                viewId: 'free-generation',
+                state: { ...appState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
+            };
+            const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
             
             const newGeneratedImages = [...originalGeneratedImages];
-            newGeneratedImages[index] = resultUrl;
+            newGeneratedImages[index] = urlWithMetadata;
             
             onStateChange({
                 ...appState,
                 stage: 'results',
                 generatedImages: newGeneratedImages,
-                historicalImages: [...appState.historicalImages, resultUrl],
+                historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
-            addImagesToGallery([resultUrl]);
+            addImagesToGallery([urlWithMetadata]);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             onStateChange({ ...appState, stage: 'results', error: errorMessage, generatedImages: originalGeneratedImages });
