@@ -22,7 +22,6 @@ import {
     SearchableSelect,
     useAppControls,
     embedJsonInPng,
-    // FIX: Import getInitialStateForApp to resolve 'Cannot find name' error.
     getInitialStateForApp,
 } from './uiUtils';
 

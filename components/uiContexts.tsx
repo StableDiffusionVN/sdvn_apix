@@ -193,7 +193,8 @@ interface AppControlContextType {
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
-    isLayerComposerOpen: boolean;
+    isLayerComposerMounted: boolean;
+    isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
@@ -220,6 +221,8 @@ interface AppControlContextType {
     closeBeforeAfterModal: () => void;
     openLayerComposer: () => void;
     closeLayerComposer: () => void;
+    hideLayerComposer: () => void;
+    toggleLayerComposer: () => void;
     importSettingsAndNavigate: (settings: any) => void;
     t: (key: string, ...args: any[]) => any;
 }
@@ -243,7 +246,8 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isExtraToolsOpen, setIsExtraToolsOpen] = useState(false);
     const [isImageLayoutModalOpen, setIsImageLayoutModalOpen] = useState(false);
     const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
-    const [isLayerComposerOpen, setIsLayerComposerOpen] = useState(false);
+    const [isLayerComposerMounted, setIsLayerComposerMounted] = useState(false);
+    const [isLayerComposerVisible, setIsLayerComposerVisible] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
     const [settings, setSettings] = useState(null); // Initially null
 
@@ -483,10 +487,25 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, []);
     const closeBeforeAfterModal = useCallback(() => setIsBeforeAfterModalOpen(false), []);
     const openLayerComposer = useCallback(() => {
-        setIsLayerComposerOpen(true);
+        setIsLayerComposerMounted(true);
+        setIsLayerComposerVisible(true);
         setIsExtraToolsOpen(false);
     }, []);
-    const closeLayerComposer = useCallback(() => setIsLayerComposerOpen(false), []);
+    const closeLayerComposer = useCallback(() => {
+        setIsLayerComposerMounted(false);
+        setIsLayerComposerVisible(false);
+    }, []);
+    const hideLayerComposer = useCallback(() => {
+        setIsLayerComposerVisible(false);
+    }, []);
+    
+    const toggleLayerComposer = useCallback(() => {
+        if (isLayerComposerVisible) {
+            hideLayerComposer();
+        } else {
+            openLayerComposer();
+        }
+    }, [isLayerComposerVisible, hideLayerComposer, openLayerComposer]);
 
     const value: AppControlContextType = {
         currentView,
@@ -501,7 +520,8 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isExtraToolsOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
-        isLayerComposerOpen,
+        isLayerComposerMounted,
+        isLayerComposerVisible,
         language,
         addImagesToGallery,
         removeImageFromGallery,
@@ -528,6 +548,8 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         closeBeforeAfterModal,
         openLayerComposer,
         closeLayerComposer,
+        hideLayerComposer,
+        toggleLayerComposer,
         importSettingsAndNavigate,
         t,
     };

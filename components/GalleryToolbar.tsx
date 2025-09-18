@@ -68,10 +68,11 @@ export const GalleryToolbar: React.FC<GalleryToolbarProps> = ({
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 className="base-font font-bold text-2xl text-yellow-400">{title}</h3>
             <div className="flex items-center gap-2">
-               {/* FIX: Conditionally render the upload button only if the onUploadClick prop is provided. */}
-               {onUploadClick && <button onClick={onUploadClick} className="btn btn-secondary btn-sm" title={t('galleryToolbar_uploadTooltip')}>
-                    {t('galleryToolbar_upload')}
-               </button>}
+               {onUploadClick && (
+                    <button onClick={onUploadClick} className="btn btn-secondary btn-sm" title={t('galleryToolbar_uploadTooltip')}>
+                        {t('galleryToolbar_upload')}
+                    </button>
+                )}
                {onDownloadAll && <button onClick={onDownloadAll} className="btn btn-secondary btn-sm" disabled={imageCount === 0}>{t('common_downloadAll')}</button>}
                <button onClick={onToggleSelectionMode} className="btn btn-secondary btn-sm" disabled={imageCount === 0}>{t('common_select')}</button>
                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label={t('galleryToolbar_close')}>

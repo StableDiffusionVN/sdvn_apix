@@ -8,7 +8,6 @@ import { cn } from '../../lib/utils';
 import { type Layer } from './LayerComposer.types';
 import { EditorIcon, BakeIcon, DownloadIcon, DuplicateIcon, DeleteIcon } from '../icons';
 
-// FIX: Added 'bake' to LayerAction to support the bake action from the toolbar.
 export type LayerAction = 'duplicate' | 'delete' | 'export' | 'edit' | 'bake';
 
 interface FloatingLayerToolbarProps {

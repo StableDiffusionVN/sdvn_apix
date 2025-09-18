@@ -8,7 +8,6 @@ import { cn } from '../../lib/utils';
 import { type Layer } from './LayerComposer/LayerComposer.types';
 import { EditorIcon, BakeIcon, DownloadIcon, DuplicateIcon, DeleteIcon } from './icons';
 
-// FIX: Added 'edit' and 'bake' to LayerAction to match its usage.
 export type LayerAction = 'duplicate' | 'delete' | 'export' | 'edit' | 'bake';
 
 interface FloatingLayerToolbarProps {
@@ -72,7 +71,6 @@ export const FloatingLayerToolbar: React.FC<FloatingLayerToolbarProps> = ({ laye
                     <div className="w-px h-5 bg-white/20 mx-1 self-center" />
                 </>
             )}
-            {/* FIX: Add Bake button for consistency */}
             <ToolButton label="Nung Layer (Bake Layer)" onClick={() => onAction('bake')}>
                 <BakeIcon className="h-5 w-5" strokeWidth="1.5" />
             </ToolButton>

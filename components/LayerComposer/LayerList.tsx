@@ -34,7 +34,6 @@ export const LayerList: React.FC<LayerListProps> = ({
                     key={layer.id}
                     layer={layer}
                     onUpdate={onLayerUpdate}
-                    // FIX: Changed onDelete to onLayerDelete to match the prop name.
                     onLayerDelete={onLayerDelete}
                     onSelect={onLayerSelect}
                     isSelected={selectedLayerId === layer.id}

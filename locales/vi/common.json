@@ -242,6 +242,7 @@
   "layerComposer_startScreen_dropPrompt": "Thả ảnh hoặc file .json để bắt đầu",
   "layerComposer_invalidJsonError": "File JSON không hợp lệ hoặc không đúng định dạng.",
   "layerComposer_ai_preset": "Preset",
+  "layerComposer_preset_upload_tip": "Mẹo: Bạn cũng có thể kéo và thả tệp .json hoặc .png (Tệp json setting được xuất ở màn hình kết thúc mỗi ứng dụng chính) vào đây.",
   "layerComposer_ai_preset_none": "Mặc định",
   "layerComposer_ai_preset_architecture": "Kiến trúc",
   "layerComposer_ai_processTitle": "Quá trình AI",

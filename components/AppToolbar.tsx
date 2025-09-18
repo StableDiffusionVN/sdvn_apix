@@ -32,8 +32,8 @@ const AppToolbar: React.FC = () => {
         addImagesToGallery,
         isExtraToolsOpen,
         toggleExtraTools,
-        isLayerComposerOpen,
-        openLayerComposer,
+        isLayerComposerVisible,
+        toggleLayerComposer,
         t,
     } = useAppControls();
 
@@ -64,10 +64,6 @@ const AppToolbar: React.FC = () => {
             addImagesToGallery([newUrl]);
         });
     }, [openEmptyImageEditor, addImagesToGallery]);
-    
-    const handleOpenLayerComposer = useCallback(() => {
-        openLayerComposer();
-    }, [openLayerComposer]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,12 +102,12 @@ const AppToolbar: React.FC = () => {
             } else if (isInfo) {
                 e.preventDefault();
                 handleOpenInfo();
-            } else if (isEditor && !isLayerComposerOpen) {
+            } else if (isEditor && !isLayerComposerVisible) {
                 e.preventDefault();
                 handleOpenEditor();
             } else if (isLayerComposer) {
                 e.preventDefault();
-                handleOpenLayerComposer();
+                toggleLayerComposer();
             }
         };
 
@@ -119,7 +115,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, handleOpenLayerComposer, imageToEdit, isLayerComposerOpen]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
 
     return (
         <>
@@ -196,7 +192,7 @@ const AppToolbar: React.FC = () => {
                         <EditorIcon className="h-5 w-5" />
                     </button>
                     <button
-                        onClick={handleOpenLayerComposer}
+                        onClick={toggleLayerComposer}
                         className="btn-search"
                         aria-label={t('appToolbar_layerComposer')}
                         onMouseEnter={(e) => showTooltip(t('appToolbar_layerComposer'), e)}

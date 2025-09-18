@@ -46,7 +46,8 @@ function App() {
         isInfoOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
-        isLayerComposerOpen,
+        isLayerComposerMounted,
+        isLayerComposerVisible,
         handleSelectApp,
         handleStateChange,
         addImagesToGallery,
@@ -58,6 +59,7 @@ function App() {
         closeImageLayoutModal,
         closeBeforeAfterModal,
         closeLayerComposer,
+        hideLayerComposer,
         t,
     } = useAppControls();
     
@@ -70,7 +72,7 @@ function App() {
                                isInfoOpen || 
                                isImageLayoutModalOpen || 
                                isBeforeAfterModalOpen || 
-                               isLayerComposerOpen || 
+                               isLayerComposerVisible || 
                                !!imageToEdit;
 
         if (isAnyModalOpen) {
@@ -83,7 +85,7 @@ function App() {
         return () => {
             document.body.style.overflow = 'auto';
         };
-    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerOpen, imageToEdit]);
+    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerVisible, imageToEdit]);
 
     const renderContent = () => {
         if (!settings) return null; // Wait for settings to load
@@ -334,10 +336,13 @@ function App() {
                 isOpen={isBeforeAfterModalOpen}
                 onClose={closeBeforeAfterModal}
             />
-            <LayerComposerModal
-                isOpen={isLayerComposerOpen}
-                onClose={closeLayerComposer}
-            />
+            {isLayerComposerMounted && (
+                <LayerComposerModal
+                    isOpen={isLayerComposerVisible}
+                    onClose={closeLayerComposer}
+                    onHide={hideLayerComposer}
+                />
+            )}
             <Footer />
         </main>
     );

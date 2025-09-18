@@ -225,17 +225,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
         // Create a deep copy to avoid mutating the original state
         const exportableState = JSON.parse(JSON.stringify(state));
 
-        // Define keys that hold output data or large, non-essential data
+        // Base keys to remove for all apps
         const keysToRemove = [
             'generatedImage', 
             'generatedImages', 
             'historicalImages', 
             'finalPrompt',
             'error',
-            // for image-interpolation
-            'generatedPrompt',
-            'promptSuggestions',
         ];
+
+        // For image-interpolation, we want to keep the generated prompt,
+        // so we DON'T add its keys to the removal list.
+        if (currentView.viewId !== 'image-interpolation') {
+            keysToRemove.push('generatedPrompt', 'promptSuggestions');
+        }
 
         // Recursively remove the keys from the state object
         const removeKeys = (obj: any) => {

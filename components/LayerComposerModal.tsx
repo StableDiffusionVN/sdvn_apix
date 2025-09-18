@@ -6,8 +6,27 @@ import React, { useState, useEffect, useCallback, useRef, ChangeEvent, useMemo }
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionValue, useMotionValueEvent } from 'framer-motion';
-import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor } from './uiUtils';
-import { generateFreeImage, editImageWithPrompt, generateFromMultipleImages, refinePrompt, refineArchitecturePrompt, analyzePromptForImageGenerationParams } from '../../services/geminiService';
+import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor, extractJsonFromPng } from './uiUtils';
+import { 
+    generateArchitecturalImage,
+    generatePatrioticImage,
+    generateDressedModelImage,
+    restoreOldPhoto,
+    convertImageToRealistic,
+    swapImageStyle,
+    mixImageStyle,
+    generateFreeImage,
+    generateToyModelImage,
+    analyzeImagePairForPrompt,
+    analyzeImagePairForPromptDetailed,
+    interpolatePrompts,
+    adaptPromptToContext,
+    editImageWithPrompt, 
+    generateFromMultipleImages, 
+    refinePrompt, 
+    refineArchitecturePrompt, 
+    analyzePromptForImageGenerationParams 
+} from '../../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
@@ -16,6 +35,7 @@ import { type Layer, type CanvasSettings, type Interaction, type Rect, type Mult
 interface LayerComposerModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onHide: () => void;
 }
 
 const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
@@ -36,23 +56,94 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: num
     ctx.fillText(line, x, y);
 };
 
+const captureCanvas = async (
+    layersToCapture: Layer[],
+    boundsToCapture: Rect,
+    backgroundColor: string | null
+): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = boundsToCapture.width;
+    canvas.height = boundsToCapture.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Could not create canvas context for capture");
+
+    if (backgroundColor) {
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const imagesToLoad = layersToCapture.filter(l => l.type === 'image' && l.url);
+    const imageElements = await Promise.all(imagesToLoad.map(l => {
+        return new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = l.url!;
+        });
+    }));
+    const imageMap = new Map(imagesToLoad.map((l, i) => [l.id, imageElements[i]]));
+
+    for (let i = layersToCapture.length - 1; i >= 0; i--) {
+        const layer = layersToCapture[i];
+        if (!layer.isVisible) continue;
+        const drawX = layer.x - boundsToCapture.x;
+        const drawY = layer.y - boundsToCapture.y;
+
+        ctx.save();
+        ctx.globalAlpha = layer.opacity / 100;
+        ctx.globalCompositeOperation = layer.blendMode;
+        ctx.translate(drawX + layer.width / 2, drawY + layer.height / 2);
+        ctx.rotate(layer.rotation * Math.PI / 180);
+        ctx.translate(-layer.width / 2, -layer.height / 2);
+
+        if (layer.type === 'text' && layer.text) {
+            ctx.font = `${layer.fontStyle || 'normal'} ${layer.fontWeight || '400'} ${layer.fontSize || 50}px "${layer.fontFamily || 'Be Vietnam Pro'}"`;
+            ctx.fillStyle = layer.color || '#000000';
+            ctx.textBaseline = 'top';
+            let startX = 0;
+            if (layer.textAlign === 'center') { ctx.textAlign = 'center'; startX = layer.width / 2; }
+            else if (layer.textAlign === 'right') { ctx.textAlign = 'right'; startX = layer.width; }
+            else { ctx.textAlign = 'left'; }
+            const lineHeight = (layer.fontSize || 50) * (layer.lineHeight || 1.2);
+            const textToRender = layer.textTransform === 'uppercase' ? (layer.text || '').toUpperCase() : (layer.text || '');
+            wrapText(ctx, textToRender, startX, 0, layer.width, lineHeight);
+        } else if (layer.type === 'image') {
+            const loadedImage = imageMap.get(layer.id);
+            if (loadedImage) {
+                ctx.drawImage(loadedImage, 0, 0, layer.width, layer.height);
+            }
+        }
+        ctx.restore();
+    }
+    return canvas.toDataURL('image/png');
+};
+
 const captureLayer = async (layer: Layer): Promise<string> => {
     const canvas = document.createElement('canvas');
     let captureWidth = layer.width;
     let captureHeight = layer.height;
+    const EXPORT_SCALE_FACTOR = 4;
 
-    const img = (layer.type === 'image' && layer.url) ? new Image() : null;
-    if (img) {
-        img.crossOrigin = 'Anonymous';
-        await new Promise<void>((resolve, reject) => {
-            img.onload = () => {
-                captureWidth = img.naturalWidth;
-                captureHeight = img.naturalHeight;
-                resolve();
-            };
-            img.onerror = reject;
-            img.src = layer.url!;
+    const loadImage = (url: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = (err) => reject(new Error(`Failed to load image: ${url.substring(0, 50)}...`));
+            img.src = url;
         });
+    };
+
+    const img = (layer.type === 'image' && layer.url) ? await loadImage(layer.url) : null;
+    if (img) {
+        captureWidth = img.naturalWidth;
+        captureHeight = img.naturalHeight;
+    } else if (layer.type === 'text') {
+        captureWidth = layer.width * EXPORT_SCALE_FACTOR;
+        captureHeight = layer.height * EXPORT_SCALE_FACTOR;
     }
 
     canvas.width = captureWidth;
@@ -63,6 +154,7 @@ const captureLayer = async (layer: Layer): Promise<string> => {
     if (layer.type === 'image' && img) {
         ctx.drawImage(img, 0, 0, captureWidth, captureHeight);
     } else if (layer.type === 'text' && layer.text) {
+        ctx.scale(EXPORT_SCALE_FACTOR, EXPORT_SCALE_FACTOR);
         ctx.font = `${layer.fontStyle || 'normal'} ${layer.fontWeight || '400'} ${layer.fontSize || 50}px "${layer.fontFamily || 'Be Vietnam Pro'}"`;
         ctx.fillStyle = layer.color || '#000000';
         ctx.textBaseline = 'top';
@@ -76,6 +168,7 @@ const captureLayer = async (layer: Layer): Promise<string> => {
     }
     return canvas.toDataURL('image/png');
 };
+
 
 interface AILogMessage {
   id: number;
@@ -189,7 +282,7 @@ const parseMultiPrompt = (prompt: string): string[] => {
 };
 
 
-export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose }) => {
+export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose, onHide }) => {
     const { sessionGalleryImages, addImagesToGallery, t } = useAppControls();
     const { openImageEditor } = useImageEditor();
 
@@ -223,6 +316,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const [isLogVisible, setIsLogVisible] = useState(false);
     const [editingMaskForLayerId, setEditingMaskForLayerId] = useState<string | null>(null);
     const [rectBorderRadius, setRectBorderRadius] = useState(0);
+    const [loadedPreset, setLoadedPreset] = useState<any | null>(null);
 
     const onRectBorderRadiusChange = (radius: number) => {
         setRectBorderRadius(radius);
@@ -331,9 +425,21 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const handleUndo = useCallback(() => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setLayers(history[newIndex]); } }, [history, historyIndex]);
     const handleRedo = useCallback(() => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setLayers(history[newIndex]); } }, [history, historyIndex]);
 
-    useEffect(() => { if (!isOpen) { setLayers([]); setSelectedLayerIds([]); setCanvasSettings({ width: 1024, height: 1024, background: '#ffffff', grid: { visible: false, snap: false, size: 50, color: '#cccccc' }, guides: { enabled: true, color: '#ff4d4d' } }); setError(null); setInteraction(null); setCanvasInitialized(false); setHistory([[]]); setHistoryIndex(0); setIsInfiniteCanvas(true); setAiProcessLog([]); setIsLogVisible(false); } }, [isOpen]);
-
-    const handleRequestClose = useCallback(() => { if (layers.length > 0) { setIsConfirmingClose(true); } else { onClose(); } }, [layers, onClose]);
+    const handleCloseAndReset = () => {
+        setLayers([]);
+        setSelectedLayerIds([]);
+        setCanvasSettings({ width: 1024, height: 1024, background: '#ffffff', grid: { visible: false, snap: false, size: 50, color: '#cccccc' }, guides: { enabled: true, color: '#ff4d4d' } });
+        setError(null);
+        setInteraction(null);
+        setCanvasInitialized(false);
+        setHistory([[]]);
+        setHistoryIndex(0);
+        setIsInfiniteCanvas(true);
+        setAiProcessLog([]);
+        setIsLogVisible(false);
+        setLoadedPreset(null);
+        onClose();
+    };
     
     const loadCanvasStateFromJson = useCallback((jsonData: any) => {
         if (!jsonData || typeof jsonData.canvasSettings !== 'object' || !Array.isArray(jsonData.layers)) { setError(t('layerComposer_invalidJsonError')); return; }
@@ -379,8 +485,9 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         }
     
         let nextY = position ? position.y : 0;
+        let nextX = position ? position.x : 0;
 
-        [...loadedImages].reverse().forEach((img) => {
+        [...loadedImages].reverse().forEach((img, index) => {
             const initialWidth = img.naturalWidth;
             const initialHeight = img.naturalHeight;
 
@@ -388,15 +495,18 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             let newY: number;
 
             if (position) {
-                newX = position.x;
+                newX = nextX;
                 newY = nextY;
-                nextY += initialHeight + 20; // Stack vertically if multiple images are added this way
+                // Offset subsequent images slightly so they don't perfectly overlap
+                nextX += 20;
+                nextY += 20;
             } else {
-                if (canvasViewRef.current) {
+                 if (canvasViewRef.current) {
                     const viewWidth = canvasViewRef.current.clientWidth;
                     const viewHeight = canvasViewRef.current.clientHeight;
-                    const canvasCenterX = (-panX.get() / scale.get()) + (canvasSettingsToUpdate.width / 2);
-                    const canvasCenterY = (-panY.get() / scale.get()) + (canvasSettingsToUpdate.height / 2);
+                    // Calculate center of the current viewport in canvas coordinates
+                    const canvasCenterX = (-panX.get() / scale.get()) + (viewWidth / 2 / scale.get());
+                    const canvasCenterY = (-panY.get() / scale.get()) + (viewHeight / 2 / scale.get());
                     newX = canvasCenterX - initialWidth / 2;
                     newY = canvasCenterY - initialHeight / 2;
                 } else {
@@ -435,6 +545,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setHistoryIndex(newHistory.length - 1);
         interactionStartHistoryState.current = null;
     }, [layers, canvasInitialized, canvasSettings, history, historyIndex, beginInteraction, panX, panY, scale, canvasViewRef]);
+
 
     const handleAddImage = useCallback((url: string, referenceBounds?: Rect | null) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
@@ -524,115 +635,12 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         return newDuplicatedLayers;
     };
     
-    const captureCanvas = useCallback(async ( layersToCapture: Layer[], boundsToCapture: Rect, backgroundColor: string | null ): Promise<string> => {
-        const canvas = document.createElement('canvas');
-        canvas.width = boundsToCapture.width; canvas.height = boundsToCapture.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error("Could not create canvas context for capture");
-        if (backgroundColor) { ctx.fillStyle = backgroundColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        else { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-
-        const imagesToLoad = layersToCapture.filter(l => l.type === 'image' && l.url);
-        const imageElements = await Promise.all(imagesToLoad.map(l => {
-            return new Promise<HTMLImageElement>((resolve, reject) => {
-                const img = new Image(); img.crossOrigin = 'Anonymous';
-                img.onload = () => resolve(img); img.onerror = reject; img.src = l.url!;
-            });
-        }));
-        const imageMap = new Map(imagesToLoad.map((l, i) => [l.id, imageElements[i]]));
-
-        for (let i = layersToCapture.length - 1; i >= 0; i--) {
-            const layer = layersToCapture[i];
-            if (!layer.isVisible) continue;
-            const drawX = layer.x - boundsToCapture.x; const drawY = layer.y - boundsToCapture.y;
-            ctx.save();
-            ctx.globalAlpha = layer.opacity / 100;
-            ctx.globalCompositeOperation = layer.blendMode;
-            ctx.translate(drawX + layer.width / 2, drawY + layer.height / 2);
-            ctx.rotate(layer.rotation * Math.PI / 180);
-            ctx.translate(-layer.width / 2, -layer.height / 2);
-
-            // Apply mask if we are capturing ONLY the layer that is being mask-edited
-            if (layersToCapture.length === 1 && layer.id === editingMaskForLayerId && rectBorderRadius > 0) {
-                 ctx.beginPath();
-                 // @ts-ignore
-                 ctx.roundRect(0, 0, layer.width, layer.height, rectBorderRadius);
-                 ctx.clip();
-            }
-
-            if (layer.type === 'text' && layer.text) {
-                ctx.font = `${layer.fontStyle || 'normal'} ${layer.fontWeight || '400'} ${layer.fontSize || 50}px "${layer.fontFamily || 'Be Vietnam Pro'}"`;
-                ctx.fillStyle = layer.color || '#000000'; ctx.textBaseline = 'top';
-                let startX = 0;
-                if (layer.textAlign === 'center') { ctx.textAlign = 'center'; startX = layer.width / 2; }
-                else if (layer.textAlign === 'right') { ctx.textAlign = 'right'; startX = layer.width; }
-                else { ctx.textAlign = 'left'; }
-                const lineHeight = (layer.fontSize || 50) * (layer.lineHeight || 1.2);
-                const textToRender = layer.textTransform === 'uppercase' ? (layer.text || '').toUpperCase() : (layer.text || '');
-                wrapText(ctx, textToRender, startX, 0, layer.width, lineHeight);
-            } else if (layer.type === 'image') {
-                const loadedImage = imageMap.get(layer.id);
-                if (loadedImage) { ctx.drawImage(loadedImage, 0, 0, layer.width, layer.height); }
-            }
-            ctx.restore();
-        }
-        return canvas.toDataURL('image/png');
-    }, [editingMaskForLayerId, rectBorderRadius]);
-
-    const exportLayerFullRes = useCallback(async (layer: Layer): Promise<string> => {
-        const canvas = document.createElement('canvas');
-        let captureWidth = layer.width;
-        let captureHeight = layer.height;
-        const EXPORT_SCALE_FACTOR = 4;
-    
-        const loadImage = (url: string): Promise<HTMLImageElement> => {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'Anonymous';
-                img.onload = () => resolve(img);
-                img.onerror = (err) => reject(new Error(`Failed to load image: ${url.substring(0, 50)}...`));
-                img.src = url;
-            });
-        };
-    
-        const img = (layer.type === 'image' && layer.url) ? await loadImage(layer.url) : null;
-        if (img) {
-            captureWidth = img.naturalWidth;
-            captureHeight = img.naturalHeight;
-        } else if (layer.type === 'text') {
-            captureWidth = layer.width * EXPORT_SCALE_FACTOR;
-            captureHeight = layer.height * EXPORT_SCALE_FACTOR;
-        }
-    
-        canvas.width = captureWidth;
-        canvas.height = captureHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error("Could not get context for layer capture");
-    
-        if (layer.type === 'image' && img) {
-            ctx.drawImage(img, 0, 0, captureWidth, captureHeight);
-        } else if (layer.type === 'text' && layer.text) {
-            ctx.scale(EXPORT_SCALE_FACTOR, EXPORT_SCALE_FACTOR);
-            ctx.font = `${layer.fontStyle || 'normal'} ${layer.fontWeight || '400'} ${layer.fontSize || 50}px "${layer.fontFamily || 'Be Vietnam Pro'}"`;
-            ctx.fillStyle = layer.color || '#000000';
-            ctx.textBaseline = 'top';
-            let startX = 0;
-            if (layer.textAlign === 'center') { ctx.textAlign = 'center'; startX = layer.width / 2; }
-            else if (layer.textAlign === 'right') { ctx.textAlign = 'right'; startX = layer.width; }
-            else { ctx.textAlign = 'left'; }
-            const lineHeight = (layer.fontSize || 50) * (layer.lineHeight || 1.2);
-            const textToRender = layer.textTransform === 'uppercase' ? (layer.text || '').toUpperCase() : (layer.text || '');
-            wrapText(ctx, textToRender, startX, 0, layer.width, lineHeight);
-        }
-        return canvas.toDataURL('image/png');
-    }, []);
-
     const handleExportSelectedLayers = useCallback(async () => {
         if (selectedLayers.length < 1) return;
         setIsLoading(true); setError(null);
         try {
             for (const layer of selectedLayers) {
-                const exportedUrl = await exportLayerFullRes(layer);
+                const exportedUrl = await captureLayer(layer);
                 addImagesToGallery([exportedUrl]);
                 await new Promise(resolve => setTimeout(resolve, 200)); 
                 downloadImage(exportedUrl, `aPix-canvas-export-${layer.id || 'layer'}`);
@@ -641,7 +649,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             const errorMessage = err instanceof Error ? err.message : "Unknown error.";
             setError(t('layerComposer_error', errorMessage));
         } finally { setIsLoading(false); }
-    }, [selectedLayers, exportLayerFullRes, addImagesToGallery, t]);
+    }, [selectedLayers, addImagesToGallery, t]);
 
     const handleSave = async () => {
         setIsLoading(true); setError(null);
@@ -1012,6 +1020,140 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         handleMoveLayers, setSelectedLayerIds, selectedLayerIds, activeCanvasTool,
         selectedLayer, handleExportSelectedLayers
     ]);
+
+    const handlePresetFile = async (file: File) => {
+        let settings = null;
+        setError(null);
+        setLoadedPreset(null);
+        try {
+            if (file.type === 'image/png') {
+                settings = await extractJsonFromPng(file);
+                if (!settings) throw new Error("No preset data found in PNG.");
+            } else if (file.type === 'application/json') {
+                settings = JSON.parse(await file.text());
+            } else {
+                throw new Error("Unsupported file type.");
+            }
+
+            if (settings && settings.viewId && settings.state) {
+                setLoadedPreset(settings);
+            } else {
+                throw new Error("Invalid preset file format.");
+            }
+        } catch (e) {
+            console.error("Failed to load preset file", e);
+            setError(e instanceof Error ? e.message : "Could not read preset file.");
+        }
+    };
+    
+    const handleGenerateFromPreset = async () => {
+        if (!loadedPreset) return;
+    
+        setIsLoading(true);
+        setError(null);
+        
+        const presetOptions = loadedPreset.state.options;
+        const viewId = loadedPreset.viewId;
+        let resultUrls: string[] = [];
+    
+        try {
+            const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+            const referenceBounds = getBoundingBoxForLayers(selectedLayers);
+    
+            switch (viewId) {
+                case 'architecture-ideator':
+                    if (selectedLayerUrls.length < 1) throw new Error("Architecture Ideator requires 1 selected layer.");
+                    resultUrls.push(await generateArchitecturalImage(selectedLayerUrls[0], presetOptions));
+                    break;
+                case 'avatar-creator':
+                    if (selectedLayerUrls.length < 1) throw new Error("Avatar Creator requires 1 selected layer.");
+                    const ideas = loadedPreset.state.selectedIdeas;
+                    if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
+                    resultUrls.push(await generatePatrioticImage(selectedLayerUrls[0], ideas[0], presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
+                    break;
+                case 'dress-the-model':
+                    if (selectedLayerUrls.length < 2) throw new Error("Dress The Model requires 2 selected layers (model, then clothing).");
+                    resultUrls.push(await generateDressedModelImage(selectedLayerUrls[0], selectedLayerUrls[1], presetOptions));
+                    break;
+                case 'photo-restoration':
+                     if (selectedLayerUrls.length < 1) throw new Error("Photo Restoration requires 1 selected layer.");
+                    resultUrls.push(await restoreOldPhoto(selectedLayerUrls[0], presetOptions));
+                    break;
+                case 'image-to-real':
+                    if (selectedLayerUrls.length < 1) throw new Error("Image To Real requires 1 selected layer.");
+                    resultUrls.push(await convertImageToRealistic(selectedLayerUrls[0], presetOptions));
+                    break;
+                case 'swap-style':
+                    if (selectedLayerUrls.length < 1) throw new Error("Swap Style requires 1 selected layer.");
+                    resultUrls.push(await swapImageStyle(selectedLayerUrls[0], presetOptions));
+                    break;
+                case 'mix-style':
+                    if (selectedLayerUrls.length < 2) throw new Error("Mix Style requires 2 selected layers (content, then style).");
+                    const { resultUrl: mixUrl } = await mixImageStyle(selectedLayerUrls[0], selectedLayerUrls[1], presetOptions);
+                    resultUrls.push(mixUrl);
+                    break;
+                case 'toy-model-creator':
+                    if (selectedLayerUrls.length < 1) throw new Error("Toy Model Creator requires 1 selected layer.");
+                    const concept = loadedPreset.state.concept;
+                    if (!concept) throw new Error("Preset for Toy Model Creator is missing a 'concept'.");
+                    resultUrls.push(await generateToyModelImage(selectedLayerUrls[0], concept, presetOptions));
+                    break;
+                case 'free-generation':
+                    if (selectedLayerUrls.length > 2) throw new Error("Free Generation supports up to 2 selected layers.");
+                    const genUrls = await generateFreeImage(
+                        presetOptions.prompt,
+                        presetOptions.numberOfImages,
+                        presetOptions.aspectRatio,
+                        selectedLayerUrls[0],
+                        selectedLayerUrls[1],
+                        presetOptions.removeWatermark
+                    );
+                    resultUrls.push(...genUrls);
+                    break;
+                case 'image-interpolation':
+                     if (selectedLayerUrls.length < 1) throw new Error("Image Interpolation requires 1 selected layer for the Reference Image.");
+                    const { generatedPrompt, additionalNotes, inputImage, outputImage } = loadedPreset.state;
+                    if (!generatedPrompt) throw new Error("Image Interpolation preset is missing the generated prompt.");
+
+                    // Use the image URLs directly from the preset state.
+                    const finalInputUrl = inputImage;
+                    const finalOutputUrl = outputImage;
+                    const finalReferenceUrl = selectedLayerUrls[0];
+                    
+                    if (!finalInputUrl || !finalOutputUrl) throw new Error("Preset is missing input or output image data.");
+
+                    let intermediatePrompt = generatedPrompt;
+                    if (additionalNotes) {
+                         intermediatePrompt = await interpolatePrompts(intermediatePrompt, additionalNotes);
+                    }
+                    
+                    const finalPromptText = await adaptPromptToContext(finalReferenceUrl, intermediatePrompt);
+                    const interpUrl = await editImageWithPrompt(finalReferenceUrl, finalPromptText, presetOptions.aspectRatio, presetOptions.removeWatermark);
+                    resultUrls.push(interpUrl);
+                    break;
+                default:
+                    throw new Error(`Preset for app "${viewId}" is not supported yet.`);
+            }
+    
+            if (resultUrls.length > 0) {
+                 const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = url;
+                }));
+                const loadedImages = await Promise.all(imageLoadPromises);
+                addImagesAsLayers(loadedImages, referenceBounds);
+            }
+    
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
     return ReactDOM.createPortal(
         <>
@@ -1021,7 +1163,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={handleRequestClose}
+                        onClick={onHide}
                         className="modal-overlay z-[60]"
                         aria-modal="true"
                         role="dialog"
@@ -1091,11 +1233,16 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                         onAddImage={() => setIsGalleryOpen(true)}
                                         onAddText={handleAddTextLayer}
                                         onSave={handleSave}
-                                        onClose={handleRequestClose}
+                                        onClose={handleCloseAndReset}
                                         beginInteraction={beginInteraction}
                                         hasAiLog={aiProcessLog.length > 0}
                                         isLogVisible={isLogVisible}
                                         setIsLogVisible={setIsLogVisible}
+                                        loadedPreset={loadedPreset}
+                                        setLoadedPreset={setLoadedPreset}
+                                        onPresetFileLoad={handlePresetFile}
+                                        onGenerateFromPreset={handleGenerateFromPreset}
+                                        selectedLayersForPreset={selectedLayers}
                                     />
                                     <LayerComposerCanvas
                                         canvasViewRef={canvasViewRef}

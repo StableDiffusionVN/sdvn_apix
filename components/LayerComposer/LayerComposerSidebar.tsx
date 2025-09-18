@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls } from '../uiUtils';
 import { type Layer, type CanvasSettings } from './LayerComposer.types';
@@ -11,6 +11,16 @@ import { TextLayerControls } from './TextLayerControls';
 import { LayerPropertiesControls } from './LayerPropertiesControls';
 import { cn } from '../../lib/utils';
 import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon } from '../icons';
+
+interface PresetControlsProps {
+    loadedPreset: any | null;
+    setLoadedPreset: React.Dispatch<React.SetStateAction<any | null>>;
+    onPresetFileLoad: (file: File) => void;
+    onGenerateFromPreset: () => void;
+    isLoading: boolean;
+    selectedLayersForPreset: Layer[];
+    t: (key: string, ...args: any[]) => any;
+}
 
 interface LayerComposerSidebarProps {
     layers: Layer[];
@@ -42,6 +52,11 @@ interface LayerComposerSidebarProps {
     hasAiLog: boolean;
     isLogVisible: boolean;
     setIsLogVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    loadedPreset: any | null;
+    setLoadedPreset: React.Dispatch<React.SetStateAction<any | null>>;
+    onPresetFileLoad: (file: File) => void;
+    onGenerateFromPreset: () => void;
+    selectedLayersForPreset: Layer[];
 }
 
 const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () => void; children?: React.ReactNode; rightContent?: React.ReactNode; }> = ({ title, isOpen, onClick, rightContent }) => {
@@ -58,16 +73,161 @@ const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () =>
     );
 };
 
+const PresetControls: React.FC<PresetControlsProps> = ({
+    loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, isLoading, selectedLayersForPreset, t
+}) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            onPresetFileLoad(e.target.files[0]);
+        }
+    };
+    
+    const handleOptionChange = (key: string, value: string | boolean | number) => {
+        setLoadedPreset(prev => {
+            if (!prev) return null;
+            const newPreset = JSON.parse(JSON.stringify(prev)); // Deep copy
+            newPreset.state.options[key] = value;
+            return newPreset;
+        });
+    };
+    
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            onPresetFileLoad(e.dataTransfer.files[0]);
+        }
+    };
+
+    const imageInputMap: Record<string, string[]> = {
+        'architecture-ideator': ['Ảnh phác thảo'],
+        'avatar-creator': ['Ảnh chân dung'],
+        'dress-the-model': ['Ảnh người mẫu', 'Ảnh trang phục'],
+        'photo-restoration': ['Ảnh cũ'],
+        'image-to-real': ['Ảnh gốc'],
+        'swap-style': ['Ảnh gốc'],
+        'mix-style': ['Ảnh nội dung', 'Ảnh phong cách'],
+        'toy-model-creator': ['Ảnh gốc'],
+        'free-generation': ['Ảnh 1', 'Ảnh 2'],
+        'image-interpolation': ['Ảnh Tham chiếu']
+    };
+
+    const requiredImages = loadedPreset ? imageInputMap[loadedPreset.viewId] || [] : [];
+    
+    if (!loadedPreset) {
+        return (
+            <div
+                className={cn(
+                    "p-3 border-2 border-transparent rounded-lg transition-colors",
+                    isDraggingOver && "border-dashed border-yellow-400 bg-neutral-700/50"
+                )}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,.png" className="hidden" />
+                <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm w-full">
+                    Tải lên Preset...
+                </button>
+                <p className="text-xs text-neutral-500 text-center mt-2">
+                    {t('layerComposer_preset_upload_tip')}
+                </p>
+            </div>
+        );
+    }
+    
+    return (
+        <div className="p-3 space-y-3">
+            <div className="flex justify-between items-center">
+                <p className="text-sm font-bold text-yellow-400">Preset: {t(`app_${loadedPreset.viewId}_title`)}</p>
+                <button onClick={() => setLoadedPreset(null)} className="text-xs text-neutral-400 hover:text-white">Xóa</button>
+            </div>
+
+            {requiredImages.map((label, index) => (
+                <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md">
+                    <span className="font-semibold text-neutral-300">{label}: </span>
+                    {selectedLayersForPreset[index] ? (
+                        <span className="text-green-400">Đã gán Layer "{selectedLayersForPreset[index].text || `Image ID ${selectedLayersForPreset[index].id.substring(0,4)}`}"</span>
+                    ) : (
+                        <span className="text-yellow-400">Sẽ dùng ảnh từ preset</span>
+                    )}
+                </div>
+            ))}
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {Object.entries(loadedPreset.state.options).map(([key, value]) => {
+                    if (typeof value === 'boolean') {
+                        return (
+                            <div key={key} className="flex items-center justify-between text-sm">
+                                <label htmlFor={`preset-${key}`} className="font-medium text-neutral-300 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
+                                <input
+                                    type="checkbox"
+                                    id={`preset-${key}`}
+                                    checked={!!value}
+                                    onChange={(e) => handleOptionChange(key, e.target.checked)}
+                                    className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
+                                />
+                            </div>
+                        );
+                    }
+                    if (typeof value === 'string' || typeof value === 'number') {
+                        return (
+                             <div key={key}>
+                                <label htmlFor={`preset-${key}`} className="block text-sm font-medium text-neutral-300 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
+                                <input
+                                    id={`preset-${key}`}
+                                    type={typeof value === 'number' ? 'number' : 'text'}
+                                    value={String(value)}
+                                    onChange={(e) => handleOptionChange(key, e.target.value)}
+                                    className="form-input !p-1.5 !text-sm"
+                                />
+                            </div>
+                        )
+                    }
+                    return null;
+                })}
+            </div>
+
+            <div className="pt-3 border-t border-neutral-700/50">
+                 <button 
+                    onClick={onGenerateFromPreset} 
+                    className="btn btn-primary btn-sm w-full" 
+                    disabled={isLoading}
+                >
+                    {isLoading ? t('common_creating') : 'Tạo ảnh từ Preset'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props) => {
     const {
         layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, isLoading, error, aiPrompt, setAiPrompt, onGenerateAILayer,
         onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose,
         beginInteraction,
         isSimpleImageMode, setIsSimpleImageMode, aiPreset, setAiPreset,
-        hasAiLog, isLogVisible, setIsLogVisible
+        hasAiLog, isLogVisible, setIsLogVisible,
+        loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset
     } = props;
     const { t } = useAppControls();
-    const [openSection, setOpenSection] = useState<'ai' | 'canvas' | 'layers' | null>('ai');
+    const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
     const [activeTab, setActiveTab] = useState<'properties' | 'text'>('properties');
     const selectedLayer = layers.find(l => l.id === selectedLayerId);
 
@@ -77,7 +237,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
         }
     }, [selectedLayer?.id, selectedLayer?.type]);
 
-    const toggleSection = (section: 'ai' |'canvas' | 'layers') => { setOpenSection(prev => prev === section ? null : section); };
+    const toggleSection = (section: 'ai' | 'preset' |'canvas' | 'layers') => { setOpenSection(prev => prev === section ? null : section); };
 
     return (
         <aside className="w-1/3 max-w-sm flex flex-col bg-neutral-900/50 p-6 border-r border-white/10">
@@ -173,6 +333,24 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         )}
                                     </div>
                                 </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+                <div className="border border-neutral-700 rounded-lg overflow-hidden flex-shrink-0 mb-2">
+                    <AccordionHeader title="Import Preset" isOpen={openSection === 'preset'} onClick={() => toggleSection('preset')} />
+                     <AnimatePresence>
+                        {openSection === 'preset' && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50">
+                               <PresetControls
+                                    loadedPreset={loadedPreset}
+                                    setLoadedPreset={setLoadedPreset}
+                                    onPresetFileLoad={onPresetFileLoad}
+                                    onGenerateFromPreset={onGenerateFromPreset}
+                                    isLoading={isLoading}
+                                    selectedLayersForPreset={selectedLayersForPreset}
+                                    t={t}
+                               />
                             </motion.div>
                         )}
                     </AnimatePresence>

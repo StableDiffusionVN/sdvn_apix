@@ -335,3 +335,52 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
             return { stage: 'home' };
     }
 };
+
+// --- Context Types ---
+
+export interface AppControlContextType {
+    currentView: ViewState;
+    settings: any;
+    theme: Theme;
+    sessionGalleryImages: string[];
+    historyIndex: number;
+    viewHistory: ViewState[];
+    isSearchOpen: boolean;
+    isGalleryOpen: boolean;
+    isInfoOpen: boolean;
+    isExtraToolsOpen: boolean;
+    isImageLayoutModalOpen: boolean;
+    isBeforeAfterModalOpen: boolean;
+    isLayerComposerMounted: boolean;
+    isLayerComposerVisible: boolean;
+    language: 'vi' | 'en';
+    addImagesToGallery: (newImages: string[]) => void;
+    removeImageFromGallery: (imageIndex: number) => void;
+    replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
+    handleThemeChange: (newTheme: Theme) => void;
+    handleLanguageChange: (lang: 'vi' | 'en') => void;
+    navigateTo: (viewId: string) => void;
+    handleStateChange: (newAppState: AnyAppState) => void;
+    handleSelectApp: (appId: string) => void;
+    handleGoHome: () => void;
+    handleGoBack: () => void;
+    handleGoForward: () => void;
+    handleResetApp: () => void;
+    handleOpenSearch: () => void;
+    handleCloseSearch: () => void;
+    handleOpenGallery: () => void;
+    handleCloseGallery: () => void;
+    handleOpenInfo: () => void;
+    handleCloseInfo: () => void;
+    toggleExtraTools: () => void;
+    openImageLayoutModal: () => void;
+    closeImageLayoutModal: () => void;
+    openBeforeAfterModal: () => void;
+    closeBeforeAfterModal: () => void;
+    openLayerComposer: () => void;
+    closeLayerComposer: () => void;
+    hideLayerComposer: () => void;
+    toggleLayerComposer: () => void;
+    importSettingsAndNavigate: (settings: any) => void;
+    t: (key: string, ...args: any[]) => any;
+}

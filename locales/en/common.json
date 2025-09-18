@@ -242,6 +242,7 @@
   "layerComposer_startScreen_dropPrompt": "Drop images or .json file to start",
   "layerComposer_invalidJsonError": "Invalid or malformed JSON file.",
   "layerComposer_ai_preset": "Preset",
+  "layerComposer_preset_upload_tip": "Tip: You can also drag and drop a .json or .png (The JSON Setting file is exported to the screen to end each main application) file here.",
   "layerComposer_ai_preset_none": "Default",
   "layerComposer_ai_preset_architecture": "Architecture",
   "layerComposer_ai_processTitle": "AI Process",
