@@ -11,7 +11,7 @@ import { SelectionFrame } from './LayerComposer/SelectionFrame';
 import { CanvasToolbar } from './LayerComposer/CanvasToolbar';
 import { FloatingLayerToolbar, type LayerAction } from './LayerComposer/FloatingLayerToolbar';
 import { FloatingMultiLayerToolbar } from './LayerComposer/FloatingMultiLayerToolbar';
-import { useAppControls } from './uiUtils';
+import { useAppControls } from '../uiUtils';
 
 interface LayerComposerCanvasProps {
     canvasViewRef: React.RefObject<HTMLDivElement>;

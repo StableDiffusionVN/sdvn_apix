@@ -4,7 +4,7 @@
 */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppControls } from './uiUtils';
+import { useAppControls } from '../uiUtils';
 import { type Layer, type CanvasSettings } from './LayerComposer/LayerComposer.types';
 import { LayerList } from './LayerComposer/LayerList';
 import { TextLayerControls } from './LayerComposer/TextLayerControls';

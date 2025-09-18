@@ -7,7 +7,7 @@ import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionValue, useMotionValueEvent } from 'framer-motion';
 import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor } from './uiUtils';
-import { generateFreeImage, editImageWithPrompt, generateFromMultipleImages, refinePrompt, refineArchitecturePrompt, analyzePromptForImageGenerationParams } from '../services/geminiService';
+import { generateFreeImage, editImageWithPrompt, generateFromMultipleImages, refinePrompt, refineArchitecturePrompt, analyzePromptForImageGenerationParams } from '../../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
@@ -168,6 +168,24 @@ const findClosestImagenAspectRatio = (width: number, height: number): '1:1' | '3
         }
     }
     return closestMatch;
+};
+
+const parseMultiPrompt = (prompt: string): string[] => {
+    // This regex finds a pattern like: prefix {var1|var2} suffix
+    // It is non-greedy and handles multiline text with the 's' flag.
+    const match = prompt.match(/^(.*?)\{(.*?)\}(.*)$/s);
+    if (match) {
+        const prefix = match[1] || '';
+        // Split by '|' and trim whitespace from each variation
+        const variations = match[2].split('|').map(v => v.trim()).filter(v => v);
+        const suffix = match[3] || '';
+        // If there are actual variations, construct the full prompts
+        if (variations.length > 0) {
+            return variations.map(v => `${prefix}${v}${suffix}`.trim());
+        }
+    }
+    // If no match or no variations, return the original prompt in an array
+    return [prompt];
 };
 
 
@@ -646,114 +664,125 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const handleGenerateAILayer = async () => {
         generationController.current = new AbortController();
         const { signal } = generationController.current;
-
+    
         setIsLogVisible(true);
         setIsLoading(true);
         setError(null);
+        setAiProcessLog([]); // Clear previous log
+    
+        const promptsToGenerate = parseMultiPrompt(aiPrompt);
     
         try {
-            // Path 1: No Layers Selected (Text-to-Image Generation with analysis)
+            // Path 1: No Layers Selected (Text-to-Image Generation)
             if (selectedLayers.length === 0) {
-                if (!aiPrompt.trim()) {
+                if (promptsToGenerate.every(p => !p.trim())) {
                     setIsLoading(false);
                     setIsLogVisible(false);
                     return;
                 }
                 addLog(t('layerComposer_ai_log_start'), 'info');
-    
-                addLog('Phân tích prompt để xác định thông số...', 'info');
-                const params = await analyzePromptForImageGenerationParams(aiPrompt);
-                if (signal.aborted) return;
-                
-                const canvasAspectRatioStr = findClosestImagenAspectRatio(canvasSettings.width, canvasSettings.height);
-                const finalAspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : canvasAspectRatioStr;
-                const finalNumImages = params.numberOfImages > 1 ? params.numberOfImages : 1;
-
-                addLog(`Số lượng: ${finalNumImages}, Tỉ lệ: ${finalAspectRatio} (ưu tiên từ prompt)`, 'info');
-                addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
-                addLog(params.refinedPrompt, 'prompt');
-                addLog(t('layerComposer_ai_log_generating'), 'spinner');
-                
-                const results = await generateFreeImage(params.refinedPrompt, finalNumImages, finalAspectRatio as any);
-                if (signal.aborted) return;
-
-                if (results.length === 0) throw new Error("AI did not generate an image.");
-                
-                if (results.length === 1) {
-                    handleAddImage(results[0]);
-                } else {
-                    const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                        const img = new Image();
-                        img.crossOrigin = "Anonymous";
-                        img.onload = () => resolve(img);
-                        img.onerror = reject;
-                        img.src = url;
-                    }));
-                    const loadedImages = await Promise.all(imageLoadPromises);
-                    if (signal.aborted) return;
-                    addImagesAsLayers(loadedImages);
+                if (promptsToGenerate.length > 1) {
+                    addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
                 }
+    
+                const generationPromises = promptsToGenerate.map(async (p) => {
+                    const params = await analyzePromptForImageGenerationParams(p);
+                    if (signal.aborted) throw new Error("Cancelled");
+    
+                    const canvasAspectRatioStr = findClosestImagenAspectRatio(canvasSettings.width, canvasSettings.height);
+                    const finalAspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : canvasAspectRatioStr;
+                    // If using multi-prompt syntax, generate 1 image per prompt. Otherwise, respect user's request.
+                    const finalNumImages = promptsToGenerate.length > 1 ? 1 : params.numberOfImages;
+    
+                    addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
+                    addLog(params.refinedPrompt, 'prompt');
+                    return generateFreeImage(params.refinedPrompt, finalNumImages, finalAspectRatio as any);
+                });
+    
+                addLog(t('layerComposer_ai_log_generating'), 'spinner');
+                const resultsArrays = await Promise.all(generationPromises);
+                if (signal.aborted) return;
+    
+                const finalResults = resultsArrays.flat();
+                if (finalResults.length === 0) throw new Error("AI did not generate any images.");
+    
+                const imageLoadPromises = finalResults.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = url;
+                }));
+                const loadedImages = await Promise.all(imageLoadPromises);
+                if (signal.aborted) return;
+                addImagesAsLayers(loadedImages);
     
             // Path 2: Layer(s) Selected (Image Editing / Combination)
             } else {
-                if ((aiPreset === 'none') && !aiPrompt.trim()) {
+                if (!promptsToGenerate.some(p => p.trim()) && aiPreset === 'none') {
                     setIsLoading(false);
                     setIsLogVisible(false);
                     return;
                 }
-                addLog(t('layerComposer_ai_log_start'), 'info');
     
-                let finalPrompt = aiPrompt;
-                const layersToAnalyze = selectedLayers;
-                const referenceBounds = getBoundingBoxForLayers(layersToAnalyze);
-                const imageUrls = await Promise.all(layersToAnalyze.map(l => captureLayer(l)));
+                if (promptsToGenerate.length > 1 && aiPreset === 'architecture') {
+                    throw new Error("Multi-prompt syntax `{...|...}` is not supported with the Architecture preset. Please use the Default preset.");
+                }
+    
+                addLog(t('layerComposer_ai_log_start'), 'info');
+                if (promptsToGenerate.length > 1) {
+                    addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
+                }
+    
+                const referenceBounds = getBoundingBoxForLayers(selectedLayers);
+                const imageUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
                 if (signal.aborted) return;
     
-                if (aiPreset === 'architecture') {
-                    addLog(t('layerComposer_ai_log_refining'), 'spinner');
-                    addLog(t('layerComposer_ai_log_architect'), 'info');
-                    finalPrompt = await refineArchitecturePrompt(aiPrompt, imageUrls);
-                    if (signal.aborted) return;
-                    setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
-                } else {
-                    addLog(t('layerComposer_ai_log_noRefine'), 'info');
-                }
-                
-                addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
-                addLog(finalPrompt, 'prompt');
-                addLog(t('layerComposer_ai_log_generating'), 'spinner');
+                const generationPromises = promptsToGenerate.map(async (p) => {
+                    let finalPrompt = p;
     
-                if (selectedLayers.length === 1) {
-                    const resultUrl = await editImageWithPrompt(imageUrls[0], finalPrompt);
-                    if (signal.aborted) return;
-                    handleAddImage(resultUrl, referenceBounds);
-                } else {
-                    if (isSimpleImageMode) {
-                        const results = await Promise.all(layersToAnalyze.map(async (layer) => {
-                            if (signal.aborted) throw new Error("Cancelled");
-                            const resultUrl = await editImageWithPrompt(await captureLayer(layer), finalPrompt);
-                            const img = new Image();
-                            img.src = resultUrl;
-                            await new Promise(res => img.onload = res);
-                            return {img, originalLayer: layer};
-                        }));
-                        if (signal.aborted) return;
-                        beginInteraction();
-                        let currentLayers = [...layers];
-                        const newLayers = results.map(({img, originalLayer}) => ({ id: Math.random().toString(36).substring(2, 9), type: 'image', url: img.src, x: originalLayer.x + originalLayer.width + 20, y: originalLayer.y, width: img.naturalWidth, height: img.naturalHeight, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none' } as Layer));
-                        currentLayers.unshift(...newLayers);
-                        setLayers(currentLayers);
-                        setSelectedLayerIds(newLayers.map(l => l.id));
-                        const newHistory = history.slice(0, historyIndex + 1); newHistory.push(currentLayers);
-                        setHistory(newHistory);
-                        setHistoryIndex(newHistory.length - 1);
-                        interactionStartHistoryState.current = null;
+                    if (aiPreset === 'architecture') {
+                        addLog(t('layerComposer_ai_log_refining'), 'spinner');
+                        addLog(t('layerComposer_ai_log_architect'), 'info');
+                        finalPrompt = await refineArchitecturePrompt(p, imageUrls);
+                        if (signal.aborted) throw new Error("Cancelled");
+                        setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
                     } else {
-                        const resultUrl = await generateFromMultipleImages(imageUrls, finalPrompt);
-                        if (signal.aborted) return;
-                        handleAddImage(resultUrl, referenceBounds);
+                        addLog(t('layerComposer_ai_log_noRefine'), 'info');
                     }
-                }
+    
+                    addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
+                    addLog(finalPrompt, 'prompt');
+    
+                    if (isSimpleImageMode && promptsToGenerate.length === 1) {
+                        return Promise.all(imageUrls.map(url => editImageWithPrompt(url, finalPrompt)));
+                    } else {
+                        if (selectedLayers.length === 1) {
+                            return editImageWithPrompt(imageUrls[0], finalPrompt);
+                        } else {
+                            return generateFromMultipleImages(imageUrls, finalPrompt);
+                        }
+                    }
+                });
+    
+                addLog(t('layerComposer_ai_log_generating'), 'spinner');
+                const results = (await Promise.all(generationPromises)).flat();
+                if (signal.aborted) return;
+    
+                if (results.length === 0) throw new Error("AI did not generate any images.");
+    
+                const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = url;
+                }));
+                const loadedImages = await Promise.all(imageLoadPromises);
+                if (signal.aborted) return;
+    
+                const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
+                addImagesAsLayers(loadedImages, position);
             }
     
             setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
@@ -761,7 +790,6 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     
         } catch (err) {
             if (signal.aborted || (err instanceof Error && err.message === 'Cancelled')) {
-                // The cancellation log is handled in handleCancelGeneration
                 console.log("Generation process was cancelled.");
             } else {
                 const errorMessage = err instanceof Error ? err.message : "Unknown error.";
@@ -770,7 +798,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
             }
         } finally {
-            if (!signal.aborted) {
+            if (!generationController.current?.signal.aborted) {
                 setIsLoading(false);
             }
             generationController.current = null;
