@@ -135,7 +135,8 @@ export function processGeminiResponse(response: GenerateContentResponse): string
 }
 
 /**
- * A wrapper for the Gemini API call that includes a retry mechanism for internal server errors.
+ * A wrapper for the Gemini API call that includes a retry mechanism for internal server errors
+ * and for responses that don't contain an image.
  * @param parts An array of parts for the request payload (e.g., image parts, text parts).
  * @returns The GenerateContentResponse from the API.
  */
@@ -144,34 +145,55 @@ export async function callGeminiWithRetry(parts: object[]): Promise<GenerateCont
 
     const maxRetries = 3;
     const initialDelay = 1000;
+    let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            return await ai.models.generateContent({
+            const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image-preview',
                 contents: { parts },
                 config: {
                     responseModalities: [Modality.IMAGE, Modality.TEXT],
                 },
             });
+
+            // Validate that the response contains an image.
+            const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+            if (imagePart?.inlineData) {
+                return response; // Success! The response is valid.
+            }
+
+            // If no image is found, treat it as a failure and prepare for retry.
+            const textResponse = response.text || "No text response received.";
+            lastError = new Error(`The AI model responded with text instead of an image: "${textResponse}"`);
+            console.warn(`Attempt ${attempt}/${maxRetries}: No image returned. Retrying... Response text: ${textResponse}`);
+
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+            const processedError = processApiError(error);
+            lastError = processedError;
+            const errorMessage = processedError.message;
             console.error(`Error calling Gemini API (Attempt ${attempt}/${maxRetries}):`, errorMessage);
 
+            // Don't retry on critical errors like invalid API key or quota issues.
             if (errorMessage.includes('API key not valid') || errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate limit') || errorMessage.toLowerCase().includes('resource_exhausted')) {
-                throw error; // Don't retry on auth or quota errors
+                throw processedError;
             }
 
+            // If it's not a retriable server error and we're out of retries, fail.
             const isInternalError = errorMessage.includes('"code":500') || errorMessage.includes('INTERNAL');
-
-            if (isInternalError && attempt < maxRetries) {
-                const delay = initialDelay * Math.pow(2, attempt - 1);
-                console.log(`Internal error detected. Retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
+            if (!isInternalError && attempt >= maxRetries) {
+                throw processedError;
             }
-            throw error; // Re-throw if not a retriable error or if max retries are reached.
+        }
+        
+        // Wait before the next attempt, but not after the last one.
+        if (attempt < maxRetries) {
+            const delay = initialDelay * Math.pow(2, attempt - 1);
+            console.log(`Waiting ${delay}ms before next attempt...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
-    throw new Error("Gemini API call failed after all retries.");
+    
+    // If the loop completes without returning, all retries have failed. Throw the last error.
+    throw lastError || new Error("Gemini API call failed after all retries without returning a valid image.");
 }

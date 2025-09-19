@@ -238,12 +238,6 @@ body {
   transition: all 300ms;
 }
 
-@media (min-width: 640px) {
-  .app-card {
-    flex: 1 1 24rem;
-  }
-}
-
 .app-card:hover {
   background-color: rgba(0, 0, 0, 0.4);
   border-color: rgba(251, 191, 36, 0.5); /* hover:border-yellow-400/50 */

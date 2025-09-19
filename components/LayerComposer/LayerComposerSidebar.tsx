@@ -351,6 +351,24 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                     selectedLayersForPreset={selectedLayersForPreset}
                                     t={t}
                                />
+                               <div className="p-3 pt-0">
+                                 <div className="flex items-center justify-between pt-3 border-t border-neutral-700/50">
+                                     <label htmlFor="preset-batch-mode" className="text-sm font-medium text-neutral-200 flex items-center gap-2">
+                                         {t('layerComposer_ai_simpleMode')}
+                                         <span title={t('layerComposer_ai_simpleMode_tooltip')} className="cursor-help text-neutral-400">
+                                             <InfoIcon className="h-4 w-4" />
+                                         </span>
+                                     </label>
+                                     <input 
+                                         type="checkbox" 
+                                         id="preset-batch-mode"
+                                         checked={isSimpleImageMode}
+                                         onChange={(e) => setIsSimpleImageMode(e.target.checked)}
+                                         className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
+                                         disabled={selectedLayersForPreset.length < 2}
+                                     />
+                                 </div>
+                               </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

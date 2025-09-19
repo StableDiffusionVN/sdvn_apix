@@ -27,7 +27,7 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
   const [showAll, setShowAll] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  const APPS_PER_PAGE = 4;
+  const APPS_PER_PAGE = 8;
   const totalPages = Math.ceil(apps.length / APPS_PER_PAGE);
 
   const displayedApps = showAll 
@@ -53,8 +53,8 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
   // Handle layout for app cards: center single card, left-align multiple cards.
   const appListContainerClasses =
     displayedApps.length > 1
-      ? 'flex flex-wrap justify-start gap-6 w-full max-w-4xl'
-      : 'flex justify-center w-full max-w-xl';
+      ? 'grid w-full max-w-screen-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'
+      : 'flex w-full max-w-xl justify-center';
 
   const renderAppTitle = (title: string) => {
     // Replace newline characters with a space for single-line display on home cards
@@ -102,7 +102,7 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
   return (
     <motion.div 
       key="home-wrapper"
-      className="w-full max-w-4xl mx-auto text-center flex flex-col items-center justify-center h-full relative"
+      className="w-full max-w-screen-2xl mx-auto text-center flex flex-col items-center justify-center h-full relative"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}

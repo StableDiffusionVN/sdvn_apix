@@ -26,7 +26,7 @@ import {
     refinePrompt, 
     refineArchitecturePrompt, 
     analyzePromptForImageGenerationParams 
-} from '../../services/geminiService';
+} from '../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
@@ -440,6 +440,14 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setLoadedPreset(null);
         onClose();
     };
+
+    const handleRequestClose = useCallback(() => {
+        if (layers.length > 0) {
+            setIsConfirmingClose(true);
+        } else {
+            handleCloseAndReset();
+        }
+    }, [layers]);
     
     const loadCanvasStateFromJson = useCallback((jsonData: any) => {
         if (!jsonData || typeof jsonData.canvasSettings !== 'object' || !Array.isArray(jsonData.layers)) { setError(t('layerComposer_invalidJsonError')); return; }
@@ -659,7 +667,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             if (!isInfiniteCanvas) {
                 const dataUrl = await captureCanvas( layers, { x: 0, y: 0, width: canvasSettings.width, height: canvasSettings.height }, canvasSettings.background );
                 addImagesToGallery([dataUrl]);
-                onClose();
+                handleCloseAndReset();
             }
         } catch (err) { const errorMessage = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', errorMessage)); }
         finally { setIsLoading(false); }
@@ -962,6 +970,188 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         }
     }, [selectedLayers, layers, history, historyIndex, captureCanvas, beginInteraction, editingMaskForLayerId, setLayers, setHistory, setHistoryIndex, setSelectedLayerIds, setIsLoading, setError, t]);
 
+    const handleGenerateFromPreset = useCallback(async () => {
+        if (!loadedPreset) return;
+    
+        setIsLogVisible(true);
+        setIsLoading(true);
+        setError(null);
+        setAiProcessLog([]);
+        addLog(t('layerComposer_ai_log_start'), 'info');
+        
+        const presetOptions = loadedPreset.state.options;
+        const viewId = loadedPreset.viewId;
+    
+        try {
+            const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(0, 1));
+            const imageStatePropertyMap: Record<string, string[]> = {
+                'architecture-ideator': ['uploadedImage'],
+                'avatar-creator': ['uploadedImage'],
+                'dress-the-model': ['modelImage', 'clothingImage'],
+                'photo-restoration': ['uploadedImage'],
+                'image-to-real': ['uploadedImage'],
+                'swap-style': ['uploadedImage'],
+                'mix-style': ['contentImage', 'styleImage'],
+                'toy-model-creator': ['uploadedImage'],
+                'free-generation': ['image1', 'image2'],
+                'image-interpolation': ['referenceImage']
+            };
+            const requiredImageKeys = imageStatePropertyMap[viewId] || [];
+
+            // BATCH MODE
+            if (isSimpleImageMode && selectedLayers.length > 1) {
+                addLog(`Starting batch generation for ${selectedLayers.length} layers...`, 'info');
+
+                const generationPromises = selectedLayers.map(async (layer, index) => {
+                    addLog(`Processing layer ${index + 1}...`, 'info');
+                    const capturedLayerUrl = await captureLayer(layer);
+                    
+                    const finalImageUrls: (string | undefined)[] = [capturedLayerUrl];
+                    for (let i = 1; i < requiredImageKeys.length; i++) {
+                        const key = requiredImageKeys[i];
+                        finalImageUrls.push(loadedPreset.state[key]);
+                    }
+
+                    let resultUrls: string[] = [];
+                    // Logic is similar to single mode but adapted for loop
+                    switch (viewId) {
+                        case 'architecture-ideator': case 'photo-restoration': case 'image-to-real': case 'swap-style': case 'toy-model-creator':
+                            if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
+                            if (viewId === 'architecture-ideator') resultUrls.push(await generateArchitecturalImage(finalImageUrls[0], presetOptions));
+                            if (viewId === 'photo-restoration') resultUrls.push(await restoreOldPhoto(finalImageUrls[0], presetOptions));
+                            if (viewId === 'image-to-real') resultUrls.push(await convertImageToRealistic(finalImageUrls[0], presetOptions));
+                            if (viewId === 'swap-style') resultUrls.push(await swapImageStyle(finalImageUrls[0], presetOptions));
+                            if (viewId === 'toy-model-creator') {
+                                 const concept = loadedPreset.state.concept;
+                                 if (!concept) throw new Error("Toy Model Creator preset is missing a 'concept'.");
+                                 resultUrls.push(await generateToyModelImage(finalImageUrls[0], concept, presetOptions));
+                            }
+                            break;
+                        case 'avatar-creator':
+                             if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
+                             const ideas = loadedPreset.state.selectedIdeas;
+                             if (!ideas || ideas.length === 0) throw new Error("Avatar Creator preset has no ideas selected.");
+                             resultUrls.push(await generatePatrioticImage(finalImageUrls[0], ideas[0], presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
+                             break;
+                        case 'dress-the-model': case 'mix-style':
+                             if (!finalImageUrls[0] || !finalImageUrls[1]) throw new Error(`App "${viewId}" requires two images, but only one was provided by the batch layer.`);
+                             if (viewId === 'dress-the-model') resultUrls.push(await generateDressedModelImage(finalImageUrls[0], finalImageUrls[1], presetOptions));
+                             if (viewId === 'mix-style') {
+                                 const { resultUrl: mixUrl } = await mixImageStyle(finalImageUrls[0], finalImageUrls[1], presetOptions);
+                                 resultUrls.push(mixUrl);
+                             }
+                             break;
+                        case 'free-generation':
+                             const genUrls = await generateFreeImage( presetOptions.prompt, 1, presetOptions.aspectRatio, finalImageUrls[0], finalImageUrls[1], presetOptions.removeWatermark );
+                             resultUrls.push(...genUrls);
+                             break;
+                        case 'image-interpolation':
+                            const { generatedPrompt, additionalNotes } = loadedPreset.state;
+                            if (!generatedPrompt) throw new Error("Preset is missing the generated prompt.");
+                            if (!finalImageUrls[0]) throw new Error("Batch mode requires a reference image from a selected layer.");
+                            let iPrompt = generatedPrompt;
+                            if (additionalNotes) { iPrompt = await interpolatePrompts(iPrompt, additionalNotes); }
+                            const fPrompt = await adaptPromptToContext(finalImageUrls[0], iPrompt);
+                            resultUrls.push(await editImageWithPrompt(finalImageUrls[0], fPrompt, presetOptions.aspectRatio, presetOptions.removeWatermark));
+                            break;
+                        default:
+                            throw new Error(`Preset for app "${viewId}" is not supported in batch mode yet.`);
+                    }
+                    return resultUrls;
+                });
+                
+                addLog(t('layerComposer_ai_log_generating'), 'spinner');
+                const resultsArrays = await Promise.all(generationPromises);
+                const flatResults = resultsArrays.flat();
+
+                if (flatResults.length > 0) {
+                     const imageLoadPromises = flatResults.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                        const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+                    }));
+                    const loadedImages = await Promise.all(imageLoadPromises);
+                    addImagesAsLayers(loadedImages, referenceBounds);
+                }
+            
+            // SINGLE / COMBINE MODE
+            } else {
+                 let resultUrls: string[] = [];
+                 const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+                 const finalImageUrls: (string | undefined)[] = [];
+                 for (let i = 0; i < requiredImageKeys.length; i++) {
+                     const key = requiredImageKeys[i];
+                     if (selectedLayerUrls[i]) {
+                         finalImageUrls.push(selectedLayerUrls[i]);
+                     } else if (loadedPreset.state[key]) {
+                         finalImageUrls.push(loadedPreset.state[key]);
+                     } else {
+                         finalImageUrls.push(undefined);
+                     }
+                 }
+                addLog(`${t('layerComposer_ai_log_generating')} with "${t(`app_${viewId}_title`)}" preset...`, 'spinner');
+                switch (viewId) {
+                    case 'architecture-ideator': case 'photo-restoration': case 'image-to-real': case 'swap-style': case 'toy-model-creator':
+                        if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
+                        if (viewId === 'architecture-ideator') resultUrls.push(await generateArchitecturalImage(finalImageUrls[0], presetOptions));
+                        if (viewId === 'photo-restoration') resultUrls.push(await restoreOldPhoto(finalImageUrls[0], presetOptions));
+                        if (viewId === 'image-to-real') resultUrls.push(await convertImageToRealistic(finalImageUrls[0], presetOptions));
+                        if (viewId === 'swap-style') resultUrls.push(await swapImageStyle(finalImageUrls[0], presetOptions));
+                        if (viewId === 'toy-model-creator') {
+                            const concept = loadedPreset.state.concept;
+                            if (!concept) throw new Error("Preset is missing a 'concept'.");
+                            resultUrls.push(await generateToyModelImage(finalImageUrls[0], concept, presetOptions));
+                        }
+                        break;
+                    case 'avatar-creator':
+                        if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
+                        const ideas = loadedPreset.state.selectedIdeas;
+                        if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
+                        const avatarPromises = ideas.map((idea: string) => generatePatrioticImage(finalImageUrls[0]!, idea, presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
+                        resultUrls.push(...await Promise.all(avatarPromises));
+                        break;
+                    case 'dress-the-model': case 'mix-style':
+                        if (!finalImageUrls[0] || !finalImageUrls[1]) throw new Error(`App "${viewId}" requires two images.`);
+                        if (viewId === 'dress-the-model') resultUrls.push(await generateDressedModelImage(finalImageUrls[0], finalImageUrls[1], presetOptions));
+                        if (viewId === 'mix-style') {
+                            const { resultUrl: mixUrl } = await mixImageStyle(finalImageUrls[0], finalImageUrls[1], presetOptions);
+                            resultUrls.push(mixUrl);
+                        }
+                        break;
+                    case 'free-generation':
+                        const genUrls = await generateFreeImage(presetOptions.prompt, presetOptions.numberOfImages, presetOptions.aspectRatio, finalImageUrls[0], finalImageUrls[1], presetOptions.removeWatermark);
+                        resultUrls.push(...genUrls);
+                        break;
+                    case 'image-interpolation':
+                        const { generatedPrompt, additionalNotes } = loadedPreset.state;
+                        if (!generatedPrompt || !finalImageUrls[0]) throw new Error("Preset is missing prompt or reference image.");
+                        let iPrompt = generatedPrompt;
+                        if (additionalNotes) { iPrompt = await interpolatePrompts(iPrompt, additionalNotes); }
+                        const fPrompt = await adaptPromptToContext(finalImageUrls[0], iPrompt);
+                        resultUrls.push(await editImageWithPrompt(finalImageUrls[0], fPrompt, presetOptions.aspectRatio, presetOptions.removeWatermark));
+                        break;
+                    default:
+                        throw new Error(`Preset for app "${viewId}" is not supported yet.`);
+                }
+                if (resultUrls.length > 0) {
+                     const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                        const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+                    }));
+                    const loadedImages = await Promise.all(imageLoadPromises);
+                    addImagesAsLayers(loadedImages, referenceBounds);
+                }
+            }
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            addLog(t('layerComposer_ai_log_success'), 'success');
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
+            setError(errorMessage);
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers, t, isSimpleImageMode]);
+
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isOpen) return;
@@ -1046,115 +1236,6 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         }
     };
     
-    const handleGenerateFromPreset = async () => {
-        if (!loadedPreset) return;
-    
-        setIsLoading(true);
-        setError(null);
-        
-        const presetOptions = loadedPreset.state.options;
-        const viewId = loadedPreset.viewId;
-        let resultUrls: string[] = [];
-    
-        try {
-            const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
-            const referenceBounds = getBoundingBoxForLayers(selectedLayers);
-    
-            switch (viewId) {
-                case 'architecture-ideator':
-                    if (selectedLayerUrls.length < 1) throw new Error("Architecture Ideator requires 1 selected layer.");
-                    resultUrls.push(await generateArchitecturalImage(selectedLayerUrls[0], presetOptions));
-                    break;
-                case 'avatar-creator':
-                    if (selectedLayerUrls.length < 1) throw new Error("Avatar Creator requires 1 selected layer.");
-                    const ideas = loadedPreset.state.selectedIdeas;
-                    if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
-                    resultUrls.push(await generatePatrioticImage(selectedLayerUrls[0], ideas[0], presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
-                    break;
-                case 'dress-the-model':
-                    if (selectedLayerUrls.length < 2) throw new Error("Dress The Model requires 2 selected layers (model, then clothing).");
-                    resultUrls.push(await generateDressedModelImage(selectedLayerUrls[0], selectedLayerUrls[1], presetOptions));
-                    break;
-                case 'photo-restoration':
-                     if (selectedLayerUrls.length < 1) throw new Error("Photo Restoration requires 1 selected layer.");
-                    resultUrls.push(await restoreOldPhoto(selectedLayerUrls[0], presetOptions));
-                    break;
-                case 'image-to-real':
-                    if (selectedLayerUrls.length < 1) throw new Error("Image To Real requires 1 selected layer.");
-                    resultUrls.push(await convertImageToRealistic(selectedLayerUrls[0], presetOptions));
-                    break;
-                case 'swap-style':
-                    if (selectedLayerUrls.length < 1) throw new Error("Swap Style requires 1 selected layer.");
-                    resultUrls.push(await swapImageStyle(selectedLayerUrls[0], presetOptions));
-                    break;
-                case 'mix-style':
-                    if (selectedLayerUrls.length < 2) throw new Error("Mix Style requires 2 selected layers (content, then style).");
-                    const { resultUrl: mixUrl } = await mixImageStyle(selectedLayerUrls[0], selectedLayerUrls[1], presetOptions);
-                    resultUrls.push(mixUrl);
-                    break;
-                case 'toy-model-creator':
-                    if (selectedLayerUrls.length < 1) throw new Error("Toy Model Creator requires 1 selected layer.");
-                    const concept = loadedPreset.state.concept;
-                    if (!concept) throw new Error("Preset for Toy Model Creator is missing a 'concept'.");
-                    resultUrls.push(await generateToyModelImage(selectedLayerUrls[0], concept, presetOptions));
-                    break;
-                case 'free-generation':
-                    if (selectedLayerUrls.length > 2) throw new Error("Free Generation supports up to 2 selected layers.");
-                    const genUrls = await generateFreeImage(
-                        presetOptions.prompt,
-                        presetOptions.numberOfImages,
-                        presetOptions.aspectRatio,
-                        selectedLayerUrls[0],
-                        selectedLayerUrls[1],
-                        presetOptions.removeWatermark
-                    );
-                    resultUrls.push(...genUrls);
-                    break;
-                case 'image-interpolation':
-                     if (selectedLayerUrls.length < 1) throw new Error("Image Interpolation requires 1 selected layer for the Reference Image.");
-                    const { generatedPrompt, additionalNotes, inputImage, outputImage } = loadedPreset.state;
-                    if (!generatedPrompt) throw new Error("Image Interpolation preset is missing the generated prompt.");
-
-                    // Use the image URLs directly from the preset state.
-                    const finalInputUrl = inputImage;
-                    const finalOutputUrl = outputImage;
-                    const finalReferenceUrl = selectedLayerUrls[0];
-                    
-                    if (!finalInputUrl || !finalOutputUrl) throw new Error("Preset is missing input or output image data.");
-
-                    let intermediatePrompt = generatedPrompt;
-                    if (additionalNotes) {
-                         intermediatePrompt = await interpolatePrompts(intermediatePrompt, additionalNotes);
-                    }
-                    
-                    const finalPromptText = await adaptPromptToContext(finalReferenceUrl, intermediatePrompt);
-                    const interpUrl = await editImageWithPrompt(finalReferenceUrl, finalPromptText, presetOptions.aspectRatio, presetOptions.removeWatermark);
-                    resultUrls.push(interpUrl);
-                    break;
-                default:
-                    throw new Error(`Preset for app "${viewId}" is not supported yet.`);
-            }
-    
-            if (resultUrls.length > 0) {
-                 const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = url;
-                }));
-                const loadedImages = await Promise.all(imageLoadPromises);
-                addImagesAsLayers(loadedImages, referenceBounds);
-            }
-    
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
-            setError(errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    
     return ReactDOM.createPortal(
         <>
             <AnimatePresence>
@@ -1233,7 +1314,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                         onAddImage={() => setIsGalleryOpen(true)}
                                         onAddText={handleAddTextLayer}
                                         onSave={handleSave}
-                                        onClose={handleCloseAndReset}
+                                        onClose={handleRequestClose}
                                         beginInteraction={beginInteraction}
                                         hasAiLog={aiProcessLog.length > 0}
                                         isLogVisible={isLogVisible}
@@ -1325,7 +1406,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                             <p className="text-neutral-300 my-2">{t('confirmClose_message')}</p>
                             <div className="flex justify-end items-center gap-4 mt-4">
                                 <button onClick={() => setIsConfirmingClose(false)} className="btn btn-secondary btn-sm">{t('confirmClose_stay')}</button>
-                                <button onClick={() => { onClose(); setIsConfirmingClose(false); }} className="btn btn-primary btn-sm">{t('confirmClose_close')}</button>
+                                <button onClick={() => { handleCloseAndReset(); setIsConfirmingClose(false); }} className="btn btn-primary btn-sm">{t('confirmClose_close')}</button>
                             </div>
                         </motion.div>
                     </motion.div>

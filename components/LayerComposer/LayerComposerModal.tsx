@@ -973,8 +973,11 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const handleGenerateFromPreset = useCallback(async () => {
         if (!loadedPreset) return;
     
+        setIsLogVisible(true);
         setIsLoading(true);
         setError(null);
+        setAiProcessLog([]);
+        addLog(t('layerComposer_ai_log_start'), 'info');
         
         const presetOptions = loadedPreset.state.options;
         const viewId = loadedPreset.viewId;
@@ -1010,6 +1013,8 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                     finalImageUrls.push(undefined);
                 }
             }
+
+            addLog(`${t('layerComposer_ai_log_generating')} with "${t(`app_${viewId}_title`)}" preset...`, 'spinner');
     
             switch (viewId) {
                 case 'architecture-ideator':
@@ -1088,14 +1093,19 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 const loadedImages = await Promise.all(imageLoadPromises);
                 addImagesAsLayers(loadedImages, referenceBounds);
             }
+
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            addLog(t('layerComposer_ai_log_success'), 'success');
     
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
             setError(errorMessage);
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
         } finally {
             setIsLoading(false);
         }
-    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers]);
+    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers, t]);
 
 
     useEffect(() => {
