@@ -20,6 +20,8 @@ interface SelectedItem {
     label: string;
 }
 
+const FONT_FAMILIES = [ 'Be Vietnam Pro', 'Asimovian', 'Playwrite AU SA', 'Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS' ];
+
 const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) => {
     const { sessionGalleryImages, addImagesToGallery, removeImageFromGallery, replaceImageInGallery } = useAppControls();
     const { openImageEditor } = useImageEditor();
@@ -35,6 +37,9 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
     const [labelFontColor, setLabelFontColor] = useState('#000000');
     const [labelBgColor, setLabelBgColor] = useState('#FFFFFF');
     const [labelFontSize, setLabelFontSize] = useState(40);
+    const [fontFamily, setFontFamily] = useState('Be Vietnam Pro');
+    const [backgroundColor, setBackgroundColor] = useState('#FFFFFF');
+
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -106,16 +111,19 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                 layout: layoutMode,
                 mainTitle: mainTitle.trim(),
                 gap: gap,
+                backgroundColor: backgroundColor,
                 labels: {
                     enabled: hasLabels,
                     fontColor: labelFontColor,
                     backgroundColor: labelBgColor,
                     baseFontSize: labelFontSize,
+                    fontFamily: fontFamily,
                 }
             });
             addImagesToGallery([resultUrl]);
-            setSelectedItems([]);
-            setMainTitle('');
+            // Do not reset state to allow for regeneration
+            // setSelectedItems([]);
+            // setMainTitle('');
         } catch (err) {
             console.error("Failed to combine images:", err);
             const errorMessage = err instanceof Error ? err.message : "Lỗi không xác định.";
@@ -217,20 +225,29 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                                         </div>
                                     </div>
                                     
-                                    <div>
-                                        <label htmlFor="layout-gap" className="block text-base font-medium text-neutral-300 mb-2">
-                                            Khoảng cách / Viền ({gap}px)
-                                        </label>
-                                        <input
-                                            id="layout-gap"
-                                            type="range"
-                                            min="0"
-                                            max="50"
-                                            step="1"
-                                            value={gap}
-                                            onChange={(e) => setGap(Number(e.target.value))}
-                                            className="slider-track"
-                                        />
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <label htmlFor="layout-gap" className="block text-base font-medium text-neutral-300 mb-2">
+                                                Khoảng cách / Viền ({gap}px)
+                                            </label>
+                                            <input
+                                                id="layout-gap"
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                step="1"
+                                                value={gap}
+                                                onChange={(e) => setGap(Number(e.target.value))}
+                                                className="slider-track"
+                                            />
+                                        </div>
+                                        <div className="flex-shrink-0">
+                                            <label htmlFor="bg-color" className="block text-base font-medium text-neutral-300 mb-2 text-center">Nền</label>
+                                            <div className="relative w-10 h-10">
+                                                <input type="color" id="bg-color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Chọn màu nền"/>
+                                                <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: backgroundColor }} />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="border-t border-white/10 pt-6 space-y-4">
@@ -239,71 +256,33 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                                             <label htmlFor="main-title" className="block text-sm font-medium text-neutral-300 mb-2">Tiêu đề chính</label>
                                             <input type="text" id="main-title" value={mainTitle} onChange={(e) => setMainTitle(e.target.value)} className="form-input" placeholder="Tiêu đề cho toàn bộ ảnh..."/>
                                         </div>
+                                         <div>
+                                            <label htmlFor="font-family" className="block text-sm font-medium text-neutral-300 mb-2">Phông chữ</label>
+                                            <select id="font-family" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="form-input !p-2 !text-sm">
+                                                {FONT_FAMILIES.map(font => <option key={font} value={font} style={{ fontFamily: font }}>{font}</option>)}
+                                            </select>
+                                        </div>
                                         <div className="flex items-center gap-3">
                                             <label className="text-sm font-medium text-neutral-300 whitespace-nowrap flex-shrink-0">
                                                 Màu chữ / nền
                                             </label>
                                             <div className="flex items-center gap-2">
-                                                {/* Font Color */}
                                                 <div className="relative w-10 h-10">
-                                                    <input
-                                                        type="color"
-                                                        id="label-fontcolor"
-                                                        value={labelFontColor}
-                                                        onChange={(e) => setLabelFontColor(e.target.value)}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                        title="Chọn màu chữ"
-                                                    />
-                                                    <div
-                                                        className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none"
-                                                        style={{ backgroundColor: labelFontColor }}
-                                                    />
+                                                    <input type="color" id="label-fontcolor" value={labelFontColor} onChange={(e) => setLabelFontColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Chọn màu chữ" />
+                                                    <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: labelFontColor }}/>
                                                 </div>
-                                                
-                                                {/* Swap Button */}
-                                                <button
-                                                    type="button"
-                                                    onClick={handleSwapColors}
-                                                    className="p-2 rounded-full hover:bg-neutral-700 transition-colors"
-                                                    aria-label="Hoán đổi màu chữ và màu nền"
-                                                    title="Hoán đổi màu"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                                    </svg>
+                                                <button type="button" onClick={handleSwapColors} className="p-2 rounded-full hover:bg-neutral-700 transition-colors" aria-label="Hoán đổi màu chữ và màu nền" title="Hoán đổi màu" >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}> <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /> </svg>
                                                 </button>
-
-                                                {/* Background Color */}
                                                 <div className="relative w-10 h-10">
-                                                    <input
-                                                        type="color"
-                                                        id="label-bgcolor"
-                                                        value={labelBgColor}
-                                                        onChange={(e) => setLabelBgColor(e.target.value)}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                        title="Chọn màu nền nhãn"
-                                                    />
-                                                    <div
-                                                        className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none"
-                                                        style={{ backgroundColor: labelBgColor }}
-                                                    />
+                                                    <input type="color" id="label-bgcolor" value={labelBgColor} onChange={(e) => setLabelBgColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Chọn màu nền nhãn" />
+                                                    <div className="w-full h-full rounded-full border-2 border-white/20 shadow-inner pointer-events-none" style={{ backgroundColor: labelBgColor }}/>
                                                 </div>
                                             </div>
                                         </div>
                                         <div>
-                                            <label htmlFor="label-fontsize" className="block text-sm font-medium text-neutral-300 mb-2">
-                                                Cỡ chữ ({labelFontSize}px @ 1500px width)
-                                            </label>
-                                            <input
-                                                id="label-fontsize"
-                                                type="range"
-                                                min="10"
-                                                max="100"
-                                                step="1"
-                                                value={labelFontSize}
-                                                onChange={(e) => setLabelFontSize(Number(e.target.value))}
-                                                className="slider-track"
-                                            />
+                                            <label htmlFor="label-fontsize" className="block text-sm font-medium text-neutral-300 mb-2"> Cỡ chữ Tiêu đề chính ({labelFontSize}px @ 1536px width) </label>
+                                            <input id="label-fontsize" type="range" min="10" max="100" step="1" value={labelFontSize} onChange={(e) => setLabelFontSize(Number(e.target.value))} className="slider-track" />
                                         </div>
                                         <p className="text-xs text-neutral-500">Nhập nhãn cho từng ảnh đã chọn dưới đây. Nhãn trống sẽ được bỏ qua.</p>
                                         <ul className="space-y-3 pt-3 border-t border-white/10 max-h-60 overflow-y-auto">

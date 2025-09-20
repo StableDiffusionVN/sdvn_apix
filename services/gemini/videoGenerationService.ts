@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 import { 
     processApiError,
     parseDataUrl, 
@@ -13,7 +13,6 @@ export async function startVideoGenerationFromImage(
     prompt: string
 ): Promise<any> {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
 
         console.log("Starting video generation...");
@@ -43,7 +42,6 @@ export async function pollVideoOperation(
     operation: any
 ): Promise<any> {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         console.log("Polling video operation status...");
         return await ai.operations.getVideosOperation({ operation });
     } catch (error) {

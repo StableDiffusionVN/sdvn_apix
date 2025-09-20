@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+import toast from 'react-hot-toast';
 import { type ImageForZip, type VideoTask } from './uiTypes';
 
 // Declare JSZip for creating zip files
@@ -35,6 +36,7 @@ export const handleFileUpload = (
  */
 export const downloadImage = (url: string, filenameWithoutExtension: string) => {
     if (!url) return;
+    toast('Bắt đầu tải về...');
 
     // Determine extension from URL
     let extension = 'jpg'; // Default extension
@@ -118,9 +120,10 @@ export const dataURLtoBlob = async (dataurl: string): Promise<Blob> => {
  */
 export const downloadAllImagesAsZip = async (images: ImageForZip[], zipFilename: string = 'results.zip') => {
     if (!images || images.length === 0) {
-        alert('Không có ảnh nào để tải về.');
+        toast.error('Không có ảnh nào để tải về.');
         return;
     }
+    toast('Đang chuẩn bị file zip...');
 
     try {
         const zip = new JSZip();
@@ -150,7 +153,7 @@ export const downloadAllImagesAsZip = async (images: ImageForZip[], zipFilename:
         }
 
         if (Object.keys(zip.files).length === 0) {
-            alert('Không có ảnh hợp lệ nào để tải về.');
+            toast.error('Không có ảnh hợp lệ nào để tải về.');
             return;
         }
 
@@ -166,7 +169,7 @@ export const downloadAllImagesAsZip = async (images: ImageForZip[], zipFilename:
 
     } catch (error) {
         console.error('Lỗi khi tạo file zip:', error);
-        alert('Đã xảy ra lỗi khi tạo file zip. Vui lòng thử lại.');
+        toast.error('Đã xảy ra lỗi khi tạo file zip.');
     }
 };
 
@@ -232,7 +235,7 @@ export const processAndDownloadAll = async ({
     });
 
     if (allItemsToZip.length === inputImages.length) {
-        alert('Không có ảnh hoặc video nào đã tạo để tải về.');
+        toast.error('Không có ảnh hoặc video nào đã tạo để tải về.');
         return;
     }
 
@@ -240,263 +243,7 @@ export const processAndDownloadAll = async ({
 };
 
 
-// --- REFACTORED: Image Combining Utility ---
-const loadImage = (url: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = (err) => reject(new Error(`Failed to load image: ${url.substring(0, 50)}...`));
-        img.src = url;
-    });
-};
-
-interface CombineImageItem {
-    url: string;
-    label: string;
-}
-
-interface CombineImageOptions {
-    layout: 'horizontal' | 'vertical' | 'smart-grid';
-    mainTitle?: string;
-    gap?: number;
-    backgroundColor?: string;
-    labels?: {
-        enabled: boolean;
-        fontColor?: string;
-        backgroundColor?: string;
-        baseFontSize?: number;
-    };
-}
-
-export const combineImages = async (
-    items: CombineImageItem[],
-    options: CombineImageOptions
-): Promise<string> => {
-    if (items.length < 1) {
-        throw new Error("Cần ít nhất một ảnh để xử lý.");
-    }
-
-    const {
-        layout,
-        mainTitle = '',
-        gap = 0,
-        backgroundColor = '#FFFFFF',
-        labels = { enabled: false, fontColor: '#000000', backgroundColor: '#FFFFFF', baseFontSize: 40 }
-    } = options;
-    
-    const loadedImages = await Promise.all(items.map(item => loadImage(item.url)));
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error("Không thể lấy context của canvas.");
-    
-    const hasMainTitle = labels.enabled && mainTitle.trim() !== '';
-    const hasItemLabels = labels.enabled && items.some(item => item.label.trim() !== '');
-
-    if (layout === 'horizontal') {
-        const targetHeight = Math.max(...loadedImages.map(img => img.height));
-        const scaledImages = loadedImages.map(img => {
-            const scaleFactor = targetHeight / img.height;
-            return { img, width: img.width * scaleFactor, height: targetHeight };
-        });
-
-        const totalContentWidth = scaledImages.reduce((sum, sImg) => sum + sImg.width, 0) + (gap * (loadedImages.length - 1));
-        canvas.width = totalContentWidth + gap * 2;
-        
-        const baseFontSize = labels.baseFontSize || 40;
-        const referenceWidth = 1500;
-        const fontScaleFactor = canvas.width / referenceWidth;
-        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
-        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
-        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
-        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
-        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
-        
-        const totalContentHeight = titleHeight + targetHeight + finalItemLabelHeight;
-        canvas.height = totalContentHeight + gap * 2;
-        
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (hasMainTitle) {
-            ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
-        }
-
-        let currentX = gap;
-        for (let i = 0; i < scaledImages.length; i++) {
-            const sImg = scaledImages[i];
-            const item = items[i];
-            ctx.drawImage(sImg.img, currentX, gap + titleHeight, sImg.width, sImg.height);
-            
-            if (hasItemLabels && item.label.trim() !== '') {
-                const labelY = gap + titleHeight + targetHeight;
-                ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
-                ctx.fillRect(currentX, labelY, sImg.width, finalItemLabelHeight);
-                ctx.fillStyle = labels.fontColor || '#000000';
-                ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(item.label.trim(), currentX + sImg.width / 2, labelY + finalItemLabelHeight / 2);
-            }
-            currentX += sImg.width + gap;
-        }
-
-    } else if (layout === 'vertical') {
-        const targetWidth = Math.max(...loadedImages.map(img => img.width));
-        canvas.width = targetWidth + gap * 2;
-
-        const baseFontSize = labels.baseFontSize || 40;
-        const referenceWidth = 1500;
-        const fontScaleFactor = canvas.width / referenceWidth;
-        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
-        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
-        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
-        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
-        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
-        
-        const scaledImages = loadedImages.map(img => {
-            const scaleFactor = targetWidth / img.width;
-            return { img, width: targetWidth, height: img.height * scaleFactor };
-        });
-
-        let totalContentHeight = titleHeight;
-        scaledImages.forEach((sImg, i) => {
-            totalContentHeight += sImg.height;
-            if (hasItemLabels && items[i].label.trim() !== '') {
-                totalContentHeight += finalItemLabelHeight;
-            }
-        });
-        totalContentHeight += gap * (loadedImages.length - 1);
-
-        canvas.height = totalContentHeight + gap * 2;
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        if (hasMainTitle) {
-            ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
-        }
-
-        let currentY = titleHeight + gap;
-        for (let i = 0; i < scaledImages.length; i++) {
-            const sImg = scaledImages[i];
-            const item = items[i];
-            ctx.drawImage(sImg.img, gap, currentY, sImg.width, sImg.height);
-            currentY += sImg.height;
-
-            if (hasItemLabels && item.label.trim() !== '') {
-                ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
-                ctx.fillRect(gap, currentY, sImg.width, finalItemLabelHeight);
-                ctx.fillStyle = labels.fontColor || '#000000';
-                ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(item.label.trim(), gap + sImg.width / 2, currentY + finalItemLabelHeight / 2);
-                currentY += finalItemLabelHeight;
-            }
-            if (i < scaledImages.length - 1) {
-                currentY += gap;
-            }
-        }
-    } else { // smart-grid
-        const canvasMaxWidth = 1920; 
-        const contentWidth = canvasMaxWidth - gap * 2;
-        
-        const n = loadedImages.length;
-        const cols = n > 0 ? Math.ceil(Math.sqrt(n)) : 0;
-        const numRows = cols > 0 ? Math.ceil(n / cols) : 0;
-
-        const imageRows: HTMLImageElement[][] = [];
-        for (let i = 0; i < numRows; i++) {
-            const start = i * cols;
-            const end = start + cols;
-            const rowImages = loadedImages.slice(start, end);
-            if (rowImages.length > 0) {
-                imageRows.push(rowImages);
-            }
-        }
-        
-        canvas.width = canvasMaxWidth;
-
-        const baseFontSize = labels.baseFontSize || 40;
-        const referenceWidth = 1500;
-        const fontScaleFactor = canvas.width / referenceWidth;
-        const finalItemLabelFontSize = Math.max(12, Math.round(baseFontSize * fontScaleFactor));
-        const finalTitleFontSize = Math.max(18, Math.round((baseFontSize * 1.5) * fontScaleFactor));
-        const labelVerticalPadding = Math.round(finalItemLabelFontSize * 0.6);
-        const finalItemLabelHeight = hasItemLabels ? finalItemLabelFontSize + labelVerticalPadding * 2 : 0;
-        const titleHeight = hasMainTitle ? finalTitleFontSize + labelVerticalPadding * 2 : 0;
-        
-        const finalRowLayouts: { height: number; images: HTMLImageElement[]; items: CombineImageItem[] }[] = [];
-        let finalTotalHeight = titleHeight + gap * 2 + Math.max(0, imageRows.length - 1) * gap;
-        
-        let startIndex = 0;
-        for (const row of imageRows) {
-            if (row.length === 0) continue;
-            
-            const rowItems = items.slice(startIndex, startIndex + row.length);
-            startIndex += row.length;
-
-            const rowARSum = row.reduce((sum, img) => sum + (img.width / img.height), 0);
-            const rowImageHeight = (contentWidth - (row.length - 1) * gap) / rowARSum;
-            
-            finalRowLayouts.push({ images: row, items: rowItems, height: rowImageHeight });
-            finalTotalHeight += rowImageHeight + (hasItemLabels ? finalItemLabelHeight : 0);
-        }
-
-        canvas.height = finalTotalHeight;
-        
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (hasMainTitle) {
-            ctx.fillStyle = labels.fontColor || '#000000';
-            ctx.font = `bold ${finalTitleFontSize}px "Be Vietnam Pro"`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(mainTitle.trim(), canvas.width / 2, gap + titleHeight / 2);
-        }
-        
-        let yPos = titleHeight + gap;
-        for (const layout of finalRowLayouts) {
-            let xPos = gap;
-            for (let i = 0; i < layout.images.length; i++) {
-                const img = layout.images[i];
-                const item = layout.items[i];
-                const imgAR = img.width / img.height;
-                const dWidth = layout.height * imgAR;
-                
-                ctx.drawImage(img, xPos, yPos, dWidth, layout.height);
-                
-                if (hasItemLabels && item.label.trim() !== '') {
-                    const labelY = yPos + layout.height;
-                    ctx.fillStyle = labels.backgroundColor || '#FFFFFF';
-                    ctx.fillRect(xPos, labelY, dWidth, finalItemLabelHeight);
-                    ctx.fillStyle = labels.fontColor || '#000000';
-                    ctx.font = `bold ${finalItemLabelFontSize}px "Be Vietnam Pro"`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(item.label.trim(), xPos + dWidth / 2, labelY + finalItemLabelHeight / 2);
-                }
-
-                xPos += dWidth + gap;
-            }
-            yPos += layout.height + (hasItemLabels ? finalItemLabelHeight : 0) + gap;
-        }
-    }
-    
-    return canvas.toDataURL('image/png');
-};
-
-
-// --- NEW: PNG Metadata Utilities for Import/Export ---
+// --- PNG Metadata Utilities for Import/Export ---
 
 const crc32 = (function() {
     let table: number[] | undefined;
@@ -527,7 +274,6 @@ export const embedJsonInPng = async (imageDataUrl: string, jsonData: object, ena
         return imageDataUrl;
     }
     
-    // We can only add chunks to PNGs. If it's another format, return the original.
     if (!imageDataUrl.startsWith('data:image/png;base64,')) {
         console.warn('Cannot embed JSON in non-PNG image. Returning original.');
         return imageDataUrl;
@@ -538,10 +284,8 @@ export const embedJsonInPng = async (imageDataUrl: string, jsonData: object, ena
         const buffer = await blob.arrayBuffer();
         const view = new Uint8Array(buffer);
 
-        // The IEND chunk is always the last 12 bytes of a valid PNG.
         const iendIndex = view.length - 12;
 
-        // Create custom chunk 'apIX' (aPix)
         const chunkType = new TextEncoder().encode('apIX');
         const chunkDataStr = JSON.stringify(jsonData);
         const chunkData = new TextEncoder().encode(chunkDataStr);
@@ -550,20 +294,20 @@ export const embedJsonInPng = async (imageDataUrl: string, jsonData: object, ena
         const fullChunk = new Uint8Array(4 + 4 + chunkLength + 4);
         const chunkDataView = new DataView(fullChunk.buffer);
         
-        chunkDataView.setUint32(0, chunkLength, false); // Length (Big Endian)
-        fullChunk.set(chunkType, 4); // Type
-        fullChunk.set(chunkData, 8); // Data
+        chunkDataView.setUint32(0, chunkLength, false);
+        fullChunk.set(chunkType, 4);
+        fullChunk.set(chunkData, 8);
         
         const crcData = new Uint8Array(4 + chunkLength);
         crcData.set(chunkType);
         crcData.set(chunkData, 4);
         const crc = crc32(crcData);
-        chunkDataView.setUint32(8 + chunkLength, crc, false); // CRC (Big Endian)
+        chunkDataView.setUint32(8 + chunkLength, crc, false);
 
         const newPngData = new Uint8Array(iendIndex + fullChunk.length + 12);
-        newPngData.set(view.slice(0, iendIndex)); // Data before IEND
-        newPngData.set(fullChunk, iendIndex); // Our custom chunk
-        newPngData.set(view.slice(iendIndex), iendIndex + fullChunk.length); // IEND chunk
+        newPngData.set(view.slice(0, iendIndex));
+        newPngData.set(fullChunk, iendIndex);
+        newPngData.set(view.slice(iendIndex), iendIndex + fullChunk.length);
 
         const newBlob = new Blob([newPngData], { type: 'image/png' });
 
@@ -575,7 +319,7 @@ export const embedJsonInPng = async (imageDataUrl: string, jsonData: object, ena
         });
     } catch (error) {
         console.error("Failed to embed JSON in PNG:", error);
-        return imageDataUrl; // Return original URL on failure
+        return imageDataUrl;
     }
 };
 
@@ -611,4 +355,279 @@ export const extractJsonFromPng = async (file: File): Promise<object | null> => 
         console.error("Failed to extract JSON from PNG:", error);
     }
     return null;
+};
+// --- NEW: Image Combination Utility ---
+
+interface CombineItem {
+    url: string;
+    label: string;
+}
+
+interface CombineOptions {
+    layout: 'smart-grid' | 'horizontal' | 'vertical';
+    mainTitle?: string;
+    gap?: number;
+    backgroundColor?: string;
+    labels?: {
+        enabled: boolean;
+        fontColor?: string;
+        backgroundColor?: string;
+        baseFontSize?: number;
+        fontFamily?: string;
+    };
+}
+
+const loadImg = (url: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load image: ${url.substring(0, 50)}...`));
+    img.src = url;
+});
+
+const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+    const words = text.split(' ');
+    let line = '';
+    let testLine;
+    for(let n = 0; n < words.length; n++) {
+        testLine = line + words[n] + ' ';
+        if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+            ctx.fillText(line, x, y);
+            line = words[n] + ' ';
+            y += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    ctx.fillText(line, x, y);
+};
+
+export const combineImages = async (items: CombineItem[], options: CombineOptions): Promise<string> => {
+    const {
+        layout = 'smart-grid',
+        mainTitle = '',
+        gap = 0,
+        backgroundColor = '#ffffff',
+        labels = { enabled: false, fontColor: '#000000', backgroundColor: '#ffffff', baseFontSize: 40, fontFamily: 'Be Vietnam Pro' }
+    } = options;
+
+    if (items.length === 0) throw new Error("No images provided to combine.");
+
+    const loadedImages = await Promise.all(items.map(item => loadImg(item.url)));
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Could not create canvas context.");
+    
+    const BASE_CANVAS_WIDTH = 1536.0;
+
+    let nativeContentWidth = 0;
+    if (layout === 'horizontal') {
+        const maxHeight = Math.max(...loadedImages.map(img => img.naturalHeight));
+        nativeContentWidth = loadedImages.reduce((sum, img) => {
+            const scale = maxHeight > 0 ? maxHeight / img.naturalHeight : 1;
+            return sum + (img.naturalWidth * scale);
+        }, 0) + (loadedImages.length > 1 ? (loadedImages.length - 1) * gap : 0);
+    } else if (layout === 'vertical') {
+        nativeContentWidth = Math.max(...loadedImages.map(img => img.naturalWidth));
+    } else { // smart-grid
+        const numRows = items.length > 1 ? Math.floor(Math.sqrt(items.length)) : 1;
+        const baseImagesPerRow = Math.floor(items.length / numRows);
+        let remainder = items.length % numRows;
+        const rowWidths: number[] = [];
+        let currentImageIndex = 0;
+        for (let i = 0; i < numRows; i++) {
+            const rowSize = baseImagesPerRow + (remainder > 0 ? 1 : 0);
+            const group = loadedImages.slice(currentImageIndex, currentImageIndex + rowSize);
+            currentImageIndex += rowSize;
+            if (remainder > 0) remainder--;
+            if (group.length > 0) {
+                const maxHeight = Math.max(...group.map(img => img.naturalHeight));
+                const rowWidth = group.reduce((sum, img) => {
+                     const scale = maxHeight > 0 ? maxHeight / img.naturalHeight : 1;
+                     return sum + (img.naturalWidth * scale);
+                }, 0) + (group.length > 1 ? (group.length - 1) * gap : 0);
+                rowWidths.push(rowWidth);
+            }
+        }
+        nativeContentWidth = Math.max(...rowWidths);
+    }
+    if (nativeContentWidth <= 0) nativeContentWidth = BASE_CANVAS_WIDTH;
+
+    const scaleRatio = BASE_CANVAS_WIDTH / nativeContentWidth;
+    const scaledGap = Math.round(gap * scaleRatio);
+    
+    const FONT_FAMILY = labels.fontFamily || '"Be Vietnam Pro", sans-serif';
+
+    const finalMainTitleFontSize = Math.round(labels.baseFontSize || 40);
+    const finalLabelFontSize = Math.round(finalMainTitleFontSize * 0.8);
+
+    const labelFontSizeForContentCanvas = Math.round(finalLabelFontSize / scaleRatio);
+
+    const mainTitleFont = `bold ${finalMainTitleFontSize}px ${FONT_FAMILY}`;
+    const labelFont = `${labelFontSizeForContentCanvas}px ${FONT_FAMILY}`;
+    
+    const hasPerImageLabels = labels.enabled && items.some(i => i.label && i.label.trim() !== '');
+    const hasMainTitle = labels.enabled && mainTitle && mainTitle.trim() !== '';
+
+    // Dynamic padding based on font size. The vertical padding for a label area
+    // will be equal to the font size on both top and bottom.
+    const finalPadding = finalMainTitleFontSize;
+    const contentCanvasPadding = labelFontSizeForContentCanvas;
+
+    // The total height includes the font size itself plus top and bottom padding.
+    const finalTitleHeight = hasMainTitle ? finalMainTitleFontSize + (finalPadding * 2) : 0;
+    const perImageLabelHeight = hasPerImageLabels ? labelFontSizeForContentCanvas + (contentCanvasPadding * 2) : 0;
+    
+    const labelLineHeight = labelFontSizeForContentCanvas * 1.2;
+    const mainTitleLineHeight = finalMainTitleFontSize * 1.2;
+    
+    let contentCanvas = document.createElement('canvas');
+    const contentCtx = contentCanvas.getContext('2d');
+    if (!contentCtx) throw new Error("Could not create content canvas context.");
+
+    if (layout === 'horizontal') {
+        const maxHeight = Math.max(...loadedImages.map(img => img.naturalHeight));
+        const normalizedImages = loadedImages.map(img => {
+            const scale = maxHeight > 0 ? maxHeight / img.naturalHeight : 1;
+            return { img, w: img.naturalWidth * scale, h: maxHeight };
+        });
+        contentCanvas.width = normalizedImages.reduce((sum, item) => sum + item.w, 0) + (loadedImages.length - 1) * gap;
+        contentCanvas.height = maxHeight + perImageLabelHeight;
+        let currentX = 0;
+        normalizedImages.forEach((item, index) => {
+            contentCtx.drawImage(item.img, currentX, 0, item.w, item.h);
+            const labelText = items[index]?.label;
+            if (perImageLabelHeight > 0 && labelText && labelText.trim() !== '') {
+                const labelY = maxHeight;
+                contentCtx.fillStyle = labels.backgroundColor || '#ffffff';
+                contentCtx.fillRect(currentX, labelY, item.w, perImageLabelHeight);
+                contentCtx.fillStyle = labels.fontColor || '#000000';
+                contentCtx.font = labelFont;
+                contentCtx.textAlign = 'center';
+                contentCtx.textBaseline = 'middle';
+                wrapText(contentCtx, labelText, currentX + item.w / 2, labelY + perImageLabelHeight / 2, item.w - contentCanvasPadding * 2, labelLineHeight);
+            }
+            currentX += item.w + gap;
+        });
+    } else if (layout === 'vertical') {
+        const maxWidth = Math.max(...loadedImages.map(img => img.naturalWidth));
+        const normalizedImages = loadedImages.map((img, index) => {
+            const scale = maxWidth > 0 ? maxWidth / img.naturalWidth : 1;
+            const labelText = items[index]?.label;
+            const hasLabel = perImageLabelHeight > 0 && labelText && labelText.trim() !== '';
+            return { img, w: maxWidth, h: img.naturalHeight * scale, labelHeight: hasLabel ? perImageLabelHeight : 0, label: labelText, };
+        });
+        contentCanvas.width = maxWidth;
+        contentCanvas.height = normalizedImages.reduce((sum, item) => sum + item.h + item.labelHeight, 0) + (loadedImages.length > 1 ? (loadedImages.length - 1) * gap : 0);
+        let currentY = 0;
+        normalizedImages.forEach((item, index) => {
+            contentCtx.drawImage(item.img, 0, currentY, item.w, item.h);
+            if (item.labelHeight > 0) {
+                const labelY = currentY + item.h;
+                contentCtx.fillStyle = labels.backgroundColor || '#ffffff';
+                contentCtx.fillRect(0, labelY, item.w, item.labelHeight);
+                contentCtx.fillStyle = labels.fontColor || '#000000';
+                contentCtx.font = labelFont;
+                contentCtx.textAlign = 'center';
+                contentCtx.textBaseline = 'middle';
+                wrapText(contentCtx, item.label!, 0 + item.w / 2, labelY + item.labelHeight / 2, item.w - contentCanvasPadding * 2, labelLineHeight);
+            }
+            currentY += item.h + item.labelHeight;
+            if (index < normalizedImages.length - 1) currentY += gap;
+        });
+    } else { // smart-grid
+        const numRows = items.length > 1 ? Math.floor(Math.sqrt(items.length)) : 1;
+        const baseImagesPerRow = Math.floor(items.length / numRows);
+        let remainder = items.length % numRows;
+
+        const rowGroups: HTMLImageElement[][] = [];
+        let currentImageIndex = 0;
+        for (let i = 0; i < numRows; i++) {
+            const rowSize = baseImagesPerRow + (remainder > 0 ? 1 : 0);
+            rowGroups.push(loadedImages.slice(currentImageIndex, currentImageIndex + rowSize));
+            currentImageIndex += rowSize;
+            if (remainder > 0) remainder--;
+        }
+
+        const rowCanvases = rowGroups.map((group, rowIndex) => {
+            const rowCanvas = document.createElement('canvas');
+            const rowCtx = rowCanvas.getContext('2d');
+            if (!rowCtx) throw new Error("Context failed for row");
+            if (group.length === 0) return rowCanvas;
+
+            const maxHeight = Math.max(...group.map(img => img.naturalHeight));
+            const normalizedImagesInRow = group.map(img => {
+                const scale = maxHeight > 0 ? maxHeight / img.naturalHeight : 1;
+                return { img, w: img.naturalWidth * scale, h: maxHeight };
+            });
+
+            rowCanvas.width = normalizedImagesInRow.reduce((sum, item) => sum + item.w, 0) + (group.length - 1) * gap;
+            rowCanvas.height = maxHeight + perImageLabelHeight;
+
+            let startIndex = 0;
+            for(let i = 0; i < rowIndex; i++) { startIndex += rowGroups[i].length; }
+
+            let currentX = 0;
+            normalizedImagesInRow.forEach((item, indexInRow) => {
+                rowCtx.drawImage(item.img, currentX, 0, item.w, item.h);
+                const originalItemIndex = startIndex + indexInRow;
+                const labelText = items[originalItemIndex]?.label;
+                if (perImageLabelHeight > 0 && labelText && labelText.trim() !== '') {
+                    const labelY = maxHeight;
+                    rowCtx.fillStyle = labels.backgroundColor || '#ffffff';
+                    rowCtx.fillRect(currentX, labelY, item.w, perImageLabelHeight);
+                    rowCtx.fillStyle = labels.fontColor || '#000000';
+                    rowCtx.font = labelFont;
+                    rowCtx.textAlign = 'center';
+                    rowCtx.textBaseline = 'middle';
+                    wrapText(rowCtx, labelText, currentX + item.w / 2, labelY + perImageLabelHeight / 2, item.w - contentCanvasPadding * 2, labelLineHeight);
+                }
+                currentX += item.w + gap;
+            });
+            return rowCanvas;
+        });
+
+        const maxRowWidth = Math.max(...rowCanvases.map(c => c.width));
+        if(maxRowWidth <= 0) throw new Error("Calculated grid width is zero.");
+
+        const scaledRows = rowCanvases.map(rc => {
+            if (rc.width === 0) return { canvas: rc, w: 0, h: 0 };
+            const scale = maxRowWidth / rc.width;
+            return { canvas: rc, w: maxRowWidth, h: rc.height * scale };
+        });
+        contentCanvas.width = maxRowWidth;
+        contentCanvas.height = scaledRows.reduce((sum, item) => sum + item.h, 0) + (rowCanvases.length - 1) * gap;
+        let currentY = 0;
+        scaledRows.forEach(item => {
+            contentCtx.drawImage(item.canvas, 0, currentY, item.w, item.h);
+            currentY += item.h + gap;
+        });
+    }
+
+    const finalContentWidth = contentCanvas.width * scaleRatio;
+    const finalContentHeight = contentCanvas.height * scaleRatio;
+    
+    canvas.width = finalContentWidth + 2 * scaledGap;
+    canvas.height = finalContentHeight + (hasMainTitle ? finalTitleHeight + scaledGap : 0) + 2 * scaledGap;
+    
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const titleYOffset = scaledGap;
+    if (hasMainTitle) {
+        ctx.fillStyle = labels.backgroundColor || '#ffffff';
+        ctx.fillRect(scaledGap, titleYOffset, finalContentWidth, finalTitleHeight);
+        
+        ctx.fillStyle = labels.fontColor || '#000000';
+        ctx.font = mainTitleFont;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        wrapText(ctx, mainTitle, scaledGap + finalContentWidth / 2, titleYOffset + finalTitleHeight / 2, finalContentWidth - finalPadding * 2, mainTitleLineHeight);
+    }
+    
+    const contentYOffset = titleYOffset + (hasMainTitle ? finalTitleHeight + scaledGap : 0);
+    ctx.drawImage(contentCanvas, scaledGap, contentYOffset, finalContentWidth, finalContentHeight);
+    
+    return canvas.toDataURL('image/png');
 };

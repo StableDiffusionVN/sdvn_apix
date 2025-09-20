@@ -3,6 +3,8 @@
   "home_subtitle": "Hãy chọn ứng dụng và bắt đầu sáng tạo",
   "app_free-generation_title": "Tạo ảnh tự do",
   "app_free-generation_description": "Tạo ảnh mới từ văn bản hoặc chỉnh sửa ảnh tải lên bằng prompt của riêng bạn.",
+  "app_baby-photo-creator_title": "Tạo ảnh cho bé",
+  "app_baby-photo-creator_description": "Biến ảnh của bé thành những tác phẩm nghệ thuật theo các concept đáng yêu, độc đáo.",
   "app_image-interpolation_title": "Nội suy hình ảnh",
   "app_image-interpolation_description": "Phân tích cặp ảnh để tạo prompt, sau đó áp dụng prompt đó cho một ảnh tham chiếu.",
   "app_toy-model-creator_title": "Tạo mô hình đồ chơi",

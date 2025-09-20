@@ -6,9 +6,27 @@
 // --- TYPE DEFINITIONS ---
 export type BlendMode = 'source-over' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten' | 'color-dodge' | 'color-burn' | 'hard-light' | 'soft-light' | 'difference' | 'exclusion' | 'hue' | 'saturation' | 'color' | 'luminosity';
 
+export interface AIPreset {
+  id: string;
+  name: {
+    vi: string;
+    en: string;
+  };
+  description: {
+    vi: string;
+    en: string;
+  };
+  requiresImageContext: boolean;
+  refine: boolean;
+  promptTemplate: {
+    vi: string;
+    en: string;
+  };
+}
+
 export interface Layer {
     id: string;
-    type: 'image' | 'text';
+    type: 'image' | 'text' | 'shape';
     url?: string;
     text?: string;
     fontFamily?: string;
@@ -19,6 +37,9 @@ export interface Layer {
     textAlign?: 'left' | 'center' | 'right';
     color?: string;
     lineHeight?: number;
+    shapeType?: 'rectangle' | 'ellipse';
+    fillColor?: string;
+    borderRadius?: number;
     x: number;
     y: number;
     width: number;
@@ -32,8 +53,9 @@ export interface Layer {
 
 export type Point = { x: number; y: number };
 export type Handle = 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r';
+export type CanvasTool = 'select' | 'hand' | 'rectangle' | 'ellipse';
 export type Interaction = {
-    type: 'move' | 'resize' | 'rotate' | 'duplicate-move' | 'copy-selection-move' | 'marquee';
+    type: 'move' | 'resize' | 'rotate' | 'duplicate-move' | 'copy-selection-move' | 'marquee' | 'drawingShape';
     handle?: Handle;
     initialLayers?: Layer[];
     initialPointer: Point;
@@ -42,7 +64,10 @@ export type Interaction = {
     initialAngle?: number;
     hasActionStarted?: boolean;
     isShift?: boolean;
+    isAlt?: boolean;
     initialSelectedIds?: string[];
+    tool?: CanvasTool;
+    lockedAxis?: 'x' | 'y' | null;
 };
 
 export interface CanvasSettings {
@@ -72,6 +97,7 @@ export type MultiLayerAction =
     | 'align-top' | 'align-middle' | 'align-bottom'
     | 'align-left' | 'align-center' | 'align-right'
     | 'distribute-horizontal' | 'distribute-vertical'
+    | 'distribute-and-scale-horizontal' | 'distribute-and-scale-vertical'
     | 'duplicate' | 'delete' | 'merge' | 'export';
 
 export interface Guide {

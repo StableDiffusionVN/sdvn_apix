@@ -4,7 +4,8 @@
 */
 import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generatePatrioticImage, editImageWithPrompt } from '../services/geminiService';
+import toast from 'react-hot-toast';
+import { generateBabyPhoto, estimateAgeGroup, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -13,17 +14,17 @@ import {
     ImageUploader,
     ResultsView,
     ImageForZip,
-    type AvatarCreatorState,
+    type BabyPhotoCreatorState,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
     useAppControls,
     embedJsonInPng,
-    getInitialStateForApp,
 } from './uiUtils';
+import { MagicWandIcon } from './icons';
 
-interface AvatarCreatorProps {
+interface BabyPhotoCreatorProps {
     mainTitle: string;
     subtitle: string;
     minIdeas: number;
@@ -33,13 +34,13 @@ interface AvatarCreatorProps {
     uploaderCaption: string;
     uploaderDescription: string;
     addImagesToGallery: (images: string[]) => void;
-    appState: AvatarCreatorState;
-    onStateChange: (newState: AvatarCreatorState) => void;
+    appState: BabyPhotoCreatorState;
+    onStateChange: (newState: BabyPhotoCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
 }
 
-const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
+const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     const { 
         minIdeas, maxIdeas, 
         uploaderCaption, uploaderDescription,
@@ -53,12 +54,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [localPrompt, setLocalPrompt] = useState(appState.options.additionalPrompt);
+    const [isEstimatingAge, setIsEstimatingAge] = useState(false);
 
     useEffect(() => {
         setLocalPrompt(appState.options.additionalPrompt);
     }, [appState.options.additionalPrompt]);
     
-    const IDEAS_BY_CATEGORY = t('avatarCreator_ideasByCategory');
+    const IDEAS_BY_CATEGORY = t('babyPhotoCreator_ideasByCategory');
     const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
 
     const outputLightboxImages = appState.selectedIdeas
@@ -90,7 +92,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         addImagesToGallery([newUrl]);
     };
 
-    const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {
+    const handleOptionChange = (field: keyof BabyPhotoCreatorState['options'], value: string | boolean) => {
         onStateChange({
             ...appState,
             options: { ...appState.options, [field]: value },
@@ -106,7 +108,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         } else if (selectedIdeas.length < maxIdeas) {
             newSelectedIdeas = [...selectedIdeas, idea];
         } else {
-            return; // Max reached, do nothing
+            toast.error(t('babyPhotoCreator_maxIdeasError', maxIdeas));
+            return;
         }
 
         onStateChange({ ...appState, selectedIdeas: newSelectedIdeas });
@@ -115,10 +118,36 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     const handleGenerateClick = async () => {
         if (!appState.uploadedImage || appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas) return;
         
+        let ideasToGenerate = [...appState.selectedIdeas];
+        const randomCount = ideasToGenerate.filter(i => i === 'Random').length;
+
+        if (randomCount > 0) {
+            setIsEstimatingAge(true);
+            try {
+                const ageGroup = await estimateAgeGroup(appState.uploadedImage);
+                const ageGroupConfig = IDEAS_BY_CATEGORY.find((c: any) => c.key === ageGroup);
+                const availableIdeas = ageGroupConfig ? ageGroupConfig.ideas : [].concat(...IDEAS_BY_CATEGORY.map((c: any) => c.ideas));
+                
+                const randomIdeas: string[] = [];
+                for (let i = 0; i < randomCount; i++) {
+                    if (availableIdeas.length > 0) {
+                         randomIdeas.push(availableIdeas[Math.floor(Math.random() * availableIdeas.length)]);
+                    }
+                }
+                ideasToGenerate = ideasToGenerate.filter(i => i !== 'Random').concat(randomIdeas);
+                ideasToGenerate = [...new Set(ideasToGenerate)]; // Ensure unique ideas
+            } catch (err) {
+                toast.error(t('babyPhotoCreator_ageEstimationError'));
+                setIsEstimatingAge(false);
+                return;
+            } finally {
+                setIsEstimatingAge(false);
+            }
+        }
+        
         const stage : 'generating' = 'generating';
         onStateChange({ ...appState, stage: stage });
         
-        const ideasToGenerate = appState.selectedIdeas;
         const initialGeneratedImages = { ...appState.generatedImages };
         ideasToGenerate.forEach(idea => {
             initialGeneratedImages[idea] = { status: 'pending' };
@@ -129,15 +158,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const concurrencyLimit = 2;
         const ideasQueue = [...ideasToGenerate];
         
-        let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages };
+        let currentAppState: BabyPhotoCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
         const settingsToEmbed = {
-            viewId: 'avatar-creator',
+            viewId: 'baby-photo-creator',
             state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
         };
 
         const processIdea = async (idea: string) => {
             try {
-                const resultUrl = await generatePatrioticImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
+                const resultUrl = await generateBabyPhoto(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
                 const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
                 
                 currentAppState = {
@@ -195,7 +224,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         try {
             const resultUrl = await editImageWithPrompt(imageUrlToEdit, customPrompt);
             const settingsToEmbed = {
-                viewId: 'avatar-creator',
+                viewId: 'baby-photo-creator',
                 state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
@@ -223,7 +252,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
     
     const handleChooseOtherIdeas = () => {
-        onStateChange({ ...appState, stage: 'configuring' });
+        onStateChange({ ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [] });
     };
 
     const handleDownloadAll = () => {
@@ -231,7 +260,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         if (appState.uploadedImage) {
             inputImages.push({
                 url: appState.uploadedImage,
-                filename: 'anh-goc',
+                filename: 'anh-goc-cua-be',
                 folder: 'input',
             });
         }
@@ -240,19 +269,20 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'vietnamtrongtoi-results.zip',
-            baseOutputFilename: 'vietnamtrongtoi',
+            zipFilename: 'anh-concept-cho-be.zip',
+            baseOutputFilename: 'anh-be',
         });
     };
 
     const getButtonText = () => {
+        if (isEstimatingAge) return t('babyPhotoCreator_estimatingAge');
         if (appState.stage === 'generating') return t('common_creating');
-        if (appState.selectedIdeas.length < minIdeas) return t('avatarCreator_selectAtLeast', minIdeas);
-        return t('avatarCreator_createButton');
+        if (appState.selectedIdeas.length < minIdeas) return t('babyPhotoCreator_selectAtLeast', minIdeas);
+        return t('babyPhotoCreator_createButton');
     };
     
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
-    const isLoading = appState.stage === 'generating';
+    const isLoading = appState.stage === 'generating' || isEstimatingAge;
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -281,15 +311,29 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     <ActionablePolaroidCard
                         type="photo-input"
                         mediaUrl={appState.uploadedImage}
-                        caption={t('avatarCreator_yourImageCaption')}
+                        caption={t('babyPhotoCreator_yourImageCaption')}
                         status="done"
                         onClick={() => openLightbox(0)}
                         onImageChange={handleUploadedImageChange}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
-                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('avatarCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
-                        <p className="text-neutral-400 mb-4">{t('avatarCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('babyPhotoCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
+                        <p className="text-neutral-400 mb-4">{t('babyPhotoCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                        
+                        <button 
+                            onClick={() => handleIdeaSelect('Random')}
+                            className={`base-font font-bold p-3 rounded-md text-base transition-all duration-200 inline-flex items-center gap-2 mb-4 ${
+                                appState.selectedIdeas.includes('Random')
+                                ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
+                                : 'bg-white/10 text-neutral-300 hover:bg-white/20'
+                            } ${!appState.selectedIdeas.includes('Random') && appState.selectedIdeas.length === maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={!appState.selectedIdeas.includes('Random') && appState.selectedIdeas.length === maxIdeas}
+                        >
+                            <MagicWandIcon className="h-5 w-5" />
+                            {t('babyPhotoCreator_randomConcept')}
+                        </button>
+
                         <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
                             {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.map((categoryObj: any) => (
                                 <div key={categoryObj.category}>
@@ -341,22 +385,21 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                         handleOptionChange('additionalPrompt', localPrompt);
                                     }
                                 }}
-                                placeholder={t('avatarCreator_notesPlaceholder')}
+                                placeholder={t('babyPhotoCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}
-                                aria-label="Ghi chú bổ sung cho ảnh"
                             />
                         </div>
                         <div className="flex items-center pt-2">
                             <input
                                 type="checkbox"
-                                id="remove-watermark-avatar"
+                                id="remove-watermark-baby"
                                 checked={appState.options.removeWatermark}
                                 onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                 className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
                                 aria-label={t('common_removeWatermark')}
                             />
-                            <label htmlFor="remove-watermark-avatar" className="ml-3 block text-sm font-medium text-neutral-300">
+                            <label htmlFor="remove-watermark-baby" className="ml-3 block text-sm font-medium text-neutral-300">
                                 {t('common_removeWatermark')}
                             </label>
                         </div>
@@ -390,7 +433,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
-                                {t('avatarCreator_chooseOtherIdeas')}
+                                {t('babyPhotoCreator_chooseOtherIdeas')}
                             </button>
                             <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
                                 {t('common_startOver')}
@@ -426,7 +469,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
                                     regenerationTitle={t('common_regenTitle')}
                                     regenerationDescription={t('common_regenDescription')}
-                                    regenerationPlaceholder={t('avatarCreator_regenPlaceholder')}
+                                    regenerationPlaceholder={t('babyPhotoCreator_regenPlaceholder')}
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -469,4 +512,4 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     );
 };
 
-export default AvatarCreator;
+export default BabyPhotoCreator;

@@ -2,7 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 import { 
     processApiError, 
     parseDataUrl,
@@ -15,7 +16,6 @@ import {
  * @returns A promise resolving to the generated text prompt.
  */
 export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
     const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
 
@@ -52,6 +52,7 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
     try {
         console.log("Attempting to analyze image pair for prompt...");
         const response = await ai.models.generateContent({
+// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -89,7 +90,6 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
  * @returns A promise resolving to an object with the detailed main prompt and suggestions.
  */
 export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
     const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
 
@@ -123,6 +123,7 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
     try {
         console.log("Attempting to analyze image pair for DETAILED prompt...");
         const response = await ai.models.generateContent({
+// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -161,8 +162,6 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
  * @returns A promise that resolves to the new, merged prompt.
  */
 export async function interpolatePrompts(basePrompt: string, userNotes: string): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
     const prompt = `
         Bạn là một trợ lý AI chuyên tinh chỉnh các câu lệnh tạo ảnh.
         Nhiệm vụ của bạn là hợp nhất "Yêu cầu Chỉnh sửa của Người dùng" vào "Prompt Gốc" để tạo ra một prompt mới, mạch lạc bằng tiếng Việt.
@@ -190,6 +189,7 @@ export async function interpolatePrompts(basePrompt: string, userNotes: string):
     try {
         console.log("Attempting to interpolate prompts with prioritization...");
         const response = await ai.models.generateContent({
+// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
@@ -224,8 +224,8 @@ export async function adaptPromptToContext(imageDataUrl: string, basePrompt: str
     
     try {
         console.log("Attempting to adapt prompt to image context...");
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
+// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, textPart] },
         });

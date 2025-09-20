@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 import { 
     processApiError, 
     padImageToAspectRatio, 
@@ -31,7 +31,6 @@ export async function generateFreeImage(
     removeWatermark?: boolean
 ): Promise<string[]> {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         // Case 1: Image generation (Text-to-Image)
         if (!imageDataUrl1) {
             const maxRetries = 3;

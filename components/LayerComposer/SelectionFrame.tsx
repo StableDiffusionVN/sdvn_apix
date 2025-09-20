@@ -13,9 +13,10 @@ interface SelectionFrameProps {
     onHandlePointerDown: (e: React.PointerEvent<HTMLDivElement>, handle: Handle) => void;
     onRotatePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
     scaleMV: MotionValue<number>;
+    isInteracting: boolean;
 }
 
-export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rotation, isMultiSelect, onHandlePointerDown, onRotatePointerDown, scaleMV }) => {
+export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rotation, isMultiSelect, onHandlePointerDown, onRotatePointerDown, scaleMV, isInteracting }) => {
     const HANDLES: Handle[] = ['tl', 'tr', 'bl', 'br', 't', 'b', 'l', 'r'];
     const ROTATION_CORNERS: ('tl' | 'tr' | 'bl' | 'br')[] = ['tl', 'tr', 'bl', 'br'];
 
@@ -63,7 +64,11 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
     };
 
     return (
-        <motion.div className="absolute pointer-events-none" style={{ x: boundingBox.x, y: boundingBox.y, width: boundingBox.width, height: boundingBox.height, rotate: rotation, zIndex: 1000 }} >
+        <motion.div
+            className="absolute pointer-events-none"
+            style={{ x: boundingBox.x, y: boundingBox.y, width: boundingBox.width, height: boundingBox.height, rotate: rotation, zIndex: 1000 }}
+            transition={isInteracting ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 50 }}
+        >
             <motion.div className="absolute inset-0 border-dashed border-yellow-400" style={{ borderWidth }} />
              {!isMultiSelect && ROTATION_CORNERS.map(corner => ( <motion.div key={`${corner}-rotate`} style={getRotationHandleStyle(corner)} onPointerDown={(e) => onRotatePointerDown(e)} /> ))}
             {HANDLES.map(handle => ( <motion.div key={handle} style={getHandleMotionStyle(handle)} onPointerDown={(e) => onHandlePointerDown(e, handle)} /> ))}

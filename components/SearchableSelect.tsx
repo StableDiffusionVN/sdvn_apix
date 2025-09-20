@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
@@ -131,3 +131,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({ id, label, o
         </div>
     );
 };
+
+// Memoize the component for performance optimization
+export default memo(SearchableSelect);

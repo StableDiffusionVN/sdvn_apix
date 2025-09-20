@@ -948,3 +948,53 @@ body {
   color: #f87171; /* red-400 */
   font-weight: 600;
 }
+
+/* --- NEW: Toggle Switch --- */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px; /* smaller width */
+  height: 22px; /* smaller height */
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #4b5563; /* gray-600 */
+  transition: .4s;
+  border-radius: 22px; /* fully rounded */
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px; /* smaller knob */
+  width: 16px; /* smaller knob */
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .switch-slider {
+  background-color: #FBBF24; /* yellow-400 */
+}
+
+input:focus + .switch-slider {
+  box-shadow: 0 0 1px #FBBF24;
+}
+
+input:checked + .switch-slider:before {
+  transform: translateX(18px); /* adjusted for new size */
+}

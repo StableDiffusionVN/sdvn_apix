@@ -9,6 +9,7 @@
 export * from './gemini/baseService';
 export * from './gemini/imageEditingService';
 export * from './gemini/avatarCreatorService';
+export * from './gemini/babyPhotoCreatorService';
 export * from './gemini/architectureIdeatorService';
 export * from './gemini/dressTheModelService';
 export * from './gemini/photoRestorationService';
@@ -19,3 +20,4 @@ export * from './gemini/freeGenerationService';
 export * from './gemini/toyModelCreatorService';
 export * from './gemini/imageInterpolationService';
 export * from './gemini/videoGenerationService';
+export * from './gemini/presetService'; // NEW: Export the centralized preset service

@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, MotionValue, useMotionValueEvent, useTransform, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
-import { type Layer, type CanvasSettings, type Interaction, type Handle, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type Guide } from './LayerComposer/LayerComposer.types';
+import { type Layer, type CanvasSettings, type Interaction, type Handle, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type Guide, type CanvasTool } from './LayerComposer/LayerComposer.types';
 import { LayerItem } from './LayerComposer/LayerItem';
 import { SelectionFrame } from './LayerComposer/SelectionFrame';
 import { CanvasToolbar } from './LayerComposer/CanvasToolbar';
@@ -25,8 +25,8 @@ interface LayerComposerCanvasProps {
     panY: MotionValue<number>;
     scale: MotionValue<number>;
     zoomDisplay: number;
-    activeCanvasTool: 'select' | 'hand';
-    setActiveCanvasTool: (tool: 'select' | 'hand') => void;
+    activeCanvasTool: CanvasTool;
+    setActiveCanvasTool: (tool: CanvasTool) => void;
     isSpacePanning: boolean;
     interaction: Interaction | null;
     setInteraction: (interaction: Interaction | null) => void;
@@ -49,16 +49,17 @@ interface LayerComposerCanvasProps {
     deleteSelectedLayers: () => void;
     duplicateSelectedLayers: () => Layer[];
     handleExportSelectedLayers: () => Promise<void>;
-    // FIX: Add missing handleBakeSelectedLayer prop to fix type error.
     handleBakeSelectedLayer: () => Promise<void>;
     captureLayer: (layer: Layer) => Promise<string>;
+    addLayer: (layer: Omit<Layer, 'id'>) => void;
+    shapeFillColor: string;
 }
 
 const snap = (value: number, gridSize: number) => {
     return Math.round(value / gridSize) * gridSize;
 };
 
-const SNAP_THRESHOLD = 6;
+const SNAP_THRESHOLD = 12;
 
 export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     canvasViewRef, layers, canvasSettings, isInfiniteCanvas, selectedLayerIds, selectedLayers, 
@@ -71,7 +72,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     setSelectedLayerIds, onFilesDrop, onMultiLayerAction,
     onDuplicateForDrag, handleMergeLayers, openImageEditor,
     deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers, handleBakeSelectedLayer,
-    captureLayer
+    captureLayer, addLayer, shapeFillColor
 }) => {
     const { t } = useAppControls();
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -321,12 +322,24 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             let dx = currentPointer.x - currentInteraction.initialPointer.x;
             let dy = currentPointer.y - currentInteraction.initialPointer.y;
             
+            // Axis lock logic
+            if (e.shiftKey && !currentInteraction.lockedAxis) {
+                const initialDx = currentPointer.x - currentInteraction.initialPointer.x;
+                const initialDy = currentPointer.y - currentInteraction.initialPointer.y;
+                if (Math.abs(initialDx) > 5 || Math.abs(initialDy) > 5) {
+                    const newLockedAxis = Math.abs(initialDx) > Math.abs(initialDy) ? 'x' : 'y';
+                    setInteraction({ ...currentInteraction, lockedAxis: newLockedAxis });
+                    currentInteraction.lockedAxis = newLockedAxis;
+                }
+            }
+            if (currentInteraction.lockedAxis === 'x') dy = 0;
+            else if (currentInteraction.lockedAxis === 'y') dx = 0;
+            
             let finalGuides: Guide[] = [];
             const bbox = getBoundingBoxForLayers(currentInteraction.initialLayers);
             if(bbox) {
                 const movingBox: Rect = { x: bbox.x + dx, y: bbox.y + dy, width: bbox.width, height: bbox.height };
                 
-                // Smart Guides Snapping
                 if (canvasSettings.guides.enabled && !e.altKey) {
                     const otherLayers = layers.filter(l => !selectedLayerIds.includes(l.id) && l.isVisible);
                     let targets: Rect[] = otherLayers.map(l => ({ x: l.x, y: l.y, width: l.width, height: l.height }));
@@ -344,8 +357,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                     finalGuides = guides;
                 }
                 
-                // Grid Snapping (only if smart guides didn't snap)
-                if (canvasSettings.grid.snap && !e.altKey && (finalGuides.length === 0 || (dx === 0 && dy === 0))) {
+                if (canvasSettings.grid.snap && !e.altKey && finalGuides.length === 0) {
                     const initialBbox = currentInteraction.initialBoundingBox;
                     if(initialBbox) {
                         const newBboxX = initialBbox.x + dx;
@@ -369,42 +381,82 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             
             const maintainAspectRatio = e.shiftKey;
 
-            let scaleX = 1, scaleY = 1, pivotX = 0.5, pivotY = 0.5;
-
-            if (handle.includes('r')) { scaleX = (bbox.width + dx) / bbox.width; pivotX = 0; }
-            if (handle.includes('l')) { scaleX = (bbox.width - dx) / bbox.width; pivotX = 1; }
-            if (handle.includes('b')) { scaleY = (bbox.height + dy) / bbox.height; pivotY = 0; }
-            if (handle.includes('t')) { scaleY = (bbox.height - dy) / bbox.height; pivotY = 1; }
+            // 1. Calculate the new bounding box without snapping first
+            let newX = bbox.x;
+            let newY = bbox.y;
+            let newWidth = bbox.width;
+            let newHeight = bbox.height;
             
-            if (maintainAspectRatio && bbox.height > 0) {
+            if (handle.includes('l')) { newX += dx; newWidth -= dx; }
+            if (handle.includes('r')) { newWidth += dx; }
+            if (handle.includes('t')) { newY += dy; newHeight -= dy; }
+            if (handle.includes('b')) { newHeight += dy; }
+            
+            if (maintainAspectRatio && bbox.width > 0 && bbox.height > 0) {
+                const aspectRatio = bbox.width / bbox.height;
                 if (handle.length === 2) { // Corner handles
-                    const ar = bbox.width / bbox.height;
-                    if (Math.abs(dx * (1/ar)) > Math.abs(dy)) {
-                        scaleY = scaleX;
+                    const newAspectRatio = newWidth / newHeight;
+                    if (newAspectRatio > aspectRatio) {
+                        newHeight = newWidth / aspectRatio;
                     } else {
-                        scaleX = scaleY;
+                        newWidth = newHeight * aspectRatio;
                     }
                 } else if (handle === 't' || handle === 'b') {
-                    scaleX = scaleY;
-                } else if (handle === 'l' || handle === 'r') {
-                    scaleY = scaleX;
+                    newWidth = newHeight * aspectRatio;
+                } else { // 'l' or 'r'
+                    newHeight = newWidth / aspectRatio;
                 }
+
+                if (handle.includes('l')) { newX = (bbox.x + bbox.width) - newWidth; }
+                if (handle.includes('t')) { newY = (bbox.y + bbox.height) - newHeight; }
             }
             
+            let newBboxForSnapping: Rect = { x: newX, y: newY, width: newWidth, height: newHeight };
+            
+            // 2. Find guides and snap offsets
+            let finalGuides: Guide[] = [];
+            if (canvasSettings.guides.enabled && !e.altKey) {
+                const otherLayers = layers.filter(l => !selectedLayerIds.includes(l.id) && l.isVisible);
+                let targets: Rect[] = otherLayers.map(l => ({ x: l.x, y: l.y, width: l.width, height: l.height }));
+                if (!isInfiniteCanvas) {
+                    targets.push(
+                        { x: 0, y: 0, width: canvasSettings.width, height: 0 }, // Top Edge
+                        { x: 0, y: canvasSettings.height / 2, width: canvasSettings.width, height: 0 }, // V Center
+                        { x: 0, y: canvasSettings.height, width: canvasSettings.width, height: 0 }, // Bottom Edge
+                        { x: 0, y: 0, width: 0, height: canvasSettings.height }, // Left Edge
+                        { x: canvasSettings.width / 2, y: 0, width: 0, height: canvasSettings.height }, // H Center
+                        { x: canvasSettings.width, y: 0, width: 0, height: canvasSettings.height }  // Right Edge
+                    );
+                }
+                const { guides, snapOffset } = findGuides(newBboxForSnapping, targets);
+                finalGuides = guides;
+
+                // Adjust the new bounding box based on the snap offset
+                newBboxForSnapping.x += snapOffset.x;
+                newBboxForSnapping.y += snapOffset.y;
+            }
+            setActiveGuides(finalGuides);
+            
+            // 3. Calculate final scale factors from the (potentially snapped) new bounding box
+            const scaleX = (bbox.width > 0) ? newBboxForSnapping.width / bbox.width : 1;
+            const scaleY = (bbox.height > 0) ? newBboxForSnapping.height / bbox.height : 1;
+
+            // 4. Calculate updates for each layer based on the final scale factors
             const updates = initialLayers.map(layer => {
                 const relativeX = layer.x - bbox.x;
                 const relativeY = layer.y - bbox.y;
-                const newX = bbox.x + (relativeX - bbox.width * pivotX) * scaleX + bbox.width * pivotX;
-                const newY = bbox.y + (relativeY - bbox.height * pivotY) * scaleY + bbox.height * pivotY;
-                let newWidth = layer.width * scaleX;
-                let newHeight = layer.height * scaleY;
-
-                if (canvasSettings.grid.snap && !e.altKey) {
-                    newWidth = snap(newWidth, canvasSettings.grid.size);
-                    newHeight = snap(newHeight, canvasSettings.grid.size);
+                
+                const newLayerX = newBboxForSnapping.x + relativeX * scaleX;
+                const newLayerY = newBboxForSnapping.y + relativeY * scaleY;
+                let newLayerWidth = layer.width * scaleX;
+                let newLayerHeight = layer.height * scaleY;
+    
+                if (canvasSettings.grid.snap && !e.altKey && finalGuides.length === 0) {
+                    newLayerWidth = snap(newLayerWidth, canvasSettings.grid.size);
+                    newLayerHeight = snap(newLayerHeight, canvasSettings.grid.size);
                 }
-
-                const newProps: Partial<Layer> = { x: newX, y: newY, width: newWidth, height: newHeight };
+    
+                const newProps: Partial<Layer> = { x: newLayerX, y: newLayerY, width: newLayerWidth, height: newLayerHeight };
                 return { id: layer.id, props: newProps };
             });
             onUpdateLayers(updates, false);
@@ -451,6 +503,42 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
             } else {
                 setSelectedLayerIds(layersInMarqueeIds);
             }
+        } else if (currentInteraction.type === 'drawingShape') {
+            const { initialPointer, isShift, isAlt } = currentInteraction;
+            
+            const x1 = initialPointer.x;
+            const y1 = initialPointer.y;
+            const x2 = currentPointer.x;
+            const y2 = currentPointer.y;
+        
+            let finalX, finalY, finalWidth, finalHeight;
+        
+            if (isAlt) { // from center
+                const dx = Math.abs(x1 - x2);
+                const dy = Math.abs(y1 - y2);
+                if (isShift) { // square/circle
+                    const side = Math.max(dx, dy) * 2;
+                    finalWidth = side;
+                    finalHeight = side;
+                } else {
+                    finalWidth = dx * 2;
+                    finalHeight = dy * 2;
+                }
+                finalX = x1 - finalWidth / 2;
+                finalY = y1 - finalHeight / 2;
+            } else { // from corner
+                finalX = Math.min(x1, x2);
+                finalY = Math.min(y1, y2);
+                finalWidth = Math.abs(x1 - x2);
+                finalHeight = Math.abs(y1 - y2);
+        
+                if (isShift) {
+                    finalWidth = finalHeight = Math.max(finalWidth, finalHeight);
+                    if (x2 < x1) finalX = x1 - finalWidth;
+                    if (y2 < y1) finalY = y1 - finalHeight;
+                }
+            }
+            setMarqueeRect({ x: finalX, y: finalY, width: finalWidth, height: finalHeight });
         }
     };
 
@@ -463,6 +551,32 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                     setSelectedLayerIds([]);
                 }
                 setMarqueeRect(null);
+            } else if (interaction.type === 'drawingShape') {
+                if (marqueeRect && marqueeRect.width > 5 && marqueeRect.height > 5) {
+                    const tool = interaction.tool;
+                    if (tool === 'rectangle' || tool === 'ellipse') {
+                        addLayer({
+                            type: 'shape',
+                            shapeType: tool,
+                            fillColor: shapeFillColor,
+                            borderRadius: 0,
+                            x: marqueeRect.x,
+                            y: marqueeRect.y,
+                            width: marqueeRect.width,
+                            height: marqueeRect.height,
+                            rotation: 0,
+                            opacity: 100,
+                            blendMode: 'source-over',
+                            isVisible: true,
+                            isLocked: false,
+                            fontWeight: 'normal',
+                            fontStyle: 'normal',
+                            textTransform: 'none',
+                        });
+                    }
+                }
+                setMarqueeRect(null);
+                setActiveCanvasTool('select');
             } else if (interaction.type === 'move' || interaction.type === 'resize' || interaction.type === 'rotate') {
                 const updatedLayers = selectedLayerIds.map(id => ({ id, props: layers.find(layer => layer.id === id) || {} }));
                 onUpdateLayers(updatedLayers, true);
@@ -472,7 +586,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
     };
     
     const handleLayerPointerDown = (e: React.PointerEvent<HTMLDivElement>, layerId: string) => {
-        if (activeCanvasTool === 'hand' || isSpacePanning) return;
+        if (activeCanvasTool !== 'select' || isSpacePanning) return;
         e.stopPropagation();
         
         const layer = layers.find(l => l.id === layerId);
@@ -545,6 +659,19 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                 initialSelectedIds: selectedLayerIds,
                 hasActionStarted: false,
             });
+        } else if (activeCanvasTool === 'rectangle' || activeCanvasTool === 'ellipse') {
+            const coords = getPointerInCanvas(e);
+            if (!coords) return;
+            
+            beginInteraction();
+            setInteraction({
+                type: 'drawingShape',
+                tool: activeCanvasTool,
+                initialPointer: coords,
+                isShift: e.shiftKey,
+                isAlt: e.altKey,
+            });
+            setMarqueeRect({ x: coords.x, y: coords.y, width: 0, height: 0 });
         }
     };
 
@@ -627,12 +754,28 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
         ctx.scale(s, s);
         ctx.translate(-canvasSettings.width / 2, -canvasSettings.height / 2);
         
-        if (marqueeRect && interaction?.type === 'marquee') {
+        if (marqueeRect && (interaction?.type === 'marquee' || interaction?.type === 'drawingShape')) {
             ctx.save();
             ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.1)';
             ctx.lineWidth = 1 / s;
             ctx.setLineDash([4 / s, 4 / s]);
-            ctx.strokeRect(marqueeRect.x, marqueeRect.y, marqueeRect.width, marqueeRect.height);
+
+            if (interaction?.tool === 'ellipse' && interaction.type === 'drawingShape') {
+                ctx.beginPath();
+                ctx.ellipse(
+                    marqueeRect.x + marqueeRect.width / 2,
+                    marqueeRect.y + marqueeRect.height / 2,
+                    marqueeRect.width / 2,
+                    marqueeRect.height / 2,
+                    0, 0, 2 * Math.PI
+                );
+                ctx.stroke();
+                ctx.fill();
+            } else { // marquee and rectangle
+                ctx.strokeRect(marqueeRect.x, marqueeRect.y, marqueeRect.width, marqueeRect.height);
+                ctx.fillRect(marqueeRect.x, marqueeRect.y, marqueeRect.width, marqueeRect.height);
+            }
             ctx.restore();
         }
 
@@ -700,18 +843,19 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                         key={`guide-${index}`}
                         className="absolute pointer-events-none"
                         style={{
+                            backgroundColor: canvasSettings.guides.color,
                             ...(guide.axis === 'x'
                                 ? {
                                     left: guide.position,
                                     top: guide.start,
                                     height: guide.end - guide.start,
-                                    borderLeft: `${1 / scale.get()}px dashed ${canvasSettings.guides.color}`
+                                    width: 1 / scale.get()
                                   }
                                 : {
                                     top: guide.position,
                                     left: guide.start,
                                     width: guide.end - guide.start,
-                                    borderTop: `${1 / scale.get()}px dashed ${canvasSettings.guides.color}`
+                                    height: 1 / scale.get()
                                   })
                         }}
                     />
@@ -727,6 +871,7 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                         <LayerItem
                             key={layer.id}
                             layer={layer}
+                            isInteracting={!!interaction}
                             captureLayer={captureLayer}
                             activeCanvasTool={activeCanvasTool}
                             isSpacePanning={isSpacePanning}
@@ -743,7 +888,8 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
                         isMultiSelect={selectedLayers.length > 1}
                         scaleMV={scale} 
                         onHandlePointerDown={handleHandlePointerDown} 
-                        onRotatePointerDown={handleRotatePointerDown} 
+                        onRotatePointerDown={handleRotatePointerDown}
+                        isInteracting={!!interaction}
                     />
                 )}
                 

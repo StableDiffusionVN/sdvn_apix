@@ -164,12 +164,12 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) 
                                     <div className="comparison-container">
                                         {/* After Image (Bottom Layer) */}
                                         <div className="comparison-image-wrapper">
-                                            <img src={afterImage} alt={t('beforeAfter_after')} className="comparison-image" />
+                                            <img src={afterImage} alt={t('beforeAfter_after')} className="comparison-image" loading="lazy" />
                                              <div className="absolute bottom-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">2: {t('beforeAfter_after')}</div>
                                         </div>
                                         {/* Before Image (Top Layer, Clipped) */}
                                         <div className="comparison-image-wrapper" style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}>
-                                            <img src={beforeImage} alt={t('beforeAfter_before')} className="comparison-image" />
+                                            <img src={beforeImage} alt={t('beforeAfter_before')} className="comparison-image" loading="lazy" />
                                             <div className="absolute bottom-2 left-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded">1: {t('beforeAfter_before')}</div>
                                         </div>
                                         {/* Slider Handle */}

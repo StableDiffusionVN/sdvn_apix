@@ -14,7 +14,8 @@
     "react-dom": "^19.1.1",
     "tailwind-merge": "^3.3.1",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.23.12"
+    "framer-motion": "^12.23.12",
+    "react-hot-toast": "^2.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

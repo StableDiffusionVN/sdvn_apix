@@ -4,14 +4,16 @@
 */
 import React, { useRef, useEffect } from 'react';
 import { motion, MotionValue } from 'framer-motion';
-import { cn } from '../../lib/utils';
-import { type Layer } from './LayerComposer/LayerComposer.types';
+import { cn } from '../lib/utils';
+// FIX: Import `CanvasTool` to use the more general type.
+import { type Layer, type CanvasTool } from './LayerComposer/LayerComposer.types';
 
 interface LayerItemProps {
     layer: Layer;
     onLayerPointerDown: (e: React.PointerEvent<HTMLDivElement>, layerId: string) => void;
     zIndex: number;
-    activeCanvasTool: 'select' | 'hand';
+    // FIX: Changed type to `CanvasTool` to allow for all tool types.
+    activeCanvasTool: CanvasTool;
     isSpacePanning: boolean;
     captureLayer: (layer: Layer) => Promise<string>;
 }
@@ -51,6 +53,7 @@ export const LayerItem: React.FC<LayerItemProps> = React.memo(({
                     src={layer.url}
                     className="w-full h-full pointer-events-none"
                     alt=""
+                    loading="lazy"
                 />
             ) : layer.type === 'text' ? (
                 <div 

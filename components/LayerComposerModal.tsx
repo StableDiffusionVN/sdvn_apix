@@ -8,29 +8,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionValue, useMotionValueEvent } from 'framer-motion';
 import { useAppControls, GalleryPicker, WebcamCaptureModal, downloadImage, downloadJson, useImageEditor, extractJsonFromPng } from './uiUtils';
 import { 
-    generateArchitecturalImage,
-    generatePatrioticImage,
-    generateDressedModelImage,
-    restoreOldPhoto,
-    convertImageToRealistic,
-    swapImageStyle,
-    mixImageStyle,
-    generateFreeImage,
-    generateToyModelImage,
-    analyzeImagePairForPrompt,
-    analyzeImagePairForPromptDetailed,
-    interpolatePrompts,
-    adaptPromptToContext,
+    generateFromPreset, 
     editImageWithPrompt, 
     generateFromMultipleImages, 
-    refinePrompt, 
-    refineArchitecturePrompt, 
-    analyzePromptForImageGenerationParams 
+    refineImageAndPrompt, 
+    analyzePromptForImageGenerationParams,
+    generateFreeImage
 } from '../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
-import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers } from './LayerComposer/LayerComposer.types';
+import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type CanvasTool, type AIPreset } from './LayerComposer/LayerComposer.types';
 
 interface LayerComposerModalProps {
     isOpen: boolean;
@@ -115,6 +103,28 @@ const captureCanvas = async (
             if (loadedImage) {
                 ctx.drawImage(loadedImage, 0, 0, layer.width, layer.height);
             }
+        } else if (layer.type === 'shape') {
+            ctx.fillStyle = layer.fillColor || '#FFFFFF';
+            if (layer.shapeType === 'ellipse') {
+                ctx.beginPath();
+                ctx.ellipse(layer.width / 2, layer.height / 2, layer.width / 2, layer.height / 2, 0, 0, 2 * Math.PI);
+                ctx.fill();
+            } else { // rectangle
+                ctx.beginPath();
+                // A bit complex to draw a rounded rectangle with rotation, easier to use path
+                const r = layer.borderRadius || 0;
+                ctx.moveTo(r, 0);
+                ctx.lineTo(layer.width - r, 0);
+                ctx.arcTo(layer.width, 0, layer.width, r, r);
+                ctx.lineTo(layer.width, layer.height - r);
+                ctx.arcTo(layer.width, layer.height, layer.width - r, layer.height, r);
+                ctx.lineTo(r, layer.height);
+                ctx.arcTo(0, layer.height, 0, layer.height - r, r);
+                ctx.lineTo(0, r);
+                ctx.arcTo(0, 0, r, 0, r);
+                ctx.closePath();
+                ctx.fill();
+            }
         }
         ctx.restore();
     }
@@ -141,7 +151,7 @@ const captureLayer = async (layer: Layer): Promise<string> => {
     if (img) {
         captureWidth = img.naturalWidth;
         captureHeight = img.naturalHeight;
-    } else if (layer.type === 'text') {
+    } else if (layer.type === 'text' || layer.type === 'shape') {
         captureWidth = layer.width * EXPORT_SCALE_FACTOR;
         captureHeight = layer.height * EXPORT_SCALE_FACTOR;
     }
@@ -165,6 +175,28 @@ const captureLayer = async (layer: Layer): Promise<string> => {
         const lineHeight = (layer.fontSize || 50) * (layer.lineHeight || 1.2);
         const textToRender = layer.textTransform === 'uppercase' ? (layer.text || '').toUpperCase() : (layer.text || '');
         wrapText(ctx, textToRender, startX, 0, layer.width, lineHeight);
+    } else if (layer.type === 'shape') {
+        ctx.scale(EXPORT_SCALE_FACTOR, EXPORT_SCALE_FACTOR);
+        ctx.fillStyle = layer.fillColor || '#FFFFFF';
+        if (layer.shapeType === 'ellipse') {
+            ctx.beginPath();
+            ctx.ellipse(layer.width / 2, layer.height / 2, layer.width / 2, layer.height / 2, 0, 0, 2 * Math.PI);
+            ctx.fill();
+        } else { // rectangle
+             const r = layer.borderRadius || 0;
+            ctx.beginPath();
+            ctx.moveTo(r, 0);
+            ctx.lineTo(layer.width - r, 0);
+            ctx.arcTo(layer.width, 0, layer.width, r, r);
+            ctx.lineTo(layer.width, layer.height - r);
+            ctx.arcTo(layer.width, layer.height, layer.width - r, layer.height, r);
+            ctx.lineTo(r, layer.height);
+            ctx.arcTo(0, layer.height, 0, layer.height - r, r);
+            ctx.lineTo(0, r);
+            ctx.arcTo(0, 0, r, 0, r);
+            ctx.closePath();
+            ctx.fill();
+        }
     }
     return canvas.toDataURL('image/png');
 };
@@ -283,7 +315,7 @@ const parseMultiPrompt = (prompt: string): string[] => {
 
 
 export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose, onHide }) => {
-    const { sessionGalleryImages, addImagesToGallery, t } = useAppControls();
+    const { sessionGalleryImages, addImagesToGallery, t, settings, language } = useAppControls();
     const { openImageEditor } = useImageEditor();
 
     const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>({ 
@@ -311,12 +343,15 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const [isConfirmingClose, setIsConfirmingClose] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
     const [isSimpleImageMode, setIsSimpleImageMode] = useState(false);
-    const [aiPreset, setAiPreset] = useState<'none' | 'architecture'>('none');
+    const [aiPreset, setAiPreset] = useState<string>('default');
+    const [presets, setPresets] = useState<AIPreset[]>([]);
     const [aiProcessLog, setAiProcessLog] = useState<AILogMessage[]>([]);
     const [isLogVisible, setIsLogVisible] = useState(false);
     const [editingMaskForLayerId, setEditingMaskForLayerId] = useState<string | null>(null);
     const [rectBorderRadius, setRectBorderRadius] = useState(0);
     const [loadedPreset, setLoadedPreset] = useState<any | null>(null);
+    const [activeCanvasTool, setActiveCanvasTool] = useState<CanvasTool>('select');
+    const [shapeFillColor, setShapeFillColor] = useState<string>('#FFFFFF');
 
     const onRectBorderRadiusChange = (radius: number) => {
         setRectBorderRadius(radius);
@@ -332,9 +367,8 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const [zoomDisplay, setZoomDisplay] = useState(100);
     useMotionValueEvent(scale, "change", (latest) => setZoomDisplay(Math.round(latest * 100)));
 
-    const [activeCanvasTool, setActiveCanvasTool] = useState<'select' | 'hand'>('select');
     const [isSpacePanning, setIsSpacePanning] = useState(false);
-    const panStartRef = useRef<{ pan: { x: number, y: number }, pointer: { x: number, y: number } } | null>(null);
+    const panStartRef = useRef<{ pan: { x: number; y: number; }; pointer: { x: number; y: number; }; } | null>(null);
 
     const [isStartScreenDraggingOver, setIsStartScreenDraggingOver] = useState(false);
 
@@ -350,18 +384,53 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const generationController = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        // This effect handles auto-hiding the log after a generation completes.
+        const fetchPresets = async () => {
+            try {
+                const response = await fetch('/presets.json');
+                if (!response.ok) {
+                    throw new Error('Could not load presets.json');
+                }
+                const data = await response.json();
+                setPresets(data.presets);
+            } catch (error) {
+                console.error(error);
+                setPresets([
+                    {
+                        id: "default",
+                        name: { vi: "Mặc định", en: "Default" },
+                        description: { vi: "Sử dụng prompt của bạn trực tiếp không qua xử lý.", en: "Use your prompt directly without processing." },
+                        requiresImageContext: false,
+                        refine: false,
+                        promptTemplate: { vi: "{{userPrompt}}", en: "{{userPrompt}}" }
+                    },
+                    {
+                        id: "architecture",
+                        name: { vi: "Kiến trúc", en: "Architecture" },
+                        description: { vi: "Biến phác thảo hoặc ảnh 3D thành ảnh kiến trúc chân thực, giữ lại bố cục gốc.", en: "Turns sketches or 3D images into realistic architectural photos, preserving the original layout." },
+                        requiresImageContext: true,
+                        refine: true,
+                        promptTemplate: { vi: "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này.", en: "Maintaining the lines, layout, and form from the image as accurately as possible, create a realistic architectural perspective photo of this structure."}
+                    }
+                ]);
+            }
+        };
+
+        if (isOpen) {
+            fetchPresets();
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
         if (prevIsLoadingRef.current && !isLoading && isLogVisible) {
             const timer = setTimeout(() => {
                 setIsLogVisible(false);
-            }, 5000); // Auto-hide after 5 seconds
+            }, 5000); 
     
             return () => clearTimeout(timer);
         }
     }, [isLoading, isLogVisible]);
     
     useEffect(() => {
-        // Track the previous value of isLoading
         prevIsLoadingRef.current = isLoading;
     }, [isLoading]);
     
@@ -385,7 +454,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         });
     };
 
-    const updateMultipleLayers = (updates: { id: string, props: Partial<Layer> }[], isFinalChange: boolean) => {
+    const updateMultipleLayers = (updates: { id: string; props: Partial<Layer> }[], isFinalChange: boolean) => {
         setLayers(prevLayers => {
             const layerMap = new Map(prevLayers.map(l => [l.id, l]));
             updates.forEach(({ id, props }) => {
@@ -409,6 +478,29 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         });
     };
 
+    const handleResizeSelectedLayers = useCallback((dimension: 'width' | 'height', newValue: number) => {
+        if (selectedLayers.length === 0 || !newValue || newValue <= 0) return;
+    
+        beginInteraction();
+    
+        const updates = selectedLayers.map(layer => {
+            const aspectRatio = (layer.width > 0 && layer.height > 0) ? layer.width / layer.height : 1;
+            let newWidth, newHeight;
+    
+            if (dimension === 'width') {
+                newWidth = newValue;
+                newHeight = newValue / aspectRatio;
+            } else { // dimension === 'height'
+                newHeight = newValue;
+                newWidth = newValue * aspectRatio;
+            }
+    
+            return { id: layer.id, props: { width: newWidth, height: newHeight } };
+        });
+    
+        updateMultipleLayers(updates, true);
+    }, [selectedLayers, beginInteraction, updateMultipleLayers]);
+
     const reorderLayers = useCallback((reorderedLayers: Layer[]) => {
         beginInteraction();
         setLayers(reorderedLayers);
@@ -425,7 +517,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const handleUndo = useCallback(() => { if (historyIndex > 0) { const newIndex = historyIndex - 1; setHistoryIndex(newIndex); setLayers(history[newIndex]); } }, [history, historyIndex]);
     const handleRedo = useCallback(() => { if (historyIndex < history.length - 1) { const newIndex = historyIndex + 1; setHistoryIndex(newIndex); setLayers(history[newIndex]); } }, [history, historyIndex]);
 
-    const handleCloseAndReset = () => {
+    const handleCloseAndReset = useCallback(() => {
         setLayers([]);
         setSelectedLayerIds([]);
         setCanvasSettings({ width: 1024, height: 1024, background: '#ffffff', grid: { visible: false, snap: false, size: 50, color: '#cccccc' }, guides: { enabled: true, color: '#ff4d4d' } });
@@ -439,7 +531,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setIsLogVisible(false);
         setLoadedPreset(null);
         onClose();
-    };
+    }, [onClose]);
 
     const handleRequestClose = useCallback(() => {
         if (layers.length > 0) {
@@ -447,7 +539,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } else {
             handleCloseAndReset();
         }
-    }, [layers]);
+    }, [layers, handleCloseAndReset]);
     
     const loadCanvasStateFromJson = useCallback((jsonData: any) => {
         if (!jsonData || typeof jsonData.canvasSettings !== 'object' || !Array.isArray(jsonData.layers)) { setError(t('layerComposer_invalidJsonError')); return; }
@@ -554,7 +646,6 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         interactionStartHistoryState.current = null;
     }, [layers, canvasInitialized, canvasSettings, history, historyIndex, beginInteraction, panX, panY, scale, canvasViewRef]);
 
-
     const handleAddImage = useCallback((url: string, referenceBounds?: Rect | null) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
         img.onload = () => { 
@@ -581,6 +672,26 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         interactionStartHistoryState.current = null;
     }, [layers, canvasSettings.width, canvasSettings.height, history, historyIndex, beginInteraction, canvasInitialized]);
     
+    const addLayer = useCallback((layerData: Omit<Layer, 'id'>) => {
+        if (!canvasInitialized) {
+            setCanvasInitialized(true);
+        }
+        beginInteraction();
+        const newLayer: Layer = {
+            ...layerData,
+            id: Math.random().toString(36).substring(2, 9),
+        };
+        const newLayers = [newLayer, ...layers];
+        setLayers(newLayers);
+        setSelectedLayerIds([newLayer.id]);
+    
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newLayers);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+        interactionStartHistoryState.current = null;
+    }, [layers, canvasInitialized, history, historyIndex, beginInteraction]);
+
     const handleFilesDrop = (files: FileList | null) => {
         if (!files || files.length === 0) return;
         const jsonFile = Array.from(files).find(f => f.name.toLowerCase().endsWith('.json'));
@@ -677,6 +788,28 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setAiProcessLog(prev => [...prev, { id: Date.now() + Math.random(), message, type }]);
     };
     
+    const handleMergeLayers = useCallback(async () => {
+        if (selectedLayers.length < 2) return; beginInteraction(); setIsLoading(true); setError(null);
+        try {
+            const bbox = getBoundingBoxForLayers(selectedLayers); if (!bbox) throw new Error("Could not calculate bounding box.");
+            const mergedImageUrl = await captureCanvas(selectedLayers, bbox, null);
+            const newLayer: Layer = {
+                id: Math.random().toString(36).substring(2, 9), type: 'image', url: mergedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height,
+                rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false,
+                fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none',
+            };
+            const topMostLayerIndex = layers.findIndex(l => l.id === selectedLayerIds[0]);
+            const newLayers = layers.filter(l => !selectedLayerIds.includes(l.id));
+            newLayers.splice(topMostLayerIndex, 0, newLayer);
+            setLayers(newLayers); setSelectedLayerIds([newLayer.id]);
+            const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newLayers);
+            setHistory(newHistory);
+            setHistoryIndex(newHistory.length - 1);
+            interactionStartHistoryState.current = null;
+        } catch (err) { const msg = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', msg)); interactionStartHistoryState.current = null; }
+        finally { setIsLoading(false); }
+    }, [selectedLayers, layers, selectedLayerIds, beginInteraction, history, historyIndex, t]);
+    
     const handleGenerateAILayer = async () => {
         generationController.current = new AbortController();
         const { signal } = generationController.current;
@@ -684,122 +817,91 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setIsLogVisible(true);
         setIsLoading(true);
         setError(null);
-        setAiProcessLog([]); // Clear previous log
+        setAiProcessLog([]);
     
         const promptsToGenerate = parseMultiPrompt(aiPrompt);
+        const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
+        const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
+        const currentPreset = presets.find(pr => pr.id === aiPreset);
+    
+        if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
+            setIsLoading(false);
+            setIsLogVisible(false);
+            return;
+        }
     
         try {
-            // Path 1: No Layers Selected (Text-to-Image Generation)
-            if (selectedLayers.length === 0) {
-                if (promptsToGenerate.every(p => !p.trim())) {
-                    setIsLoading(false);
-                    setIsLogVisible(false);
-                    return;
-                }
-                addLog(t('layerComposer_ai_log_start'), 'info');
-                if (promptsToGenerate.length > 1) {
-                    addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
+            addLog(t('layerComposer_ai_log_start'), 'info');
+            if (promptsToGenerate.length > 1) {
+                addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
+            }
+    
+            const hasLayerContext = selectedLayers.length > 0;
+            const referenceBounds = hasLayerContext ? getBoundingBoxForLayers(selectedLayers) : null;
+            const imageUrls = hasLayerContext ? await Promise.all(selectedLayers.map(l => captureLayer(l))) : [];
+            if (signal.aborted) return;
+    
+            const generationPromises = finalPrompts.map(async (userPromptChunk) => {
+                if (!currentPreset) throw new Error("Selected preset not found.");
+    
+                if (currentPreset.requiresImageContext && !hasLayerContext) {
+                    throw new Error(`Preset "${currentPreset.name[language as keyof typeof currentPreset.name]}" requires at least one image layer to be selected.`);
                 }
     
-                const generationPromises = promptsToGenerate.map(async (p) => {
-                    const params = await analyzePromptForImageGenerationParams(p);
+                const template = currentPreset.promptTemplate[language as keyof typeof currentPreset.promptTemplate] || currentPreset.promptTemplate['en'];
+                let finalPrompt = '';
+    
+                if (currentPreset.refine && hasLayerContext) {
+                    addLog(t('layerComposer_ai_log_refining'), 'spinner');
+                    finalPrompt = await refineImageAndPrompt(template, userPromptChunk, imageUrls);
+                    setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+                } else {
+                    finalPrompt = template.replace('{{userPrompt}}', userPromptChunk).trim();
+                    addLog(t('layerComposer_ai_log_noRefine'), 'info');
+                }
+                if (signal.aborted) throw new Error("Cancelled");
+    
+                addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
+                addLog(finalPrompt, 'prompt');
+    
+                if (!hasLayerContext) {
+                    const params = await analyzePromptForImageGenerationParams(finalPrompt);
                     if (signal.aborted) throw new Error("Cancelled");
     
                     const canvasAspectRatioStr = findClosestImagenAspectRatio(canvasSettings.width, canvasSettings.height);
                     const finalAspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : canvasAspectRatioStr;
-                    // If using multi-prompt syntax, generate 1 image per prompt. Otherwise, respect user's request.
-                    const finalNumImages = promptsToGenerate.length > 1 ? 1 : params.numberOfImages;
+                    const finalNumImages = finalPrompts.length > 1 ? 1 : params.numberOfImages;
     
-                    addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
-                    addLog(params.refinedPrompt, 'prompt');
                     return generateFreeImage(params.refinedPrompt, finalNumImages, finalAspectRatio as any);
-                });
-    
-                addLog(t('layerComposer_ai_log_generating'), 'spinner');
-                const resultsArrays = await Promise.all(generationPromises);
-                if (signal.aborted) return;
-    
-                const finalResults = resultsArrays.flat();
-                if (finalResults.length === 0) throw new Error("AI did not generate any images.");
-    
-                const imageLoadPromises = finalResults.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = url;
-                }));
-                const loadedImages = await Promise.all(imageLoadPromises);
-                if (signal.aborted) return;
-                addImagesAsLayers(loadedImages);
-    
-            // Path 2: Layer(s) Selected (Image Editing / Combination)
-            } else {
-                if (!promptsToGenerate.some(p => p.trim()) && aiPreset === 'none') {
-                    setIsLoading(false);
-                    setIsLogVisible(false);
-                    return;
-                }
-    
-                if (promptsToGenerate.length > 1 && aiPreset === 'architecture') {
-                    throw new Error("Multi-prompt syntax `{...|...}` is not supported with the Architecture preset. Please use the Default preset.");
-                }
-    
-                addLog(t('layerComposer_ai_log_start'), 'info');
-                if (promptsToGenerate.length > 1) {
-                    addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
-                }
-    
-                const referenceBounds = getBoundingBoxForLayers(selectedLayers);
-                const imageUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
-                if (signal.aborted) return;
-    
-                const generationPromises = promptsToGenerate.map(async (p) => {
-                    let finalPrompt = p;
-    
-                    if (aiPreset === 'architecture') {
-                        addLog(t('layerComposer_ai_log_refining'), 'spinner');
-                        addLog(t('layerComposer_ai_log_architect'), 'info');
-                        finalPrompt = await refineArchitecturePrompt(p, imageUrls);
-                        if (signal.aborted) throw new Error("Cancelled");
-                        setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
-                    } else {
-                        addLog(t('layerComposer_ai_log_noRefine'), 'info');
-                    }
-    
-                    addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
-                    addLog(finalPrompt, 'prompt');
-    
-                    if (isSimpleImageMode && promptsToGenerate.length === 1) {
+                } else {
+                    if (isSimpleImageMode && finalPrompts.length === 1 && selectedLayers.length > 1) {
                         return Promise.all(imageUrls.map(url => editImageWithPrompt(url, finalPrompt)));
+                    } else if (selectedLayers.length === 1) {
+                        return editImageWithPrompt(imageUrls[0], finalPrompt);
                     } else {
-                        if (selectedLayers.length === 1) {
-                            return editImageWithPrompt(imageUrls[0], finalPrompt);
-                        } else {
-                            return generateFromMultipleImages(imageUrls, finalPrompt);
-                        }
+                        return generateFromMultipleImages(imageUrls, finalPrompt);
                     }
-                });
+                }
+            });
     
-                addLog(t('layerComposer_ai_log_generating'), 'spinner');
-                const results = (await Promise.all(generationPromises)).flat();
-                if (signal.aborted) return;
+            addLog(t('layerComposer_ai_log_generating'), 'spinner');
+            const results = (await Promise.all(generationPromises)).flat();
+            if (signal.aborted) return;
     
-                if (results.length === 0) throw new Error("AI did not generate any images.");
+            if (results.length === 0) throw new Error("AI did not generate any images.");
     
-                const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = url;
-                }));
-                const loadedImages = await Promise.all(imageLoadPromises);
-                if (signal.aborted) return;
+            const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            }));
+            const loadedImages = await Promise.all(imageLoadPromises);
+            if (signal.aborted) return;
     
-                const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
-                addImagesAsLayers(loadedImages, position);
-            }
+            const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
+            addImagesAsLayers(loadedImages, position);
     
             setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
             addLog(t('layerComposer_ai_log_success'), 'success');
@@ -871,6 +973,8 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
 
         const bbox = getBoundingBoxForLayers(selectedLayers); if (!bbox) { interactionStartHistoryState.current = null; return; }
         const updates: { id: string; props: Partial<Layer> }[] = [];
+        const GAP = 10;
+        
         switch (action) {
             case 'align-left': selectedLayers.forEach(l => updates.push({ id: l.id, props: { x: bbox.x }})); break;
             case 'align-center': selectedLayers.forEach(l => updates.push({ id: l.id, props: { x: bbox.x + (bbox.width / 2) - (l.width / 2) }})); break;
@@ -880,31 +984,47 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             case 'align-bottom': selectedLayers.forEach(l => updates.push({ id: l.id, props: { y: bbox.y + bbox.height - l.height }})); break;
             case 'distribute-horizontal': { const sorted = [...selectedLayers].sort((a,b) => a.x - b.x); if (sorted.length < 2) break; const totalW = sorted.reduce((s, l) => s + l.width, 0); const gap = (bbox.width - totalW) / (sorted.length - 1); let currentX = bbox.x; sorted.forEach(l => { updates.push({ id: l.id, props: { x: currentX } }); currentX += l.width + gap; }); break; }
             case 'distribute-vertical': { const sorted = [...selectedLayers].sort((a,b) => a.y - b.y); if (sorted.length < 2) break; const totalH = sorted.reduce((s, l) => s + l.height, 0); const gap = (bbox.height - totalH) / (sorted.length - 1); let currentY = bbox.y; sorted.forEach(l => { updates.push({ id: l.id, props: { y: currentY } }); currentY += l.height + gap; }); break; }
+            case 'distribute-and-scale-horizontal': {
+                const sorted = [...selectedLayers].sort((a, b) => a.x - b.x);
+                if (sorted.length === 0) break;
+                const totalHeight = sorted.reduce((sum, l) => sum + l.height, 0);
+                const avgHeight = totalHeight / sorted.length;
+                if (avgHeight <= 0) break;
+                let currentX = bbox.x;
+                
+                sorted.forEach(layer => {
+                    const aspectRatio = (layer.height > 0) ? layer.width / layer.height : 1;
+                    const newWidth = avgHeight * aspectRatio;
+                    updates.push({
+                        id: layer.id,
+                        props: { width: newWidth, height: avgHeight, x: currentX, y: bbox.y }
+                    });
+                    currentX += newWidth + GAP;
+                });
+                break;
+            }
+            case 'distribute-and-scale-vertical': {
+                const sorted = [...selectedLayers].sort((a, b) => a.y - b.y);
+                if (sorted.length === 0) break;
+                const totalWidth = sorted.reduce((sum, l) => sum + l.width, 0);
+                const avgWidth = totalWidth / sorted.length;
+                if (avgWidth <= 0) break;
+                let currentY = bbox.y;
+
+                sorted.forEach(layer => {
+                    const aspectRatio = (layer.width > 0) ? layer.height / layer.width : 1;
+                    const newHeight = avgWidth * aspectRatio;
+                    updates.push({
+                        id: layer.id,
+                        props: { width: avgWidth, height: newHeight, x: bbox.x, y: currentY }
+                    });
+                    currentY += newHeight + GAP;
+                });
+                break;
+            }
         }
         if (updates.length > 0) { updateMultipleLayers(updates, true); } else { interactionStartHistoryState.current = null; }
-    }, [selectedLayers, layers, beginInteraction, updateMultipleLayers, deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers]);
-    
-    const handleMergeLayers = useCallback(async () => {
-        if (selectedLayers.length < 2) return; beginInteraction(); setIsLoading(true); setError(null);
-        try {
-            const bbox = getBoundingBoxForLayers(selectedLayers); if (!bbox) throw new Error("Could not calculate bounding box.");
-            const mergedImageUrl = await captureCanvas(selectedLayers, bbox, null);
-            const newLayer: Layer = {
-                id: Math.random().toString(36).substring(2, 9), type: 'image', url: mergedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height,
-                rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false,
-                fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none',
-            };
-            const topMostLayerIndex = layers.findIndex(l => l.id === selectedLayerIds[0]);
-            const newLayers = layers.filter(l => !selectedLayerIds.includes(l.id));
-            newLayers.splice(topMostLayerIndex, 0, newLayer);
-            setLayers(newLayers); setSelectedLayerIds([newLayer.id]);
-            const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newLayers);
-            setHistory(newHistory);
-            setHistoryIndex(newHistory.length - 1);
-            interactionStartHistoryState.current = null;
-        } catch (err) { const msg = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', msg)); interactionStartHistoryState.current = null; }
-        finally { setIsLoading(false); }
-    }, [selectedLayers, layers, selectedLayerIds, captureCanvas, beginInteraction, history, historyIndex, t]);
+    }, [selectedLayers, layers, beginInteraction, updateMultipleLayers, deleteSelectedLayers, duplicateSelectedLayers, handleExportSelectedLayers, handleMergeLayers]);
     
     const handleBakeSelectedLayer = useCallback(async () => {
         if (selectedLayers.length !== 1) return;
@@ -968,7 +1088,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } finally {
             setIsLoading(false);
         }
-    }, [selectedLayers, layers, history, historyIndex, captureCanvas, beginInteraction, editingMaskForLayerId, setLayers, setHistory, setHistoryIndex, setSelectedLayerIds, setIsLoading, setError, t]);
+    }, [selectedLayers, layers, history, historyIndex, beginInteraction, editingMaskForLayerId, setLayers, setHistory, setHistoryIndex, setSelectedLayerIds, setIsLoading, setError, t]);
 
     const handleGenerateFromPreset = useCallback(async () => {
         if (!loadedPreset) return;
@@ -979,166 +1099,20 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setAiProcessLog([]);
         addLog(t('layerComposer_ai_log_start'), 'info');
         
-        const presetOptions = loadedPreset.state.options;
-        const viewId = loadedPreset.viewId;
-    
         try {
-            const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(0, 1));
-            const imageStatePropertyMap: Record<string, string[]> = {
-                'architecture-ideator': ['uploadedImage'],
-                'avatar-creator': ['uploadedImage'],
-                'dress-the-model': ['modelImage', 'clothingImage'],
-                'photo-restoration': ['uploadedImage'],
-                'image-to-real': ['uploadedImage'],
-                'swap-style': ['uploadedImage'],
-                'mix-style': ['contentImage', 'styleImage'],
-                'toy-model-creator': ['uploadedImage'],
-                'free-generation': ['image1', 'image2'],
-                'image-interpolation': ['referenceImage']
-            };
-            const requiredImageKeys = imageStatePropertyMap[viewId] || [];
+            const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+            const resultUrls = await generateFromPreset(loadedPreset, selectedLayerUrls);
 
-            // BATCH MODE
-            if (isSimpleImageMode && selectedLayers.length > 1) {
-                addLog(`Starting batch generation for ${selectedLayers.length} layers...`, 'info');
-
-                const generationPromises = selectedLayers.map(async (layer, index) => {
-                    addLog(`Processing layer ${index + 1}...`, 'info');
-                    const capturedLayerUrl = await captureLayer(layer);
-                    
-                    const finalImageUrls: (string | undefined)[] = [capturedLayerUrl];
-                    for (let i = 1; i < requiredImageKeys.length; i++) {
-                        const key = requiredImageKeys[i];
-                        finalImageUrls.push(loadedPreset.state[key]);
-                    }
-
-                    let resultUrls: string[] = [];
-                    // Logic is similar to single mode but adapted for loop
-                    switch (viewId) {
-                        case 'architecture-ideator': case 'photo-restoration': case 'image-to-real': case 'swap-style': case 'toy-model-creator':
-                            if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
-                            if (viewId === 'architecture-ideator') resultUrls.push(await generateArchitecturalImage(finalImageUrls[0], presetOptions));
-                            if (viewId === 'photo-restoration') resultUrls.push(await restoreOldPhoto(finalImageUrls[0], presetOptions));
-                            if (viewId === 'image-to-real') resultUrls.push(await convertImageToRealistic(finalImageUrls[0], presetOptions));
-                            if (viewId === 'swap-style') resultUrls.push(await swapImageStyle(finalImageUrls[0], presetOptions));
-                            if (viewId === 'toy-model-creator') {
-                                 const concept = loadedPreset.state.concept;
-                                 if (!concept) throw new Error("Toy Model Creator preset is missing a 'concept'.");
-                                 resultUrls.push(await generateToyModelImage(finalImageUrls[0], concept, presetOptions));
-                            }
-                            break;
-                        case 'avatar-creator':
-                             if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
-                             const ideas = loadedPreset.state.selectedIdeas;
-                             if (!ideas || ideas.length === 0) throw new Error("Avatar Creator preset has no ideas selected.");
-                             resultUrls.push(await generatePatrioticImage(finalImageUrls[0], ideas[0], presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
-                             break;
-                        case 'dress-the-model': case 'mix-style':
-                             if (!finalImageUrls[0] || !finalImageUrls[1]) throw new Error(`App "${viewId}" requires two images, but only one was provided by the batch layer.`);
-                             if (viewId === 'dress-the-model') resultUrls.push(await generateDressedModelImage(finalImageUrls[0], finalImageUrls[1], presetOptions));
-                             if (viewId === 'mix-style') {
-                                 const { resultUrl: mixUrl } = await mixImageStyle(finalImageUrls[0], finalImageUrls[1], presetOptions);
-                                 resultUrls.push(mixUrl);
-                             }
-                             break;
-                        case 'free-generation':
-                             const genUrls = await generateFreeImage( presetOptions.prompt, 1, presetOptions.aspectRatio, finalImageUrls[0], finalImageUrls[1], presetOptions.removeWatermark );
-                             resultUrls.push(...genUrls);
-                             break;
-                        case 'image-interpolation':
-                            const { generatedPrompt, additionalNotes } = loadedPreset.state;
-                            if (!generatedPrompt) throw new Error("Preset is missing the generated prompt.");
-                            if (!finalImageUrls[0]) throw new Error("Batch mode requires a reference image from a selected layer.");
-                            let iPrompt = generatedPrompt;
-                            if (additionalNotes) { iPrompt = await interpolatePrompts(iPrompt, additionalNotes); }
-                            const fPrompt = await adaptPromptToContext(finalImageUrls[0], iPrompt);
-                            resultUrls.push(await editImageWithPrompt(finalImageUrls[0], fPrompt, presetOptions.aspectRatio, presetOptions.removeWatermark));
-                            break;
-                        default:
-                            throw new Error(`Preset for app "${viewId}" is not supported in batch mode yet.`);
-                    }
-                    return resultUrls;
-                });
-                
-                addLog(t('layerComposer_ai_log_generating'), 'spinner');
-                const resultsArrays = await Promise.all(generationPromises);
-                const flatResults = resultsArrays.flat();
-
-                if (flatResults.length > 0) {
-                     const imageLoadPromises = flatResults.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                        const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
-                    }));
-                    const loadedImages = await Promise.all(imageLoadPromises);
-                    addImagesAsLayers(loadedImages, referenceBounds);
-                }
-            
-            // SINGLE / COMBINE MODE
-            } else {
-                 let resultUrls: string[] = [];
-                 const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
-                 const finalImageUrls: (string | undefined)[] = [];
-                 for (let i = 0; i < requiredImageKeys.length; i++) {
-                     const key = requiredImageKeys[i];
-                     if (selectedLayerUrls[i]) {
-                         finalImageUrls.push(selectedLayerUrls[i]);
-                     } else if (loadedPreset.state[key]) {
-                         finalImageUrls.push(loadedPreset.state[key]);
-                     } else {
-                         finalImageUrls.push(undefined);
-                     }
-                 }
-                addLog(`${t('layerComposer_ai_log_generating')} with "${t(`app_${viewId}_title`)}" preset...`, 'spinner');
-                switch (viewId) {
-                    case 'architecture-ideator': case 'photo-restoration': case 'image-to-real': case 'swap-style': case 'toy-model-creator':
-                        if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
-                        if (viewId === 'architecture-ideator') resultUrls.push(await generateArchitecturalImage(finalImageUrls[0], presetOptions));
-                        if (viewId === 'photo-restoration') resultUrls.push(await restoreOldPhoto(finalImageUrls[0], presetOptions));
-                        if (viewId === 'image-to-real') resultUrls.push(await convertImageToRealistic(finalImageUrls[0], presetOptions));
-                        if (viewId === 'swap-style') resultUrls.push(await swapImageStyle(finalImageUrls[0], presetOptions));
-                        if (viewId === 'toy-model-creator') {
-                            const concept = loadedPreset.state.concept;
-                            if (!concept) throw new Error("Preset is missing a 'concept'.");
-                            resultUrls.push(await generateToyModelImage(finalImageUrls[0], concept, presetOptions));
-                        }
-                        break;
-                    case 'avatar-creator':
-                        if (!finalImageUrls[0]) throw new Error(`App "${viewId}" requires an image.`);
-                        const ideas = loadedPreset.state.selectedIdeas;
-                        if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
-                        const avatarPromises = ideas.map((idea: string) => generatePatrioticImage(finalImageUrls[0]!, idea, presetOptions.additionalPrompt, presetOptions.removeWatermark, presetOptions.aspectRatio));
-                        resultUrls.push(...await Promise.all(avatarPromises));
-                        break;
-                    case 'dress-the-model': case 'mix-style':
-                        if (!finalImageUrls[0] || !finalImageUrls[1]) throw new Error(`App "${viewId}" requires two images.`);
-                        if (viewId === 'dress-the-model') resultUrls.push(await generateDressedModelImage(finalImageUrls[0], finalImageUrls[1], presetOptions));
-                        if (viewId === 'mix-style') {
-                            const { resultUrl: mixUrl } = await mixImageStyle(finalImageUrls[0], finalImageUrls[1], presetOptions);
-                            resultUrls.push(mixUrl);
-                        }
-                        break;
-                    case 'free-generation':
-                        const genUrls = await generateFreeImage(presetOptions.prompt, presetOptions.numberOfImages, presetOptions.aspectRatio, finalImageUrls[0], finalImageUrls[1], presetOptions.removeWatermark);
-                        resultUrls.push(...genUrls);
-                        break;
-                    case 'image-interpolation':
-                        const { generatedPrompt, additionalNotes } = loadedPreset.state;
-                        if (!generatedPrompt || !finalImageUrls[0]) throw new Error("Preset is missing prompt or reference image.");
-                        let iPrompt = generatedPrompt;
-                        if (additionalNotes) { iPrompt = await interpolatePrompts(iPrompt, additionalNotes); }
-                        const fPrompt = await adaptPromptToContext(finalImageUrls[0], iPrompt);
-                        resultUrls.push(await editImageWithPrompt(finalImageUrls[0], fPrompt, presetOptions.aspectRatio, presetOptions.removeWatermark));
-                        break;
-                    default:
-                        throw new Error(`Preset for app "${viewId}" is not supported yet.`);
-                }
-                if (resultUrls.length > 0) {
-                     const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                        const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
-                    }));
-                    const loadedImages = await Promise.all(imageLoadPromises);
-                    addImagesAsLayers(loadedImages, referenceBounds);
-                }
+            if (resultUrls.length > 0) {
+                 const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                    const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+                }));
+                const loadedImages = await Promise.all(imageLoadPromises);
+                const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(-1));
+                const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
+                addImagesAsLayers(loadedImages, position);
             }
+
             setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
             addLog(t('layerComposer_ai_log_success'), 'success');
         } catch (err) {
@@ -1149,7 +1123,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } finally {
             setIsLoading(false);
         }
-    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers, t, isSimpleImageMode]);
+    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers, t]);
 
 
     useEffect(() => {
@@ -1212,21 +1186,26 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     ]);
 
     const handlePresetFile = async (file: File) => {
-        let settings = null;
+        let settingsData = null;
         setError(null);
         setLoadedPreset(null);
         try {
             if (file.type === 'image/png') {
-                settings = await extractJsonFromPng(file);
-                if (!settings) throw new Error("No preset data found in PNG.");
+                settingsData = await extractJsonFromPng(file);
+                if (!settingsData) throw new Error("No preset data found in PNG.");
             } else if (file.type === 'application/json') {
-                settings = JSON.parse(await file.text());
+                settingsData = JSON.parse(await file.text());
             } else {
                 throw new Error("Unsupported file type.");
             }
 
-            if (settings && settings.viewId && settings.state) {
-                setLoadedPreset(settings);
+            if (settingsData && settingsData.viewId && settingsData.state) {
+                 const appConfig = settings?.apps.find(app => app.id === settingsData.viewId);
+                if (appConfig && (appConfig as any).supportsCanvasPreset) {
+                    setLoadedPreset(settingsData);
+                } else {
+                    throw new Error(`The app "${settingsData.viewId}" does not support presets.`);
+                }
             } else {
                 throw new Error("Invalid preset file format.");
             }
@@ -1238,143 +1217,157 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     
     return ReactDOM.createPortal(
         <>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onHide}
-                        className="modal-overlay z-[60]"
-                        aria-modal="true"
-                        role="dialog"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="modal-content !max-w-[95vw] !w-[95vw] !h-[95vh] flex flex-row !p-0 relative"
-                        >
-                            {!canvasInitialized ? (
-                                <div className="w-full h-full" onDragOver={handleStartScreenDragOver} onDragLeave={handleStartScreenDragLeave} onDrop={handleStartScreenDrop}>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept="image/*,.json"
-                                        multiple
-                                        onChange={handleFileSelected}
-                                    />
-                                    <StartScreen
-                                        onCreateNew={handleCreateNew}
-                                        onOpenGallery={() => setIsGalleryOpen(true)}
-                                        onUpload={handleUploadClick}
-                                        onOpenWebcam={() => setIsWebcamOpen(true)}
-                                        hasGalleryImages={sessionGalleryImages.length > 0}
-                                    />
-                                    <AnimatePresence>
-                                        {isStartScreenDraggingOver && (
-                                            <motion.div
-                                                className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                                                <p className="text-2xl font-bold text-yellow-400">{t('layerComposer_startScreen_dropPrompt')}</p>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            ) : (
-                                <>
-                                    <LayerComposerSidebar
-                                        layers={layers}
-                                        canvasSettings={canvasSettings}
-                                        isInfiniteCanvas={isInfiniteCanvas}
-                                        setIsInfiniteCanvas={setIsInfiniteCanvas}
-                                        selectedLayerId={selectedLayer?.id || null}
-                                        selectedLayerIds={selectedLayerIds}
-                                        isLoading={isLoading}
-                                        error={error}
-                                        aiPrompt={aiPrompt}
-                                        setAiPrompt={setAiPrompt}
-                                        aiPreset={aiPreset}
-                                        setAiPreset={setAiPreset}
-                                        isSimpleImageMode={isSimpleImageMode}
-                                        setIsSimpleImageMode={setIsSimpleImageMode}
-                                        onGenerateAILayer={handleGenerateAILayer}
-                                        onCancelGeneration={handleCancelGeneration}
-                                        onLayersReorder={reorderLayers}
-                                        onLayerUpdate={updateLayerProperties}
-                                        onLayerDelete={deleteSelectedLayers}
-                                        onLayerSelect={handleSelectLayer}
-                                        onCanvasSettingsChange={setCanvasSettings}
-                                        onAddImage={() => setIsGalleryOpen(true)}
-                                        onAddText={handleAddTextLayer}
-                                        onSave={handleSave}
-                                        onClose={handleRequestClose}
-                                        beginInteraction={beginInteraction}
-                                        hasAiLog={aiProcessLog.length > 0}
-                                        isLogVisible={isLogVisible}
-                                        setIsLogVisible={setIsLogVisible}
-                                        loadedPreset={loadedPreset}
-                                        setLoadedPreset={setLoadedPreset}
-                                        onPresetFileLoad={handlePresetFile}
-                                        onGenerateFromPreset={handleGenerateFromPreset}
-                                        selectedLayersForPreset={selectedLayers}
-                                    />
-                                    <LayerComposerCanvas
-                                        canvasViewRef={canvasViewRef}
-                                        layers={layers}
-                                        canvasSettings={canvasSettings}
-                                        isInfiniteCanvas={isInfiniteCanvas}
-                                        selectedLayerIds={selectedLayerIds}
-                                        selectedLayers={selectedLayers}
-                                        selectionBoundingBox={selectionBoundingBox}
-                                        panX={panX}
-                                        panY={panY}
-                                        scale={scale}
-                                        zoomDisplay={zoomDisplay}
-                                        activeCanvasTool={activeCanvasTool}
-                                        setActiveCanvasTool={setActiveCanvasTool}
-                                        isSpacePanning={isSpacePanning}
-                                        interaction={interaction}
-                                        setInteraction={setInteraction}
-                                        panStartRef={panStartRef}
-                                        canUndo={canUndo}
-                                        canRedo={canRedo}
-                                        handleUndo={handleUndo}
-                                        handleRedo={handleRedo}
-                                        onUpdateLayers={updateMultipleLayers}
-                                        beginInteraction={beginInteraction}
-                                        duplicateLayer={(id) => duplicateSelectedLayers().find(l => l.id === id)!}
-                                        exportSelectedLayer={handleExportSelectedLayers}
-                                        deleteLayer={deleteSelectedLayers}
-                                        setSelectedLayerIds={setSelectedLayerIds}
-                                        onFilesDrop={(files) => handleFilesDrop(files)}
-                                        onMultiLayerAction={handleMultiLayerAction}
-                                        onDuplicateForDrag={handleDuplicateForDrag}
-                                        handleMergeLayers={handleMergeLayers}
-                                        openImageEditor={openImageEditor}
-                                        deleteSelectedLayers={deleteSelectedLayers}
-                                        duplicateSelectedLayers={duplicateSelectedLayers}
-                                        handleExportSelectedLayers={handleExportSelectedLayers}
-                                        handleBakeSelectedLayer={handleBakeSelectedLayer}
-                                        captureLayer={captureLayer}
-                                    />
-                                </>
-                            )}
-                        </motion.div>
-                         <AnimatePresence>
-                            {isOpen && isLogVisible && aiProcessLog.length > 0 && (
-                                <AIProcessLogger log={aiProcessLog} onClose={() => setIsLogVisible(false)} t={t} />
-                            )}
-                        </AnimatePresence>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <motion.div
+                className="modal-overlay z-[60]"
+                aria-modal="true"
+                role="dialog"
+                initial={false}
+                animate={isOpen ? "open" : "closed"}
+                variants={{
+                    open: { opacity: 1, pointerEvents: 'auto' },
+                    closed: { opacity: 0, pointerEvents: 'none' },
+                }}
+                transition={{ duration: 0.2 }}
+                onClick={onHide}
+            >
+                <motion.div
+                    className="modal-content !max-w-[95vw] !w-[95vw] !h-[95vh] flex flex-row !p-0 relative"
+                    onClick={(e) => e.stopPropagation()}
+                    initial={false}
+                    animate={isOpen ? "open" : "closed"}
+                    variants={{
+                        open: { opacity: 1, scale: 1, y: 0 },
+                        closed: { opacity: 0, scale: 0.95, y: 20 },
+                    }}
+                    transition={{ duration: 0.2 }}
+                >
+                    {!canvasInitialized ? (
+                        <div className="w-full h-full" onDragOver={handleStartScreenDragOver} onDragLeave={handleStartScreenDragLeave} onDrop={handleStartScreenDrop}>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*,.json"
+                                multiple
+                                onChange={handleFileSelected}
+                            />
+                            <StartScreen
+                                onCreateNew={handleCreateNew}
+                                onOpenGallery={() => setIsGalleryOpen(true)}
+                                onUpload={handleUploadClick}
+                                onOpenWebcam={() => setIsWebcamOpen(true)}
+                                hasGalleryImages={sessionGalleryImages.length > 0}
+                            />
+                            <AnimatePresence>
+                                {isStartScreenDraggingOver && (
+                                    <motion.div
+                                        className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                        <p className="text-2xl font-bold text-yellow-400">{t('layerComposer_startScreen_dropPrompt')}</p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    ) : (
+                        <>
+                            <LayerComposerSidebar
+                                layers={layers}
+                                canvasSettings={canvasSettings}
+                                isInfiniteCanvas={isInfiniteCanvas}
+                                setIsInfiniteCanvas={setIsInfiniteCanvas}
+                                selectedLayerId={selectedLayer?.id || null}
+                                selectedLayerIds={selectedLayerIds}
+                                selectedLayers={selectedLayers}
+                                isLoading={isLoading}
+                                error={error}
+                                aiPrompt={aiPrompt}
+                                setAiPrompt={setAiPrompt}
+                                presets={presets}
+                                aiPreset={aiPreset}
+                                setAiPreset={setAiPreset}
+                                isSimpleImageMode={isSimpleImageMode}
+                                setIsSimpleImageMode={setIsSimpleImageMode}
+                                onGenerateAILayer={handleGenerateAILayer}
+                                onCancelGeneration={handleCancelGeneration}
+                                onLayersReorder={reorderLayers}
+                                onLayerUpdate={updateLayerProperties}
+                                onLayerDelete={deleteSelectedLayers}
+                                onLayerSelect={handleSelectLayer}
+                                onCanvasSettingsChange={setCanvasSettings}
+                                onAddImage={() => setIsGalleryOpen(true)}
+                                onAddText={handleAddTextLayer}
+                                onSave={handleSave}
+                                onClose={handleRequestClose}
+                                onHide={onHide}
+                                beginInteraction={beginInteraction}
+                                hasAiLog={aiProcessLog.length > 0}
+                                isLogVisible={isLogVisible}
+                                setIsLogVisible={setIsLogVisible}
+                                loadedPreset={loadedPreset}
+                                setLoadedPreset={setLoadedPreset}
+                                onPresetFileLoad={handlePresetFile}
+                                onGenerateFromPreset={handleGenerateFromPreset}
+                                selectedLayersForPreset={selectedLayers}
+                                onResizeSelectedLayers={handleResizeSelectedLayers}
+                                activeCanvasTool={activeCanvasTool}
+                                shapeFillColor={shapeFillColor}
+                                setShapeFillColor={setShapeFillColor}
+                            />
+                            <LayerComposerCanvas
+                                canvasViewRef={canvasViewRef}
+                                layers={layers}
+                                canvasSettings={canvasSettings}
+                                isInfiniteCanvas={isInfiniteCanvas}
+                                selectedLayerIds={selectedLayerIds}
+                                selectedLayers={selectedLayers}
+                                selectionBoundingBox={selectionBoundingBox}
+                                panX={panX}
+                                panY={panY}
+                                scale={scale}
+                                zoomDisplay={zoomDisplay}
+                                activeCanvasTool={activeCanvasTool}
+                                setActiveCanvasTool={setActiveCanvasTool}
+                                isSpacePanning={isSpacePanning}
+                                interaction={interaction}
+                                setInteraction={setInteraction}
+                                panStartRef={panStartRef}
+                                canUndo={canUndo}
+                                canRedo={canRedo}
+                                handleUndo={handleUndo}
+                                handleRedo={handleRedo}
+                                onUpdateLayers={updateMultipleLayers}
+                                beginInteraction={beginInteraction}
+                                duplicateLayer={(id) => duplicateSelectedLayers().find(l => l.id === id)!}
+                                exportSelectedLayer={handleExportSelectedLayers}
+                                deleteLayer={deleteSelectedLayers}
+                                setSelectedLayerIds={setSelectedLayerIds}
+                                onFilesDrop={(files) => handleFilesDrop(files)}
+                                onMultiLayerAction={handleMultiLayerAction}
+                                onDuplicateForDrag={handleDuplicateForDrag}
+                                handleMergeLayers={handleMergeLayers}
+                                openImageEditor={openImageEditor}
+                                deleteSelectedLayers={deleteSelectedLayers}
+                                duplicateSelectedLayers={duplicateSelectedLayers}
+                                handleExportSelectedLayers={handleExportSelectedLayers}
+                                handleBakeSelectedLayer={handleBakeSelectedLayer}
+                                captureLayer={captureLayer}
+                                addLayer={addLayer}
+                                shapeFillColor={shapeFillColor}
+                            />
+                        </>
+                    )}
+                </motion.div>
+                 <AnimatePresence>
+                    {isOpen && isLogVisible && aiProcessLog.length > 0 && (
+                        <AIProcessLogger log={aiProcessLog} onClose={() => setIsLogVisible(false)} t={t} />
+                    )}
+                </AnimatePresence>
+            </motion.div>
+            
             <GalleryPicker
                 isOpen={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}

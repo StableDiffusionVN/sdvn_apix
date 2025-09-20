@@ -1,0 +1,89 @@
+{
+  "presets": [
+    {
+      "id": "default",
+      "name": {
+        "vi": "Mặc định",
+        "en": "Default"
+      },
+      "description": {
+        "vi": "Sử dụng prompt của bạn trực tiếp không qua xử lý.",
+        "en": "Use your prompt directly without processing."
+      },
+      "requiresImageContext": false,
+      "refine": false,
+      "promptTemplate": {
+        "vi": "{{userPrompt}}",
+        "en": "{{userPrompt}}"
+      }
+    },
+    {
+      "id": "architecture",
+      "name": {
+        "vi": "Kiến trúc",
+        "en": "Architecture"
+      },
+      "description": {
+        "vi": "Biến phác thảo hoặc ảnh 3D thành ảnh kiến trúc chân thực, giữ lại bố cục gốc.",
+        "en": "Turns sketches or 3D images into realistic architectural photos, preserving the original layout."
+      },
+      "requiresImageContext": true,
+      "refine": true,
+      "promptTemplate": {
+        "vi": "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này.",
+        "en": "Maintaining the lines, layout, and form from the image as accurately as possible, create a realistic architectural perspective photo of this structure."
+      }
+    },
+    {
+      "id": "photo-restoration",
+      "name": {
+        "vi": "Phục chế ảnh chân dung",
+        "en": "Portrait Restoration"
+      },
+      "description": {
+        "vi": "Giữ lại đặc điểm nhận dạng và phục hồi hư hỏng trên ảnh cũ.",
+        "en": "Keeps identifying features and restores damage on old photos."
+      },
+      "requiresImageContext": true,
+      "refine": true,
+      "promptTemplate": {
+        "vi": "Bạn là một chuyên gia phục chế ảnh cũ. Phục chế bức ảnh chân dung này. **YÊU CẦU QUAN TRỌNG NHẤT:** Phải giữ lại chính xác tuyệt đối 100% các đặc điểm nhận dạng, đường nét khuôn mặt, và biểu cảm của người trong ảnh gốc. **Nhiệm vụ:** Loại bỏ hoàn toàn các vết xước, nếp gấp, vết ố, phai màu, và các hư hỏng vật lý khác. Làm sắc nét hình ảnh và khôi phục các chi tiết bị mất. Nếu là ảnh đen trắng, hãy tô màu một cách tự nhiên và chân thực, phù hợp với thời đại của bức ảnh.",
+        "en": "You are an expert in old photo restoration. Restore this portrait photo. **MOST IMPORTANT REQUIREMENT:** You must preserve with 100% absolute accuracy the identifying features, facial lines, and expression of the person in the original photo. **Task:** Completely remove all scratches, creases, stains, fading, and other physical damage. Sharpen the image and restore lost details. If it's a black and white photo, colorize it naturally and realistically, appropriate for the era of the photograph."
+      }
+    },
+    {
+      "id": "image-to-real",
+      "name": {
+        "vi": "Chuyển đổi ảnh thật",
+        "en": "Convert to Real"
+      },
+      "description": {
+        "vi": "Chuyển đổi ảnh vẽ/hoạt hình thành ảnh chụp siêu thực. Ưu tiên độ 'giống thật' hơn là bám sát 100% đường nét gốc.",
+        "en": "Converts drawings/cartoons into hyper-realistic photos. Prioritizes 'realism' over 100% adherence to original lines."
+      },
+      "requiresImageContext": true,
+      "refine": true,
+      "promptTemplate": {
+        "vi": "Nhiệm vụ của bạn là chuyển đổi hình ảnh được cung cấp thành một bức ảnh SIÊU THỰC (hyper-realistic). **Ưu tiên hàng đầu là kết quả cuối cùng phải trông giống như một bức ảnh chụp thật.** Bạn có thể thay đổi một chút về bố cục, chi tiết và đường nét của ảnh gốc để đạt được độ chân thực cao nhất. Hãy tập trung vào ánh sáng tự nhiên, bóng đổ phức tạp, và kết cấu vật liệu chi tiết.",
+        "en": "Your task is to convert the provided image into a HYPER-REALISTIC photograph. **The top priority is that the final result must look like a real photograph.** You may slightly alter the composition, details, and lines of the original image to achieve the highest level of realism. Focus on natural lighting, complex shadows, and detailed material textures."
+      }
+    },
+    {
+      "id": "product",
+      "name": {
+        "vi": "Sản phẩm",
+        "en": "Product Photography"
+      },
+      "description": {
+        "vi": "Tạo ảnh quảng cáo chuyên nghiệp cho sản phẩm của bạn.",
+        "en": "Create professional advertising photos for your product."
+      },
+      "requiresImageContext": true,
+      "refine": true,
+      "promptTemplate": {
+        "vi": "Bạn là một giám đốc nghệ thuật và nhiếp ảnh gia sản phẩm chuyên nghiệp. Nhiệm vụ của bạn là tạo ra một bức ảnh quảng cáo chất lượng cao, siêu thực cho sản phẩm trong hình ảnh được cung cấp.\n**YÊU CẦU QUAN TRỌNG NHẤT:**\n1.  **SẢN PHẨM NGUYÊN BẢN:** Giữ lại chính xác tuyệt đối 100% hình dáng, chi tiết, màu sắc, và nhãn hiệu của sản phẩm trong ảnh gốc. Không được thay đổi sản phẩm.\n2.  **CONCEPT SÁNG TẠO:** Dựa vào bản chất của sản phẩm, hãy tự động tạo ra một concept/bối cảnh phù hợp và hấp dẫn. Concept có thể là:\n    *   Sản phẩm được đặt trong một bối cảnh đẹp (ví dụ: trên mặt đá cẩm thạch, giữa thiên nhiên, trong một studio tối giản).\n    *   Một người mẫu (phù hợp với sản phẩm) đang cầm hoặc tương tác với sản phẩm.\n    *   Một người mẫu đang mặc/sử dụng sản phẩm (nếu là đồ thời trang/phụ kiện).\n3.  **CHẤT LƯỢNG QUẢNG CÁO:** Bức ảnh cuối cùng phải có ánh sáng chuyên nghiệp (studio lighting, soft light), bố cục nghệ thuật, và độ sắc nét cao, phù hợp để sử dụng trong các chiến dịch quảng cáo.",
+        "en": "You are a professional art director and product photographer. Your task is to create a high-quality, hyper-realistic advertising photograph for the product in the provided image.\n**MOST IMPORTANT REQUIREMENTS:**\n1.  **ORIGINAL PRODUCT:** Preserve with 100% absolute accuracy the shape, details, colors, and branding of the product from the original photo. Do not alter the product.\n2.  **CREATIVE CONCEPT:** Based on the nature of the product, automatically create a suitable and appealing concept/scene. The concept could be:\n    *   The product placed in a beautiful setting (e.g., on a marble surface, amidst nature, in a minimalist studio).\n    *   A suitable model holding or interacting with the product.\n    *   A model wearing/using the product (if it is fashion/an accessory).\n3.  **ADVERTISING QUALITY:** The final photograph must have professional lighting (studio lighting, soft light), an artistic composition, and high sharpness, suitable for use in advertising campaigns."
+      }
+    }
+  ]
+}

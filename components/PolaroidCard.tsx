@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '../lib/utils';
 import { useAppControls } from './uiUtils';
 import { 
@@ -115,6 +115,7 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
                                 key={mediaUrl}
                                 src={mediaUrl}
                                 alt={caption}
+                                loading="lazy"
                                 className="w-full h-auto md:w-auto md:h-full block"
                             />
                         )}
@@ -219,4 +220,4 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
     );
 };
 
-export default PolaroidCard;
+export default memo(PolaroidCard);

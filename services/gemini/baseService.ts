@@ -2,8 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI, Modality } from "@google/genai";
+import { Modality } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 
 // --- Centralized Error Processor ---
 export function processApiError(error: unknown): Error {
@@ -13,7 +14,7 @@ export function processApiError(error: unknown): Error {
         return new Error("Ứng dụng tạm thời chưa tương thích ứng dụng di động, mong mọi người thông cảm");
     }
     if (errorMessage.toLowerCase().includes('api key not valid')) {
-        return new Error("API Key không hợp lệ. Vui lòng kiểm tra lại cấu hình môi trường.");
+        return new Error("API Key không hợp lệ. Vui lòng liên hệ quản trị viên để được hỗ trợ.");
     }
     if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate limit') || errorMessage.toLowerCase().includes('resource_exhausted')) {
         return new Error("Ứng dụng tạm thời đạt giới hạn sử dụng trong ngày, hãy quay trở lại vào ngày tiếp theo.");
@@ -24,9 +25,9 @@ export function processApiError(error: unknown): Error {
     
     // Return original Error object or a new one for other cases
     if (error instanceof Error) {
-        return error; 
+        return new Error("Đã xảy ra lỗi không mong muốn từ AI. Vui lòng thử lại sau. Chi tiết: " + error.message);
     }
-    return new Error("Đã có lỗi xảy ra từ phía AI: " + errorMessage);
+    return new Error("Đã có lỗi không mong muốn từ AI: " + errorMessage);
 }
 
 /**
@@ -141,8 +142,6 @@ export function processGeminiResponse(response: GenerateContentResponse): string
  * @returns The GenerateContentResponse from the API.
  */
 export async function callGeminiWithRetry(parts: object[]): Promise<GenerateContentResponse> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
     const maxRetries = 3;
     const initialDelay = 1000;
     let lastError: Error | null = null;
@@ -175,7 +174,7 @@ export async function callGeminiWithRetry(parts: object[]): Promise<GenerateCont
             console.error(`Error calling Gemini API (Attempt ${attempt}/${maxRetries}):`, errorMessage);
 
             // Don't retry on critical errors like invalid API key or quota issues.
-            if (errorMessage.includes('API key not valid') || errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate limit') || errorMessage.toLowerCase().includes('resource_exhausted')) {
+            if (errorMessage.includes('API Key không hợp lệ') || errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota') || errorMessage.toLowerCase().includes('rate limit') || errorMessage.toLowerCase().includes('resource_exhausted')) {
                 throw processedError;
             }
 

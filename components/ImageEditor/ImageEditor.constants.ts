@@ -6,6 +6,7 @@ import { type ToolId, type ColorChannel } from './ImageEditor.types';
 
 export const CROP_ASPECT_RATIO_OPTIONS = ['Free', 'Original', '1:1', '2:3', '3:2', '4:5', '5:4', '3:4', '4:3', '9:16', '16:9'];
 export const HANDLE_SIZE = 10;
+export const OVERLAY_PADDING = 1000; // Padding to allow drawing outside canvas bounds
 
 export const TOOLTIPS: Record<ToolId, { name: string; description: string }> = {
     rotate: { name: 'Xoay ảnh (R)', description: 'Xoay ảnh 90 độ theo chiều kim đồng hồ.' },

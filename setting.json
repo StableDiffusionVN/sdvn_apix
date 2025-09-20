@@ -11,61 +11,78 @@
       "id": "free-generation",
       "titleKey": "app_free-generation_title",
       "descriptionKey": "app_free-generation_description",
-      "icon": "🚀"
+      "icon": "🚀",
+      "supportsCanvasPreset": true
     },
     {
       "id": "image-interpolation",
       "titleKey": "app_image-interpolation_title",
       "descriptionKey": "app_image-interpolation_description",
-      "icon": "⚗️"
+      "icon": "⚗️",
+      "supportsCanvasPreset": true
     },
     {
       "id": "toy-model-creator",
       "titleKey": "app_toy-model-creator_title",
       "descriptionKey": "app_toy-model-creator_description",
-      "icon": "🤖"
+      "icon": "🤖",
+      "supportsCanvasPreset": true
     },
     {
       "id": "avatar-creator",
       "titleKey": "app_avatar-creator_title",
       "descriptionKey": "app_avatar-creator_description",
-      "icon": "🇻🇳"
+      "icon": "🇻🇳",
+      "supportsCanvasPreset": true
     },
     {
       "id": "architecture-ideator",
       "titleKey": "app_architecture-ideator_title",
       "descriptionKey": "app_architecture-ideator_description",
-      "icon": "🏛️"
+      "icon": "🏛️",
+      "supportsCanvasPreset": true
+    },
+    {
+      "id": "baby-photo-creator",
+      "titleKey": "app_baby-photo-creator_title",
+      "descriptionKey": "app_baby-photo-creator_description",
+      "icon": "👶",
+      "supportsCanvasPreset": true
     },
     {
       "id": "dress-the-model",
       "titleKey": "app_dress-the-model_title",
       "descriptionKey": "app_dress-the-model_description",
-      "icon": "👗"
+      "icon": "👗",
+      "supportsCanvasPreset": true
     },
     {
       "id": "photo-restoration",
       "titleKey": "app_photo-restoration_title",
       "descriptionKey": "app_photo-restoration_description",
-      "icon": "🖼️"
+      "icon": "🖼️",
+      "supportsCanvasPreset": true
     },
     {
       "id": "image-to-real",
       "titleKey": "app_image-to-real_title",
       "descriptionKey": "app_image-to-real_description",
-      "icon": "✨"
+      "icon": "✨",
+      "supportsCanvasPreset": true
     },
     {
       "id": "swap-style",
       "titleKey": "app_swap-style_title",
       "descriptionKey": "app_swap-style_description",
-      "icon": "🎨"
+      "icon": "🎨",
+      "supportsCanvasPreset": true
     },
     {
       "id": "mix-style",
       "titleKey": "app_mix-style_title",
       "descriptionKey": "app_mix-style_description",
-      "icon": "🎭"
+      "icon": "🎭",
+      "supportsCanvasPreset": true
     }
   ],
   "avatarCreator": {
@@ -77,6 +94,16 @@
     "smartTitleWrapWords": 2,
     "uploaderCaptionKey": "avatarCreator_uploaderCaption",
     "uploaderDescriptionKey": "avatarCreator_uploaderDescription"
+  },
+  "babyPhotoCreator": {
+    "mainTitleKey": "babyPhotoCreator_mainTitle",
+    "subtitleKey": "babyPhotoCreator_subtitle",
+    "minIdeas": 1,
+    "maxIdeas": 6,
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 3,
+    "uploaderCaptionKey": "babyPhotoCreator_uploaderCaption",
+    "uploaderDescriptionKey": "babyPhotoCreator_uploaderDescription"
   },
   "architectureIdeator": {
     "mainTitleKey": "architectureIdeator_mainTitle",

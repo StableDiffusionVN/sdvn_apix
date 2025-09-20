@@ -25,6 +25,37 @@ export interface AppConfig {
     icon: string;
 }
 
+// FIX: Add the missing Settings type definition.
+export interface AppSettings {
+    mainTitleKey: string;
+    subtitleKey: string;
+    useSmartTitleWrapping: boolean;
+    smartTitleWrapWords: number;
+    [key: string]: any;
+}
+  
+export interface Settings {
+    home: {
+        mainTitleKey: string;
+        subtitleKey: string;
+        useSmartTitleWrapping: boolean;
+        smartTitleWrapWords: number;
+    };
+    apps: AppConfig[];
+    enableImageMetadata: boolean;
+    architectureIdeator: AppSettings;
+    avatarCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
+    babyPhotoCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
+    dressTheModel: AppSettings;
+    photoRestoration: AppSettings;
+    imageToReal: AppSettings;
+    swapStyle: AppSettings;
+    mixStyle: AppSettings;
+    freeGeneration: AppSettings;
+    toyModelCreator: AppSettings;
+    imageInterpolation: AppSettings;
+}
+
 export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life';
 export const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'emerald-water', 'life'];
 
@@ -65,6 +96,20 @@ interface HistoricalAvatarImage {
     url: string;
 }
 export interface AvatarCreatorState {
+    stage: 'idle' | 'configuring' | 'generating' | 'results';
+    uploadedImage: string | null;
+    generatedImages: Record<string, GeneratedAvatarImage>;
+    historicalImages: HistoricalAvatarImage[];
+    selectedIdeas: string[];
+    options: {
+        additionalPrompt: string;
+        removeWatermark: boolean;
+        aspectRatio: string;
+    };
+    error: string | null;
+}
+
+export interface BabyPhotoCreatorState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     uploadedImage: string | null;
     generatedImages: Record<string, GeneratedAvatarImage>;
@@ -237,6 +282,7 @@ export type AnyAppState =
   | HomeState
   | ArchitectureIdeatorState
   | AvatarCreatorState
+  | BabyPhotoCreatorState
   | DressTheModelState
   | PhotoRestorationState
   | ImageToRealState
@@ -250,6 +296,7 @@ export type AnyAppState =
 export type HomeView = { viewId: 'home'; state: HomeState };
 export type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
 export type AvatarCreatorView = { viewId: 'avatar-creator'; state: AvatarCreatorState };
+export type BabyPhotoCreatorView = { viewId: 'baby-photo-creator'; state: BabyPhotoCreatorState };
 export type DressTheModelView = { viewId: 'dress-the-model'; state: DressTheModelState };
 export type PhotoRestorationView = { viewId: 'photo-restoration'; state: PhotoRestorationState };
 export type ImageToRealView = { viewId: 'image-to-real'; state: ImageToRealState };
@@ -263,6 +310,7 @@ export type ViewState =
   | HomeView
   | ArchitectureIdeatorView
   | AvatarCreatorView
+  | BabyPhotoCreatorView
   | DressTheModelView
   | PhotoRestorationView
   | ImageToRealView
@@ -280,6 +328,8 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'architecture-ideator':
             return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { context: '', style: '', color: '', lighting: '', notes: '', removeWatermark: false }, error: null };
         case 'avatar-creator':
+            return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+        case 'baby-photo-creator':
             return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'dress-the-model':
             return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: '', pose: '', style: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };

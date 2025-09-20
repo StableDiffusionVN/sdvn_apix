@@ -5,14 +5,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls } from '../uiUtils';
-import { type Layer, type CanvasSettings } from './LayerComposer/LayerComposer.types';
+import { type Layer, type CanvasSettings, type CanvasTool } from './LayerComposer/LayerComposer.types';
 import { LayerList } from './LayerComposer/LayerList';
 import { TextLayerControls } from './LayerComposer/TextLayerControls';
 import { LayerPropertiesControls } from './LayerComposer/LayerPropertiesControls';
 import { cn } from '../lib/utils';
-import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon } from './icons';
+import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon } from '../icons';
 
-// FIX: Define a specific interface for PresetControls props instead of using Pick.
 interface PresetControlsProps {
     loadedPreset: any | null;
     setLoadedPreset: React.Dispatch<React.SetStateAction<any | null>>;
@@ -30,6 +29,7 @@ interface LayerComposerSidebarProps {
     setIsInfiniteCanvas: (isInfinite: boolean) => void;
     selectedLayerId: string | null;
     selectedLayerIds: string[];
+    selectedLayers: Layer[];
     isLoading: boolean;
     error: string | null;
     aiPrompt: string;
@@ -58,6 +58,10 @@ interface LayerComposerSidebarProps {
     onPresetFileLoad: (file: File) => void;
     onGenerateFromPreset: () => void;
     selectedLayersForPreset: Layer[];
+    onResizeSelectedLayers: (dimension: 'width' | 'height', newValue: number) => void;
+    activeCanvasTool: CanvasTool;
+    shapeFillColor: string;
+    setShapeFillColor: (color: string) => void;
 }
 
 const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () => void; children?: React.ReactNode; rightContent?: React.ReactNode; }> = ({ title, isOpen, onClick, rightContent }) => {
@@ -78,6 +82,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
     loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, isLoading, selectedLayersForPreset, t
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -93,6 +98,27 @@ const PresetControls: React.FC<PresetControlsProps> = ({
             return newPreset;
         });
     };
+    
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            onPresetFileLoad(e.dataTransfer.files[0]);
+        }
+    };
 
     const imageInputMap: Record<string, string[]> = {
         'architecture-ideator': ['Ảnh phác thảo'],
@@ -104,18 +130,29 @@ const PresetControls: React.FC<PresetControlsProps> = ({
         'mix-style': ['Ảnh nội dung', 'Ảnh phong cách'],
         'toy-model-creator': ['Ảnh gốc'],
         'free-generation': ['Ảnh 1', 'Ảnh 2'],
-        'image-interpolation': ['Ảnh Input', 'Ảnh Output', 'Ảnh Tham chiếu']
+        'image-interpolation': ['Ảnh Tham chiếu']
     };
 
     const requiredImages = loadedPreset ? imageInputMap[loadedPreset.viewId] || [] : [];
     
     if (!loadedPreset) {
         return (
-            <div className="p-3">
+            <div
+                className={cn(
+                    "p-3 border-2 border-transparent rounded-lg transition-colors",
+                    isDraggingOver && "border-dashed border-yellow-400 bg-neutral-700/50"
+                )}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,.png" className="hidden" />
                 <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm w-full">
                     Tải lên Preset...
                 </button>
+                <p className="text-xs text-neutral-500 text-center mt-2">
+                    {t('layerComposer_preset_upload_tip')}
+                </p>
             </div>
         );
     }
@@ -133,7 +170,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                     {selectedLayersForPreset[index] ? (
                         <span className="text-green-400">Đã gán Layer "{selectedLayersForPreset[index].text || `Image ID ${selectedLayersForPreset[index].id.substring(0,4)}`}"</span>
                     ) : (
-                        <span className="text-red-400">Cần chọn {index + 1} layer ảnh</span>
+                        <span className="text-yellow-400">Sẽ dùng ảnh từ preset</span>
                     )}
                 </div>
             ))}
@@ -176,7 +213,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                  <button 
                     onClick={onGenerateFromPreset} 
                     className="btn btn-primary btn-sm w-full" 
-                    disabled={isLoading || selectedLayersForPreset.length < requiredImages.length}
+                    disabled={isLoading}
                 >
                     {isLoading ? t('common_creating') : 'Tạo ảnh từ Preset'}
                 </button>
@@ -187,17 +224,19 @@ const PresetControls: React.FC<PresetControlsProps> = ({
 
 export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props) => {
     const {
-        layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, isLoading, error, aiPrompt, setAiPrompt, onGenerateAILayer,
+        layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, selectedLayers, isLoading, error, aiPrompt, setAiPrompt, onGenerateAILayer,
         onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose,
         beginInteraction,
         isSimpleImageMode, setIsSimpleImageMode, aiPreset, setAiPreset,
         hasAiLog, isLogVisible, setIsLogVisible,
-        loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset
+        loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset,
+        onResizeSelectedLayers,
+        activeCanvasTool, shapeFillColor, setShapeFillColor
     } = props;
     const { t } = useAppControls();
     const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
     const [activeTab, setActiveTab] = useState<'properties' | 'text'>('properties');
-    const selectedLayer = layers.find(l => l.id === selectedLayerId);
+    const selectedLayer = selectedLayers[0];
 
     useEffect(() => {
         if (selectedLayer) {
@@ -217,6 +256,22 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
             </div>
             
             <div className="flex-grow overflow-y-auto space-y-2 pr-2 -mr-4">
+                <AnimatePresence>
+                    {(activeCanvasTool === 'rectangle' || activeCanvasTool === 'ellipse') && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border border-neutral-700 rounded-lg">
+                            <div className="p-3 bg-neutral-800/50 space-y-2">
+                                <h4 className="font-semibold text-neutral-200">Shape Tool Options</h4>
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="shape-color" className="text-sm font-medium text-neutral-300">Fill Color</label>
+                                    <div className="relative h-6 w-6 rounded-full border-2 border-white/20 shadow-inner">
+                                        <input id="shape-color" type="color" value={shapeFillColor} onChange={(e) => setShapeFillColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                        <div className="w-full h-full rounded-full pointer-events-none" style={{ backgroundColor: shapeFillColor }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 <div className="border border-neutral-700 rounded-lg overflow-hidden flex-shrink-0 mb-2">
                     <AccordionHeader title={t('layerComposer_aiGeneration')} isOpen={openSection === 'ai'} onClick={() => toggleSection('ai')} />
                     <AnimatePresence>
@@ -310,7 +365,6 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                      <AnimatePresence>
                         {openSection === 'preset' && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50">
-{/* FIX: Pass the 't' function as a prop to PresetControls */}
                                <PresetControls
                                     loadedPreset={loadedPreset}
                                     setLoadedPreset={setLoadedPreset}
@@ -320,6 +374,24 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                     selectedLayersForPreset={selectedLayersForPreset}
                                     t={t}
                                />
+                               <div className="p-3 pt-0">
+                                 <div className="flex items-center justify-between pt-3 border-t border-neutral-700/50">
+                                     <label htmlFor="preset-batch-mode" className="text-sm font-medium text-neutral-200 flex items-center gap-2">
+                                         {t('layerComposer_ai_simpleMode')}
+                                         <span title={t('layerComposer_ai_simpleMode_tooltip')} className="cursor-help text-neutral-400">
+                                             <InfoIcon className="h-4 w-4" />
+                                         </span>
+                                     </label>
+                                     <input 
+                                         type="checkbox" 
+                                         id="preset-batch-mode"
+                                         checked={isSimpleImageMode}
+                                         onChange={(e) => setIsSimpleImageMode(e.target.checked)}
+                                         className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
+                                         disabled={selectedLayersForPreset.length < 2}
+                                     />
+                                 </div>
+                               </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -332,7 +404,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                      <AccordionHeader title={t('layerComposer_layers')} isOpen={openSection === 'layers'} onClick={() => toggleSection('layers')} rightContent={ <> <button onClick={(e) => { e.stopPropagation(); onAddText(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addText')} title={t('layerComposer_addText')} > <AddTextIcon className="h-4 w-4" /> </button> <button onClick={(e) => { e.stopPropagation(); onAddImage(); }} className="p-1.5 rounded-md bg-white/10 text-neutral-300 hover:bg-white/20 transition-colors" aria-label={t('layerComposer_addImage')} title={t('layerComposer_addImage')} > <AddIcon className="h-4 w-4" strokeWidth={2.5} /> </button> </> } />
                      <AnimatePresence> {openSection === 'layers' && ( <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50"> <div className="p-3"> <LayerList layers={layers} selectedLayerId={selectedLayerId} onLayersReorder={onLayersReorder} onLayerUpdate={onLayerUpdate} onLayerDelete={onLayerDelete} onLayerSelect={onLayerSelect} beginInteraction={beginInteraction} /> </div> </motion.div> )} </AnimatePresence>
                 </div>
-                 {selectedLayer && ( <div className="mt-2 border border-neutral-700 rounded-lg"> <div className="flex border-b border-neutral-700 bg-neutral-800 rounded-t-lg"> <button onClick={() => setActiveTab('properties')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'properties' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_properties')} </button> {selectedLayer.type === 'text' && ( <button onClick={() => setActiveTab('text')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'text' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_text')} </button> )} </div> <div className="bg-neutral-800/50"> <AnimatePresence mode="wait"> <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} > {activeTab === 'properties' && ( <LayerPropertiesControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} {activeTab === 'text' && selectedLayer.type === 'text' && ( <TextLayerControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} </motion.div> </AnimatePresence> </div> </div> )}
+                 {selectedLayers.length > 0 && ( <div className="mt-2 border border-neutral-700 rounded-lg"> <div className="flex border-b border-neutral-700 bg-neutral-800 rounded-t-lg"> <button onClick={() => setActiveTab('properties')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'properties' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_properties')} </button> {selectedLayer?.type === 'text' && ( <button onClick={() => setActiveTab('text')} className={cn('flex-1 py-2 text-sm font-bold transition-colors', activeTab === 'text' ? 'text-yellow-400 border-b-2 border-yellow-400 bg-neutral-700/50' : 'text-neutral-400 hover:text-white')} > {t('layerComposer_tab_text')} </button> )} </div> <div className="bg-neutral-800/50"> <AnimatePresence mode="wait"> <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} > {activeTab === 'properties' && ( <LayerPropertiesControls selectedLayers={selectedLayers} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} onResize={onResizeSelectedLayers} /> )} {activeTab === 'text' && selectedLayer?.type === 'text' && ( <TextLayerControls layer={selectedLayer} onUpdate={onLayerUpdate} beginInteraction={beginInteraction} /> )} </motion.div> </AnimatePresence> </div> </div> )}
             </div>
             
             <div className="flex-shrink-0 pt-6 border-t border-white/10">

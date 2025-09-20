@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 import { 
     processApiError,
     parseDataUrl, 
@@ -22,7 +22,6 @@ interface MixStyleOptions {
  * @returns A promise that resolves to a string describing the style.
  */
 async function analyzeStyle(styleImageDataUrl: string): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const { mimeType, data } = parseDataUrl(styleImageDataUrl);
     const imagePart = { inlineData: { mimeType, data } };
 
@@ -30,7 +29,7 @@ async function analyzeStyle(styleImageDataUrl: string): Promise<string> {
     
     try {
         const response = await ai.models.generateContent({
-            // FIX: Use vision model for image analysis
+// FIX: Use the recommended model 'gemini-2.5-flash' instead of the prohibited 'gemini-pro-vision'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, {text: prompt}] },
         });

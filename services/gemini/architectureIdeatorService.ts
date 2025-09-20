@@ -2,6 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+// FIX: Import the shared AI client instance.
+import ai from './client';
 import { 
     processApiError,
     parseDataUrl, 
@@ -79,5 +81,57 @@ export async function generateArchitecturalImage(imageDataUrl: string, options: 
         const processedError = processApiError(error);
         console.error("Error during architectural image generation:", processedError);
         throw processedError;
+    }
+}
+
+// FIX: Add the missing refineArchitecturePrompt function.
+/**
+ * Refines a user's prompt to be more descriptive for architectural image generation.
+ * @param userPrompt The user's original prompt.
+ * @param imageDataUrls Optional array of image data URLs for context.
+ * @returns A promise that resolves to the refined prompt string.
+ */
+export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls: string[]): Promise<string> {
+    const imageParts = imageDataUrls.map(url => {
+        const { mimeType, data } = parseDataUrl(url);
+        return { inlineData: { mimeType, data } };
+    });
+
+    const metaPrompt = `
+        You are an expert prompt engineer for an architectural visualization AI.
+        Your task is to refine a user's prompt to be more descriptive and effective, using the provided image(s) as context. The goal is to generate a realistic architectural rendering.
+
+        **Context Image(s):** The user has provided one or more images showing a sketch, model, or existing structure.
+        **User's Prompt:** "${userPrompt}"
+
+        **Instructions:**
+        1.  Analyze the context image(s) to understand the core architectural forms, shapes, and layout.
+        2.  Integrate the user's request into a new, single, highly descriptive prompt in Vietnamese.
+        3.  The refined prompt MUST instruct the AI to maintain the core structure from the context image(s) while applying the user's specific requests.
+        4.  Add architectural details like materials (e.g., concrete, glass, wood), lighting (e.g., golden hour, overcast, studio lighting), environment (e.g., city street, forest, coastline), and overall mood (e.g., minimalist, brutalist, futuristic).
+        5.  **Output only the refined prompt text**, without any introductory phrases like "Here is the refined prompt:".
+    `;
+    
+    const parts: any[] = [...imageParts, { text: metaPrompt }];
+
+    try {
+        console.log("Attempting to refine architecture prompt...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts },
+        });
+
+        const text = response.text;
+        if (text) {
+            return text.trim();
+        }
+
+        console.warn("AI did not return text for architecture prompt refinement. Falling back to user prompt.");
+        return userPrompt;
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during architecture prompt refinement:", processedError);
+        return userPrompt; // Fallback on error
     }
 }

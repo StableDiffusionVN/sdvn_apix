@@ -4,21 +4,20 @@
 */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppControls, extractJsonFromPng } from './uiUtils';
+// FIX: Update AppConfig import to be a type import and define a more specific type for the processed app data.
+import { useAppControls, extractJsonFromPng, type AppConfig } from './uiUtils';
 import { CloudUploadIcon } from './icons';
 
-interface AppConfig {
-  id: string;
+interface ProcessedAppConfig extends AppConfig {
   title: string;
   description: string;
-  icon: string;
 }
 
 interface HomeProps {
   onSelectApp: (appId: string) => void;
   title: React.ReactNode;
   subtitle: string;
-  apps: AppConfig[];
+  apps: ProcessedAppConfig[];
 }
 
 const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {

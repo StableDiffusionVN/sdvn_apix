@@ -5,17 +5,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
-import PolaroidCard from './PolaroidCard';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import { useAppControls, useImageEditor } from './uiContexts';
 import { useLightbox } from './uiHooks';
 import { ImageThumbnail } from './ImageThumbnail';
 import { GalleryToolbar } from './GalleryToolbar';
 import { ImageThumbnailActions } from './ImageThumbnailActions';
-import { combineImages, downloadJson } from './uiFileUtilities';
+// FIX: Import combineImages from the uiUtils aggregator
+import { combineImages, downloadJson } from './uiUtils';
 import Lightbox from './Lightbox';
-export * from './SearchableSelect'; // EXPORT THE NEW COMPONENT
+export * from './SearchableSelect';
 
 /**
  * Renders a title with optional smart wrapping to keep a specified number of last words together.
@@ -26,7 +27,6 @@ export * from './SearchableSelect'; // EXPORT THE NEW COMPONENT
  * @returns A React.ReactNode element for the title.
  */
 export const renderSmartlyWrappedTitle = (title: string, enabled: boolean, wordsToKeep: number): React.ReactNode => {
-    // Default wordsToKeep to 2 if not provided or invalid
     const numWordsToKeep = (typeof wordsToKeep === 'number' && wordsToKeep > 0) ? wordsToKeep : 2;
 
     if (!enabled) {
@@ -34,7 +34,6 @@ export const renderSmartlyWrappedTitle = (title: string, enabled: boolean, words
     }
 
     const words = title.split(' ');
-    // Only apply wrapping if there are more words than we want to keep together
     if (words.length > numWordsToKeep) {
         const partToKeepTogether = words.splice(-numWordsToKeep).join(' ');
         const firstPart = words.join(' ');
@@ -74,7 +73,6 @@ export const RegenerationModal: React.FC<RegenerationModalProps> = ({
     const [customPrompt, setCustomPrompt] = useState('');
 
     useEffect(() => {
-        // Reset prompt when modal is newly opened
         if (isOpen) {
             setCustomPrompt('');
         }
@@ -155,9 +153,6 @@ interface AppScreenHeaderProps {
     smartTitleWrapWords: number;
 }
 
-/**
- * A standardized header component for app screens.
- */
 export const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({ mainTitle, subtitle, useSmartTitleWrapping, smartTitleWrapWords }) => (
      <motion.div
         className="text-center mb-8"
@@ -179,9 +174,6 @@ interface ImageUploaderProps {
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
 }
 
-/**
- * A reusable image uploader component with a Polaroid card style.
- */
 export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageChange, uploaderCaption, uploaderDescription, placeholderType = 'person' }) => {
     return (
         <div className="flex flex-col items-center justify-center w-full">
@@ -214,67 +206,42 @@ interface ResultsViewProps {
     hasPartialError?: boolean;
 }
 
-/**
- * A reusable component to display the results of an image generation process.
- */
 export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
     const { currentView, t } = useAppControls();
 
-    const getExportableState = (state: any) => {
-        // Create a deep copy to avoid mutating the original state
-        const exportableState = JSON.parse(JSON.stringify(state));
+    useEffect(() => {
+        if (hasPartialError && stage === 'results') {
+            toast.error("Một hoặc nhiều ảnh đã không thể tạo thành công.");
+        }
+    }, [hasPartialError, stage]);
 
-        // Base keys to remove for all apps
+    const getExportableState = (state: any) => {
+        const exportableState = JSON.parse(JSON.stringify(state));
         const keysToRemove = [
-            'generatedImage', 
-            'generatedImages', 
-            'historicalImages', 
-            'finalPrompt',
-            'error',
+            'generatedImage', 'generatedImages', 'historicalImages', 
+            'finalPrompt', 'error',
         ];
 
-        // For image-interpolation, we want to keep the generated prompt,
-        // so we DON'T add its keys to the removal list.
         if (currentView.viewId !== 'image-interpolation') {
             keysToRemove.push('generatedPrompt', 'promptSuggestions');
         }
 
-        // Recursively remove the keys from the state object
         const removeKeys = (obj: any) => {
-            if (typeof obj !== 'object' || obj === null) {
-                return;
-            }
-
+            if (typeof obj !== 'object' || obj === null) return;
             for (const key of keysToRemove) {
-                if (key in obj) {
-                    delete obj[key];
-                }
+                if (key in obj) delete obj[key];
             }
-            
-            // Also reset stage to a configurable one if it exists
             if ('stage' in obj && (obj.stage === 'generating' || obj.stage === 'results' || obj.stage === 'prompting')) {
-                // Find a sensible default stage.
-                if (currentView.viewId === 'free-generation') {
-                    obj.stage = 'configuring';
-                } else if (
-                    ('uploadedImage' in obj && obj.uploadedImage) ||
-                    ('modelImage' in obj && obj.modelImage && 'clothingImage' in obj && obj.clothingImage) ||
-                    ('contentImage' in obj && obj.contentImage && 'styleImage' in obj && obj.styleImage) ||
-                    ('inputImage' in obj && obj.inputImage && 'outputImage' in obj && obj.outputImage)
-                ) {
+                if (currentView.viewId === 'free-generation') obj.stage = 'configuring';
+                else if ( ('uploadedImage' in obj && obj.uploadedImage) || ('modelImage' in obj && obj.modelImage && 'clothingImage' in obj && obj.clothingImage) || ('contentImage' in obj && obj.contentImage && 'styleImage' in obj && obj.styleImage) || ('inputImage' in obj && obj.inputImage && 'outputImage' in obj && obj.outputImage) ) {
                      obj.stage = 'configuring';
                 } else {
                     obj.stage = 'idle';
                 }
             }
-
-
-            // Recurse into nested objects
             for (const key in obj) {
-                if (typeof obj[key] === 'object') {
-                    removeKeys(obj[key]);
-                }
+                if (typeof obj[key] === 'object') removeKeys(obj[key]);
             }
         };
 
@@ -370,9 +337,6 @@ interface AppOptionsLayoutProps {
     children: React.ReactNode;
 }
 
-/**
- * A standardized single-column layout for screens that show an uploaded image and an options panel.
- */
 export const AppOptionsLayout: React.FC<AppOptionsLayoutProps> = ({ children }) => (
     <motion.div
         className="flex flex-col items-center gap-8 w-full max-w-6xl py-6 overflow-y-auto"
@@ -389,9 +353,6 @@ interface OptionsPanelProps {
     className?: string;
 }
 
-/**
- * A standardized panel for displaying app-specific options.
- */
 export const OptionsPanel: React.FC<OptionsPanelProps> = ({ children, className }) => (
      <div className={cn("w-full max-w-3xl bg-black/20 p-6 rounded-lg border border-white/10 space-y-4", className)}>
         {children}
@@ -514,7 +475,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         e.stopPropagation();
         const urlToEdit = images[indexToEdit];
         if (!urlToEdit || urlToEdit.startsWith('blob:')) {
-            alert('Không thể chỉnh sửa video.');
+            toast.error('Không thể chỉnh sửa video.');
             return;
         };
 
@@ -543,7 +504,7 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
             setIsSelectionMode(false);
         } catch (err) {
             console.error("Failed to combine images in picker:", err);
-            alert(`Lỗi: Không thể ghép ảnh. ${err instanceof Error ? err.message : "Lỗi không xác định."}`);
+            toast.error(`Lỗi: Không thể ghép ảnh. ${err instanceof Error ? err.message : "Lỗi không xác định."}`);
         } finally {
             setIsCombining(false);
         }
@@ -711,19 +672,18 @@ interface PromptResultCardProps {
 }
 
 export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promptText, className }) => {
-    const [isCopied, setIsCopied] = useState(false);
+    const { t } = useAppControls();
 
     const handleCopyPrompt = useCallback(() => {
         if (promptText) {
             navigator.clipboard.writeText(promptText).then(() => {
-                setIsCopied(true);
-                setTimeout(() => setIsCopied(false), 2000);
+                toast.success(t('layerComposer_ai_log_copied') || 'Đã sao chép prompt!');
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
-                alert('Không thể sao chép prompt.');
+                toast.error('Không thể sao chép prompt.');
             });
         }
-    }, [promptText]);
+    }, [promptText, t]);
 
     return (
         <div className={cn("prompt-card", className)}>
@@ -734,15 +694,9 @@ export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promp
                     aria-label="Sao chép prompt"
                     title="Sao chép prompt"
                 >
-                    {isCopied ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                    )}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
                 </button>
             )}
             <h4 className="polaroid-caption !text-left !text-lg !text-black !pb-2 border-b border-neutral-300 mb-2 !p-0 pr-8">
@@ -754,6 +708,29 @@ export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promp
                 </p>
             </div>
         </div>
+    );
+};
+
+// --- NEW: Reusable Switch Component ---
+interface SwitchProps {
+    id: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    disabled?: boolean;
+}
+
+export const Switch: React.FC<SwitchProps> = ({ id, checked, onChange, disabled }) => {
+    return (
+        <label htmlFor={id} className="switch">
+            <input
+                type="checkbox"
+                id={id}
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                disabled={disabled}
+            />
+            <span className="switch-slider"></span>
+        </label>
     );
 };
 

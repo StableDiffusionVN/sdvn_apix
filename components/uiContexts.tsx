@@ -5,7 +5,8 @@
 import React, { useState, useEffect, useCallback, useContext, createContext } from 'react';
 import {
     type ImageToEdit, type ViewState, type AnyAppState, type Theme,
-    type AppConfig, THEMES, getInitialStateForApp
+// FIX: Import the Settings type which is now defined in uiTypes.ts.
+    type AppConfig, THEMES, getInitialStateForApp, type Settings
 } from './uiTypes';
 
 // --- Auth Context ---
@@ -182,7 +183,7 @@ export const useImageEditor = (): ImageEditorContextType => {
 // --- App Control Context ---
 interface AppControlContextType {
     currentView: ViewState;
-    settings: any;
+    settings: Settings | null;
     theme: Theme;
     sessionGalleryImages: string[];
     historyIndex: number;
@@ -249,7 +250,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isLayerComposerMounted, setIsLayerComposerMounted] = useState(false);
     const [isLayerComposerVisible, setIsLayerComposerVisible] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
-    const [settings, setSettings] = useState(null); // Initially null
+    const [settings, setSettings] = useState<Settings | null>(null);
 
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
@@ -264,6 +265,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 'home', 
                 'architectureIdeator',
                 'avatarCreator',
+                'babyPhotoCreator',
                 'dressTheModel',
                 'freeGeneration',
                 'imageInterpolation',

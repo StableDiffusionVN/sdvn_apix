@@ -26,6 +26,7 @@ export const LayerListItem: React.FC<LayerListItemProps> = ({
         switch(layer.type) {
             case 'image': return 'Image Layer';
             case 'text': return layer.text || 'Text Layer';
+            case 'shape': return `${layer.shapeType === 'rectangle' ? 'Rectangle' : 'Ellipse'} Shape`;
             default: return 'Layer';
         }
     }
@@ -48,6 +49,14 @@ export const LayerListItem: React.FC<LayerListItemProps> = ({
                     <div className="w-10 h-10 flex-shrink-0">
                         {layer.type === 'image' && layer.url ? ( <img src={layer.url} className="w-full h-full object-cover rounded-md" alt="Layer thumbnail"/>
                         ) : layer.type === 'text' ? ( <div className="w-full h-full flex items-center justify-center bg-neutral-700 rounded-md p-1 overflow-hidden" style={{ fontFamily: 'Asimovian', color: layer.color }} > <span className="text-2xl font-bold">T</span> </div>
+                        ) : layer.type === 'shape' ? (
+                            <div 
+                                className="w-full h-full rounded-md"
+                                style={{
+                                    backgroundColor: layer.fillColor || '#FFFFFF',
+                                    borderRadius: layer.shapeType === 'ellipse' ? '50%' : '3px'
+                                }}
+                            />
                         ) : null}
                     </div>
                     <div className="flex-grow min-w-0"> <p className="text-sm font-bold text-white truncate">{getLayerName()}</p> <p className="text-xs text-neutral-400 capitalize"> {(layer.blendMode === 'source-over' ? 'Normal' : layer.blendMode)} </p> </div>

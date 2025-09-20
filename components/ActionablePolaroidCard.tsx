@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useRef, useCallback, ChangeEvent } from 'react';
+import React, { useState, useRef, useCallback, ChangeEvent, memo } from 'react';
 import PolaroidCard from './PolaroidCard';
 import { 
     handleFileUpload,
@@ -208,4 +208,4 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     );
 };
 
-export default ActionablePolaroidCard;
+export default memo(ActionablePolaroidCard);

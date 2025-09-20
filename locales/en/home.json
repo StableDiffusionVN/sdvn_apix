@@ -3,6 +3,8 @@
   "home_subtitle": "Choose an app and start creating",
   "app_free-generation_title": "Free Generation",
   "app_free-generation_description": "Create new images from text or edit uploaded photos with your own prompts.",
+  "app_baby-photo-creator_title": "Baby Photo Creator",
+  "app_baby-photo-creator_description": "Turn your baby's photos into artistic creations with cute and unique concepts.",
   "app_image-interpolation_title": "Image Interpolation",
   "app_image-interpolation_description": "Analyze an image pair to create a prompt, then apply that prompt to a reference image.",
   "app_toy-model-creator_title": "Toy Model Creator",

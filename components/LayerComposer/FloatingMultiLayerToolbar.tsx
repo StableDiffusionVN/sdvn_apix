@@ -14,7 +14,9 @@ import {
     AlignMiddleIcon, 
     AlignBottomIcon, 
     DistributeHorizontalIcon, 
-    DistributeVerticalIcon, 
+    DistributeVerticalIcon,
+    DistributeHorizontalScaleIcon,
+    DistributeVerticalScaleIcon,
     MergeIcon, 
     DownloadIcon, 
     DuplicateIcon, 
@@ -98,6 +100,12 @@ export const FloatingMultiLayerToolbar: React.FC<FloatingMultiLayerToolbarProps>
             </ToolButton>
             <ToolButton label="Phân phối dọc" onClick={() => onAction('distribute-vertical')}>
                 <DistributeVerticalIcon className="h-5 w-5" strokeWidth="1.5" />
+            </ToolButton>
+            <ToolButton label="Dàn ngang (cùng chiều cao)" onClick={() => onAction('distribute-and-scale-horizontal')}>
+                <DistributeHorizontalScaleIcon className="h-5 w-5" />
+            </ToolButton>
+            <ToolButton label="Dàn dọc (cùng chiều rộng)" onClick={() => onAction('distribute-and-scale-vertical')}>
+                <DistributeVerticalScaleIcon className="h-5 w-5" />
             </ToolButton>
             <div className="w-px h-5 bg-white/20 mx-1 self-center" />
              <ToolButton label="Gộp Layer" onClick={() => onAction('merge')} disabled={selectedLayerCount < 2}>

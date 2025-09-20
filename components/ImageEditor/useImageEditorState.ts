@@ -11,7 +11,7 @@ import {
     type Interaction, type SelectionStroke, type PenNode, type ColorChannel,
     type ColorAdjustments,
 } from './ImageEditor.types';
-import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS, HANDLE_SIZE } from './ImageEditor.constants';
+import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS, HANDLE_SIZE, OVERLAY_PADDING } from './ImageEditor.constants';
 import { 
     rgbToHsl, hslToRgb, isPointInRect, getRatioValue, getHandleAtPoint, 
     getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective, hexToRgba
@@ -579,9 +579,17 @@ export const useImageEditorState = (
             return;
         }
 
-        const coords = getCanvasCoords(e); 
-        if (!coords || coords.x < 0 || coords.x > canvasDimensions.width || coords.y < 0 || coords.y > canvasDimensions.height) {
-            return; // Click was outside the canvas content area
+        let coords = getCanvasCoords(e); 
+        if (!coords) {
+            return; // Click was outside the canvas viewport
+        }
+
+        // Allow pen tool to place points outside the canvas boundaries.
+        // Other tools will still be constrained.
+        if (activeTool !== 'pen') {
+            if (coords.x < 0 || coords.x > canvasDimensions.width || coords.y < 0 || coords.y > canvasDimensions.height) {
+                return; // Click was outside the canvas content area for non-pen tools
+            }
         }
         
         const nativeEvent = e.nativeEvent as MouseEvent;
@@ -681,8 +689,15 @@ export const useImageEditorState = (
                     const p2 = nextNode.inHandle; const p3 = nextNode.anchor;
                     allPoints.push(...approximateCubicBezier(p0, p1, p2, p3));
                 }
+                
+                // Snap all points to the canvas boundary upon finalizing the selection.
+                const snappedPoints = allPoints.map(p => ({
+                    x: Math.max(0, Math.min(p.x, canvasDimensions.width)),
+                    y: Math.max(0, Math.min(p.y, canvasDimensions.height)),
+                }));
+
                 const op = selectionModifierRef.current === 'subtract' ? 'subtract' : 'add';
-                setSelectionStrokes(prev => [...prev, { points: allPoints, op }]);
+                setSelectionStrokes(prev => [...prev, { points: snappedPoints, op }]);
                 setPenPathPoints([]);
             } else {
                  setCurrentPenDrag({ start: coords, current: coords });
@@ -723,10 +738,10 @@ export const useImageEditorState = (
             for (let i = 0; i < dist; i += step) {
                 const x = lastPointRef.current.x + Math.cos(angle) * i;
                 const y = lastPointRef.current.y + Math.sin(angle) * i;
-                drawBrushPoint(tempCtx, x, y);
+                drawBrushPoint(tempCtx, x + OVERLAY_PADDING, y + OVERLAY_PADDING);
             }
             // Draw the final point to ensure the line reaches the cursor
-            drawBrushPoint(tempCtx, coords.x, coords.y);
+            drawBrushPoint(tempCtx, coords.x + OVERLAY_PADDING, coords.y + OVERLAY_PADDING);
             
             lastPointRef.current = coords;
         } else if (activeTool === 'crop' && interactionStartRef.current) {
@@ -824,7 +839,7 @@ export const useImageEditorState = (
                     if (isSelectionActive) mainCtx.clip(selectionPath!, 'nonzero');
                     mainCtx.globalAlpha = brushOpacity / 100;
                     mainCtx.globalCompositeOperation = activeTool === 'brush' ? 'source-over' : 'destination-out';
-                    mainCtx.drawImage(tempDrawingCanvasRef.current, 0, 0);
+                    mainCtx.drawImage(tempDrawingCanvasRef.current, -OVERLAY_PADDING, -OVERLAY_PADDING);
                     mainCtx.restore();
                 }
                 commitState();
@@ -934,8 +949,8 @@ export const useImageEditorState = (
             canvas.height = canvasHeight;
             drawingCanvas.width = canvasWidth;
             drawingCanvas.height = canvasHeight;
-            overlayCanvas.width = canvasWidth;
-            overlayCanvas.height = canvasHeight;
+            overlayCanvas.width = canvasWidth + OVERLAY_PADDING * 2;
+            overlayCanvas.height = canvasHeight + OVERLAY_PADDING * 2;
             setCanvasDimensions({ width: canvasWidth, height: canvasHeight });
         };
     }, [internalImageUrl, canvasViewRef]);

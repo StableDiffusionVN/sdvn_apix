@@ -8,6 +8,7 @@ import { type Point, type Rect, type CropResizeHandle, type Tool } from './Image
 import { getCursorForHandle, isPointInRect } from './ImageEditor.utils';
 import { cn } from '../../lib/utils';
 import { UndoIcon, RedoIcon, ZoomOutIcon, ZoomInIcon, HandIcon, LoadingSpinnerIcon } from '../icons';
+import { OVERLAY_PADDING } from './ImageEditor.constants';
 
 // --- Reusable Floating Toolbar ---
 interface ImageEditorCanvasToolbarProps {
@@ -205,12 +206,13 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
         }
         return {
             position: 'absolute' as 'absolute', borderRadius: '50%', pointerEvents: 'none' as 'none',
-            left: `${(overlayCanvasRef.current?.offsetLeft ?? 0) + cursorPosition.x}px`,
-            top: `${(overlayCanvasRef.current?.offsetTop ?? 0) + cursorPosition.y}px`,
+            left: `${cursorPosition.x}px`,
+            top: `${cursorPosition.y}px`,
             width: `${brushSize}px`, height: `${brushSize}px`,
-            transform: `translate(-50%, -50%) scale(${scale.get()})`, background: cursorBackground, border: cursorBorder, boxShadow: cursorBoxShadow,
+            transform: `translate(-50%, -50%)`,
+            background: cursorBackground, border: cursorBorder, boxShadow: cursorBoxShadow,
         };
-    }, [isCursorOverCanvas, isDrawing, activeTool, cursorPosition, brushSize, brushHardness, brushOpacity, brushColor, scale]);
+    }, [isCursorOverCanvas, isDrawing, activeTool, cursorPosition, brushSize, brushHardness, brushOpacity, brushColor]);
 
     useEffect(() => {
         let animId: number;
@@ -220,10 +222,23 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                 const ctx = overlay.getContext('2d');
                 if (ctx) {
                     ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+                    // --- DRAW BRUSH PREVIEW (un-translated) ---
+                    // This is drawn directly onto the large overlay canvas without translation
+                    // because the tempDrawingCanvas is also large and has the padding baked in.
                     if (isDrawing && (activeTool === 'brush' || activeTool === 'eraser') && tempDrawingCanvasRef.current) {
-                        ctx.save(); ctx.globalAlpha = brushOpacity / 100;
-                        ctx.drawImage(tempDrawingCanvasRef.current, 0, 0); ctx.restore();
+                        ctx.save();
+                        ctx.globalAlpha = brushOpacity / 100;
+                        ctx.drawImage(tempDrawingCanvasRef.current, 0, 0);
+                        ctx.restore();
                     }
+
+                    // --- DRAW EVERYTHING ELSE (translated) ---
+                    // Translate the context so that (0,0) aligns with the top-left of the image area.
+                    // All other drawing logic can use image-space coordinates directly.
+                    ctx.save();
+                    ctx.translate(OVERLAY_PADDING, OVERLAY_PADDING);
+                    
                     if (isSelectionActive && selectionPath) {
                         ctx.save(); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
                         ctx.lineDashOffset = -marchingAntsOffsetRef.current; ctx.stroke(selectionPath);
@@ -428,6 +443,8 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                             } catch (e) { console.warn("Could not get pixel data for color picker preview.", e); }
                         }
                     }
+                    ctx.restore(); // Restore from the OVERLAY_PADDING translation
+
                     marchingAntsOffsetRef.current = (marchingAntsOffsetRef.current + 0.5) % 10;
                 }
             }
@@ -464,7 +481,11 @@ export const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = (props) => {
                 <canvas 
                     ref={overlayCanvasRef} 
                     className="absolute" 
-                    style={{ pointerEvents: 'none' }}
+                    style={{ 
+                        pointerEvents: 'none',
+                        left: -OVERLAY_PADDING,
+                        top: -OVERLAY_PADDING,
+                    }}
                 />
                  {cropSelection && (
                     <div className="absolute pointer-events-none" style={{

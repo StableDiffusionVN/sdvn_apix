@@ -2,7 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import ai from './client'; // Import the shared client instance
 import { 
     processApiError, 
     padImageToAspectRatio, 
@@ -165,8 +166,6 @@ export async function generateFromMultipleImages(
  * @returns A promise that resolves to the refined prompt string.
  */
 export async function refinePrompt(userPrompt: string, imageDataUrls?: string[]): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
     let parts: any[] = [];
     let metaPrompt = '';
 
@@ -216,8 +215,6 @@ export async function refinePrompt(userPrompt: string, imageDataUrls?: string[])
 export async function analyzePromptForImageGenerationParams(
     userPrompt: string
 ): Promise<{ numberOfImages: number; aspectRatio: string; refinedPrompt: string; }> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
     const metaPrompt = `
         You are an intelligent prompt analyzer for an image generation AI. Your task is to analyze the user's prompt to extract specific parameters for image generation.
 
@@ -284,59 +281,52 @@ export async function analyzePromptForImageGenerationParams(
     }
 }
 
-
 /**
- * Refines a user's prompt into a detailed architectural prompt, using images for context.
- * @param userPrompt The user's original prompt.
- * @param imageDataUrls Array of image data URLs for context.
- * @returns A promise that resolves to the refined architectural prompt string.
+ * Refines a base prompt and user notes using an image for context.
+ * @param basePrompt The template prompt from a preset.
+ * @param userNotes The user's additional input.
+ * @param imageDataUrls An array of data URLs for context images.
+ * @returns A promise that resolves to the single, final, refined prompt.
  */
-export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls: string[]): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const imageParts = imageDataUrls.map(url => {
-        const { mimeType, data } = parseDataUrl(url);
-        return { inlineData: { mimeType, data } };
+export async function refineImageAndPrompt(
+  basePrompt: string,
+  userNotes: string,
+  imageDataUrls: string[]
+): Promise<string> {
+  const imageParts = imageDataUrls.map(url => {
+    const { mimeType, data } = parseDataUrl(url);
+    return { inlineData: { mimeType, data } };
+  });
+
+  const metaPrompt = `Bạn là một kỹ sư prompt chuyên nghiệp cho AI tạo ảnh. Nhiệm vụ của bạn là kết hợp "Prompt Gốc", "Ghi chú của người dùng", và ngữ cảnh từ (các) "Ảnh đính kèm" để tạo ra một prompt cuối cùng, duy nhất, chi tiết và hiệu quả bằng tiếng Việt. Prompt mới phải mạch lạc, kết hợp tất cả các chỉ dẫn.
+        
+**Prompt Gốc (Mục tiêu chính):** "${basePrompt}"
+**Ghi chú của người dùng (Yêu cầu cụ thể, ưu tiên cao hơn):** "${userNotes}"
+**Ảnh đính kèm:** (Cung cấp dưới dạng input)
+        
+**Yêu cầu:** Chỉ xuất ra văn bản prompt cuối cùng đã được tinh chỉnh. Không thêm bất kỳ lời dẫn nào.`;
+
+  const parts: any[] = [...imageParts, { text: metaPrompt }];
+  const fallbackPrompt = `${basePrompt}. ${userNotes}`.trim();
+
+  try {
+    console.log("Refining prompt with image context...");
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts },
     });
-
-    const metaPrompt = `
-        Bạn là một chuyên gia AI trong lĩnh vực kiến trúc. Nhiệm vụ của bạn là tạo ra một câu lệnh (prompt) ngắn gọn và hiệu quả để biến đổi (các) hình ảnh được cung cấp (thường là bản phác thảo) thành một bức ảnh phối cảnh kiến trúc chân thực, chất lượng cao.
-
-        **YÊU CẦU CỐT LÕI (KHÔNG THAY ĐỔI):** Prompt cuối cùng phải yêu cầu AI "giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất". Đây là nguyên tắc quan trọng nhất.
-
-        **Yêu cầu bổ sung từ người dùng:** "${userPrompt}"
-
-        **Hướng dẫn tạo prompt:**
-        1.  Bắt đầu prompt cuối cùng bằng cụm từ: "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này."
-        2.  Phân tích (các) hình ảnh để hiểu ý tưởng kiến trúc.
-        3.  Tích hợp "Yêu cầu bổ sung của người dùng" vào prompt một cách tự nhiên.
-        4.  Dựa vào hình ảnh và yêu cầu, xác định phong cách kiến trúc chính và bối cảnh tổng thể. Tích hợp các yếu tố này vào prompt một cách ngắn gọn.
     
-        **ĐẦU RA:**
-        - Chỉ xuất ra câu lệnh cuối cùng bằng tiếng Việt.
-        - Không thêm bất kỳ cụm từ giới thiệu nào.
-    `;
-    
-    const parts: any[] = [...imageParts, { text: metaPrompt }];
-
-    try {
-        console.log("Attempting to refine architecture prompt...");
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts },
-        });
-
-        const text = response.text;
-        if (text) {
-            return text.trim();
-        }
-
-        console.warn("AI did not return text for architecture prompt refinement. Falling back to user prompt.");
-        return `Tạo một bức ảnh kiến trúc chân thực, chất lượng cao. ${userPrompt}`;
-
-    } catch (error) {
-        const processedError = processApiError(error);
-        console.error("Error during architecture prompt refinement:", processedError);
-        return `Tạo một bức ảnh kiến trúc chân thực, chất lượng cao. ${userPrompt}`;
+    const text = response.text;
+    if (text) {
+      return text.trim();
     }
+    
+    console.warn("AI did not return text for prompt refinement. Falling back to simple combination.");
+    return fallbackPrompt;
+
+  } catch (error) {
+    const processedError = processApiError(error);
+    console.error("Error during prompt refinement, falling back.", processedError);
+    return fallbackPrompt;
+  }
 }
