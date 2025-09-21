@@ -79,10 +79,15 @@ body {
   --footer-bg-color: rgba(123, 146, 10, 0.5); /* UPDATED: Increased transparency */
 }
 
-
 .title-font {
   font-family: 'Asimovian', sans-serif;
 }
+
+/* .title-font {
+  font-family: 'Taviraj', serif;
+  font-weight: 300;
+  font-style: italic;
+} */
 .sub-title-font {
   font-family: 'Playwrite AU SA', cursive;
 }
