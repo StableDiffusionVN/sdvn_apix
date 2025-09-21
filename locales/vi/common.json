@@ -1,4 +1,5 @@
 
+
 {
   "footer_theme": "Giao diện",
   "footer_feedback": "Góp ý",
@@ -78,6 +79,7 @@
   "infoModal_generalShortcuts_subtitle": "Hoạt động ở mọi nơi trong ứng dụng.",
   "infoModal_generalShortcuts_items": {
     "home": "Về trang chủ",
+    "history": "Mở/Đóng Lịch sử",
     "search": "Tìm kiếm ứng dụng",
     "gallery": "Mở thư viện ảnh",
     "editor": "Mở Trình chỉnh sửa ảnh",
@@ -132,11 +134,12 @@
     "deselect": "Bỏ chọn tất cả",
     "export": "Xuất layer đã chọn (PNG)"
   },
-  "appToolbar_home": "Trang chủ (Cmd/Ctrl+H)",
+  "appToolbar_home": "Trang chủ",
   "appToolbar_back": "Quay lại (Cmd/Ctrl+Z)",
   "appToolbar_forward": "Tiến lên (Cmd/Ctrl+Shift+Z)",
   "appToolbar_search": "Tìm kiếm (Cmd/Ctrl+F)",
   "appToolbar_info": "Hướng dẫn (Cmd/Ctrl+/)",
+  "appToolbar_history": "Lịch sử tạo ảnh (Cmd/Ctrl+H)",
   "appToolbar_gallery": "Thư viện ảnh (Cmd/Ctrl+G)",
   "appToolbar_editor": "Trình chỉnh sửa ảnh (Cmd/Ctrl+E)",
   "appToolbar_layerComposer": "Canvas (Cmd/Ctrl+L)",
@@ -249,6 +252,9 @@
   "layerComposer_ai_preset": "Preset",
   "layerComposer_preset_title": "Tạo bằng Preset",
   "layerComposer_preset_uploadButton": "Tải lên Preset...",
+  "layerComposer_preset_loadHistory": "Tải từ Lịch sử",
+  "layerComposer_preset_historyTitle": "Tải Preset từ Lịch sử",
+  "layerComposer_preset_historyBack": "Quay lại",
   "layerComposer_preset_generateButton": "Tạo ảnh từ Preset",
   "layerComposer_preset_generating_count": "Đang tạo ({0})...",
   "layerComposer_preset_upload_tip": "Mẹo: Bạn cũng có thể kéo và thả tệp .json hoặc .png (Tệp json setting được xuất ở màn hình kết thúc mỗi ứng dụng chính) vào đây.",
@@ -271,5 +277,10 @@
   "layerComposer_ai_log_noImagesGenerated": "AI không tạo ra bất kỳ ảnh nào.",
   "layerComposer_ai_log_generatedCount": "AI đã tạo thành công {0} ảnh.",
   "layerComposer_ai_log_loadingResults": "Đang tải ảnh kết quả...",
-  "layerComposer_ai_log_addingLayers": "Đang thêm {0} layer mới vào canvas..."
+  "layerComposer_ai_log_addingLayers": "Đang thêm {0} layer mới vào canvas...",
+  "historyPanel_title": "Lịch sử tạo ảnh",
+  "historyPanel_close": "Đóng lịch sử",
+  "historyPanel_empty": "Chưa có lịch sử nào được ghi lại.",
+  "historyPanel_download": "Tải về cài đặt (JSON)",
+  "historyPanel_reload": "Tải lại cài đặt này"
 }

@@ -386,6 +386,19 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
     }
 };
 
+// --- History Entry Type ---
+export interface GenerationHistoryEntry {
+    id: string;
+    timestamp: number;
+    appId: string;
+    appName: string;
+    thumbnailUrl: string;
+    settings: {
+        viewId: string;
+        state: AnyAppState;
+    };
+}
+
 // --- Context Types ---
 
 export interface AppControlContextType {
@@ -398,12 +411,15 @@ export interface AppControlContextType {
     isSearchOpen: boolean;
     isGalleryOpen: boolean;
     isInfoOpen: boolean;
+    isHistoryPanelOpen: boolean;
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
     isLayerComposerMounted: boolean;
     isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
+    generationHistory: GenerationHistoryEntry[];
+    addGenerationToHistory: (entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => void;
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
     replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
@@ -422,6 +438,8 @@ export interface AppControlContextType {
     handleCloseGallery: () => void;
     handleOpenInfo: () => void;
     handleCloseInfo: () => void;
+    handleOpenHistoryPanel: () => void;
+    handleCloseHistoryPanel: () => void;
     toggleExtraTools: () => void;
     openImageLayoutModal: () => void;
     closeImageLayoutModal: () => void;

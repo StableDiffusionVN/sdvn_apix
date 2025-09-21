@@ -59,12 +59,13 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                     <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_generalShortcuts_title')}</h4>
                                     <p className="text-sm text-neutral-400 mb-3">{t('infoModal_generalShortcuts_subtitle')}</p>
                                     <ul className="space-y-2 text-sm">
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.home')}</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.history')}</span> <Shortcut keys="Cmd/Ctrl + H" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.search')}</span> <Shortcut keys="Cmd/Ctrl + F" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.gallery')}</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.editor')}</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.layerComposer')}</span> <Shortcut keys="Cmd/Ctrl + L" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.info')}</span> <Shortcut keys="Cmd/Ctrl + /" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.home')}</span></li>
                                     </ul>
                                 </div>
                                 
@@ -101,20 +102,6 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                     </ul>
                                 </div>
 
-                                 {/* Section 6 */}
-                                <div className="break-inside-avoid mb-6">
-                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_usageTips_title')}</h4>
-                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_usageTips_subtitle')}</p>
-                                    <ul className="space-y-2 text-sm">
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.dragDrop')}</span></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickDuplicate')}</span> <Shortcut keys="Giữ Alt + Kéo" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.multiSelect')}</span> <Shortcut keys="Giữ Shift" /></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.aiContext')}</span></li>
-                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickEdit')}</span></li>
-                                    </ul>
-                                </div>
-
                                  {/* Section 7 */}
                                 <div className="break-inside-avoid mb-6">
                                     <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_layerComposerTools_title')}</h4>
@@ -137,6 +124,20 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.moveDown')}</span> <Shortcut keys="Cmd/Ctrl + [" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.deselect')}</span> <Shortcut keys="Cmd/Ctrl + D" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_layerComposerActions_items.export')}</span></li>
+                                    </ul>
+                                </div>
+
+                                 {/* Section 6 (Moved to end) */}
+                                <div className="break-inside-avoid mb-6">
+                                    <h4 className="font-bold text-lg text-yellow-400/90 mb-2 border-b border-yellow-400/20 pb-1">{t('infoModal_usageTips_title')}</h4>
+                                    <p className="text-sm text-neutral-400 mb-3">{t('infoModal_usageTips_subtitle')}</p>
+                                    <ul className="space-y-2 text-sm">
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.dragDrop')}</span></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickDuplicate')}</span> <Shortcut keys="Giữ Alt + Kéo" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.multiSelect')}</span> <Shortcut keys="Giữ Shift" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.aiContext')}</span></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickEdit')}</span></li>
                                     </ul>
                                 </div>
                             </div>

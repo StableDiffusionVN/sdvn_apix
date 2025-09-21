@@ -19,7 +19,8 @@ import {
 import { LayerComposerSidebar } from './LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposerCanvas';
 import { StartScreen } from './StartScreen';
-import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type CanvasTool, type AIPreset } from './LayerComposer.types';
+import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type CanvasTool, type AIPreset } from './LayerComposer/LayerComposer.types';
+import { type GenerationHistoryEntry } from '../uiTypes';
 
 interface LayerComposerModalProps {
     isOpen: boolean;
@@ -316,7 +317,7 @@ const parseMultiPrompt = (prompt: string): string[] => {
 
 
 export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose, onHide }) => {
-    const { sessionGalleryImages, addImagesToGallery, t, settings, language } = useAppControls();
+    const { sessionGalleryImages, addImagesToGallery, t, settings, language, generationHistory } = useAppControls();
     const { openImageEditor } = useImageEditor();
 
     const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>({ 
@@ -1369,6 +1370,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                 activeCanvasTool={activeCanvasTool}
                                 shapeFillColor={shapeFillColor}
                                 setShapeFillColor={setShapeFillColor}
+                                generationHistory={generationHistory}
                             />
                             <LayerComposerCanvas
                                 canvasViewRef={canvasViewRef}

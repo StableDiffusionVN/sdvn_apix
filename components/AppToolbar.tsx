@@ -15,7 +15,8 @@ import {
     GalleryIcon, 
     EditorIcon, 
     LayerComposerIcon, 
-    EllipsisIcon 
+    EllipsisIcon,
+    HistoryIcon
 } from './icons';
 
 const AppToolbar: React.FC = () => {
@@ -29,12 +30,15 @@ const AppToolbar: React.FC = () => {
         handleOpenGallery,
         handleOpenSearch,
         handleOpenInfo,
+        handleOpenHistoryPanel,
         addImagesToGallery,
         isExtraToolsOpen,
         toggleExtraTools,
         isLayerComposerVisible,
         toggleLayerComposer,
         t,
+        isHistoryPanelOpen,
+        handleCloseHistoryPanel,
     } = useAppControls();
 
     const { openEmptyImageEditor, imageToEdit } = useImageEditor();
@@ -79,7 +83,7 @@ const AppToolbar: React.FC = () => {
             const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
             const isSearch = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f';
             const isGallery = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g';
-            const isHome = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+            const isHistoryToggle = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
             const isInfo = (e.metaKey || e.ctrlKey) && e.key === '/';
             const isEditor = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e';
             const isLayerComposer = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l';
@@ -96,9 +100,13 @@ const AppToolbar: React.FC = () => {
             } else if (isGallery) {
                 e.preventDefault();
                 handleOpenGallery();
-            } else if (isHome) {
+            } else if (isHistoryToggle) {
                 e.preventDefault();
-                handleGoHome();
+                if (isHistoryPanelOpen) {
+                    handleCloseHistoryPanel();
+                } else {
+                    handleOpenHistoryPanel();
+                }
             } else if (isInfo) {
                 e.preventDefault();
                 handleOpenInfo();
@@ -115,7 +123,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleGoHome, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleOpenHistoryPanel, handleCloseHistoryPanel, isHistoryPanelOpen, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
 
     return (
         <>
@@ -168,6 +176,15 @@ const AppToolbar: React.FC = () => {
                     onMouseLeave={hideTooltip}
                 >
                     <InfoIcon className="h-5 w-5" strokeWidth={2} />
+                </button>
+                <button
+                    onClick={handleOpenHistoryPanel}
+                    className="btn-search"
+                    aria-label={t('appToolbar_history')}
+                    onMouseEnter={(e) => showTooltip(t('appToolbar_history'), e)}
+                    onMouseLeave={hideTooltip}
+                >
+                    <HistoryIcon className="h-5 w-5" strokeWidth={1.5} />
                 </button>
                 
                 {/* --- Group 2: Creation & Tools (Hidden on mobile) --- */}

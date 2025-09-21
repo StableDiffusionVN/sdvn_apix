@@ -37,12 +37,14 @@ interface ToyModelCreatorProps {
     onStateChange: (newState: ToyModelCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery,
         appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
     
@@ -170,6 +172,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     const executeInitialGeneration = async () => {
         if (!appState.uploadedImage) return;
 
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
@@ -180,6 +183,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('toy-model-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -195,6 +199,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
@@ -203,6 +208,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('toy-model-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 
@@ -15,6 +15,7 @@ import AppToolbar from './components/AppToolbar';
 import LoginScreen from './components/LoginScreen';
 import UserStatus from './components/UserStatus';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import HistoryPanel from './components/HistoryPanel';
 import { ImageEditorModal } from './components/ImageEditorModal';
 import {
     renderSmartlyWrappedTitle,
@@ -24,7 +25,8 @@ import {
     BeforeAfterModal,
     LayerComposerModal,
     useAuth,
-    AppConfig
+    AppConfig,
+    type GenerationHistoryEntry,
 } from './components/uiUtils';
 import { LoadingSpinnerIcon } from './components/icons';
 
@@ -56,6 +58,7 @@ function App() {
         isSearchOpen,
         isGalleryOpen,
         isInfoOpen,
+        isHistoryPanelOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
         isLayerComposerMounted,
@@ -63,11 +66,13 @@ function App() {
         handleSelectApp,
         handleStateChange,
         addImagesToGallery,
+        addGenerationToHistory,
         handleResetApp,
         handleGoBack,
         handleCloseSearch,
         handleCloseGallery,
         handleCloseInfo,
+        handleCloseHistoryPanel,
         closeImageLayoutModal,
         closeBeforeAfterModal,
         closeLayerComposer,
@@ -81,7 +86,8 @@ function App() {
     useEffect(() => {
         const isAnyModalOpen = isSearchOpen || 
                                isGalleryOpen || 
-                               isInfoOpen || 
+                               isInfoOpen ||
+                               isHistoryPanelOpen ||
                                isImageLayoutModalOpen || 
                                isBeforeAfterModalOpen || 
                                isLayerComposerVisible || 
@@ -97,7 +103,60 @@ function App() {
         return () => {
             document.body.style.overflow = 'auto';
         };
-    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerVisible, imageToEdit]);
+    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerVisible, imageToEdit]);
+
+    const getExportableState = useCallback((appState: any, viewId: string) => {
+        const exportableState = JSON.parse(JSON.stringify(appState));
+        const keysToRemove = [
+            'generatedImage', 'generatedImages', 'historicalImages', 
+            'finalPrompt', 'error',
+        ];
+
+        if (viewId !== 'image-interpolation') {
+            keysToRemove.push('generatedPrompt', 'promptSuggestions');
+        }
+
+        const removeKeys = (obj: any) => {
+            if (typeof obj !== 'object' || obj === null) return;
+            for (const key of keysToRemove) {
+                if (key in obj) delete obj[key];
+            }
+            if ('stage' in obj && (obj.stage === 'generating' || obj.stage === 'results' || obj.stage === 'prompting')) {
+                 if (viewId === 'free-generation') obj.stage = 'configuring';
+                 else if ( ('uploadedImage' in obj && obj.uploadedImage) || ('modelImage' in obj && obj.modelImage) || ('contentImage' in obj && obj.contentImage) || ('inputImage' in obj && obj.inputImage) ) {
+                      obj.stage = 'configuring';
+                 } else {
+                     obj.stage = 'idle';
+                 }
+            }
+            for (const key in obj) {
+                if (typeof obj[key] === 'object') removeKeys(obj[key]);
+            }
+        };
+
+        removeKeys(exportableState);
+        return exportableState;
+    }, []);
+
+    const logGeneration = useCallback((appId: string, preGenState: any, thumbnailUrl: string) => {
+        if (!settings) return;
+
+        const appConfig = settings.apps.find((app: AppConfig) => app.id === appId);
+        const appName = appConfig ? t(appConfig.titleKey) : appId;
+
+        const cleanedState = getExportableState(preGenState, appId);
+
+        const entry: Omit<GenerationHistoryEntry, 'id' | 'timestamp'> = {
+            appId,
+            appName: appName.replace(/\n/g, ' '),
+            thumbnailUrl,
+            settings: {
+                viewId: appId,
+                state: cleanedState,
+            },
+        };
+        addGenerationToHistory(entry);
+    }, [addGenerationToHistory, settings, t, getExportableState]);
 
     const renderContent = () => {
         if (!settings) return null; // Wait for settings to load
@@ -114,6 +173,7 @@ function App() {
             onStateChange: handleStateChange,
             onReset: handleResetApp,
             onGoBack: handleGoBack,
+            logGeneration,
         };
 
         switch (currentView.viewId) {
@@ -396,6 +456,10 @@ function App() {
              <InfoModal
                 isOpen={isInfoOpen}
                 onClose={handleCloseInfo}
+            />
+            <HistoryPanel
+                isOpen={isHistoryPanelOpen}
+                onClose={handleCloseHistoryPanel}
             />
             <ImageEditorModal 
                 imageToEdit={imageToEdit}

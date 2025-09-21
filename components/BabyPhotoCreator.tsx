@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback, useEffect } from 'react';
+import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { generateBabyPhoto, estimateAgeGroup, editImageWithPrompt } from '../services/geminiService';
@@ -38,6 +38,7 @@ interface BabyPhotoCreatorProps {
     onStateChange: (newState: BabyPhotoCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
@@ -46,6 +47,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         uploaderCaption, uploaderDescription,
         addImagesToGallery,
         appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
     
@@ -55,6 +57,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [localPrompt, setLocalPrompt] = useState(appState.options.additionalPrompt);
     const [isEstimatingAge, setIsEstimatingAge] = useState(false);
+    const hasLoggedGeneration = useRef(false);
 
     useEffect(() => {
         setLocalPrompt(appState.options.additionalPrompt);
@@ -118,6 +121,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     const handleGenerateClick = async () => {
         if (!appState.uploadedImage || appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas) return;
         
+        hasLoggedGeneration.current = false;
+        const preGenState = { ...appState };
         let ideasToGenerate = [...appState.selectedIdeas];
         const randomCount = ideasToGenerate.filter(i => i === 'Random').length;
 
@@ -169,6 +174,11 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                 const resultUrl = await generateBabyPhoto(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
                 const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
                 
+                if (!hasLoggedGeneration.current) {
+                    logGeneration('baby-photo-creator', preGenState, urlWithMetadata);
+                    hasLoggedGeneration.current = true;
+                }
+                
                 currentAppState = {
                     ...currentAppState,
                     generatedImages: {
@@ -215,6 +225,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         }
 
         const imageUrlToEdit = imageToEditState.url;
+        const preGenState = { ...appState };
         
         onStateChange({
             ...appState,
@@ -228,6 +239,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('baby-photo-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },

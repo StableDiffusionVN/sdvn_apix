@@ -38,6 +38,7 @@ interface MixStyleProps {
     onStateChange: (newState: MixStyleState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const STYLE_STRENGTH_OPTIONS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'] as const;
@@ -48,6 +49,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
         uploaderCaptionStyle, uploaderDescriptionStyle,
         addImagesToGallery,
         appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
 
@@ -123,6 +125,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     const executeInitialGeneration = async () => {
         if (!appState.contentImage || !appState.styleImage) return;
         
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null, finalPrompt: null });
 
         try {
@@ -132,6 +135,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('mix-style', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -149,6 +153,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null, finalPrompt: prompt });
 
         try {
@@ -158,6 +163,7 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null, finalPrompt: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('mix-style', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

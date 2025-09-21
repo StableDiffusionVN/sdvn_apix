@@ -37,6 +37,7 @@ interface FreeGenerationProps {
     onStateChange: (newState: FreeGenerationState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const NUMBER_OF_IMAGES_OPTIONS = ['1', '2', '3', '4'] as const;
@@ -48,6 +49,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         uploaderCaption2, uploaderDescription2,
         addImagesToGallery,
         appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
     
@@ -124,6 +126,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             return;
         }
         
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null, generatedImages: [] });
 
         try {
@@ -169,6 +172,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 resultUrls.map(url => embedJsonInPng(url, settingsToEmbed, settings.enableImageMetadata))
             );
 
+            if (urlsWithMetadata.length > 0) {
+                logGeneration('free-generation', preGenState, urlsWithMetadata[0]);
+            }
+
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -187,6 +194,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         if (!url) return;
         
         const originalGeneratedImages = [...appState.generatedImages];
+        const preGenState = { ...appState };
         
         onStateChange({ ...appState, stage: 'generating', error: null });
 
@@ -197,6 +205,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('free-generation', preGenState, urlWithMetadata);
             
             const newGeneratedImages = [...originalGeneratedImages];
             newGeneratedImages[index] = urlWithMetadata;

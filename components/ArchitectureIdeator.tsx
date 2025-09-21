@@ -37,12 +37,14 @@ interface ArchitectureIdeatorProps {
     onStateChange: (newState: ArchitectureIdeatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { 
         uploaderCaption, uploaderDescription, addImagesToGallery, 
         appState, onStateChange, onReset, onGoBack,
+        logGeneration,
         ...headerProps 
     } = props;
     
@@ -86,6 +88,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const executeInitialGeneration = async () => {
         if (!appState.uploadedImage) return;
         
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
@@ -97,6 +100,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('architecture-ideator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -113,6 +117,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
@@ -123,6 +128,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('architecture-ideator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',

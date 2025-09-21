@@ -20,6 +20,7 @@ import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
 import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type CanvasTool, type AIPreset } from './LayerComposer/LayerComposer.types';
+import { type GenerationHistoryEntry } from '../uiTypes';
 
 interface LayerComposerModalProps {
     isOpen: boolean;
@@ -316,7 +317,7 @@ const parseMultiPrompt = (prompt: string): string[] => {
 
 
 export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose, onHide }) => {
-    const { sessionGalleryImages, addImagesToGallery, t, settings, language } = useAppControls();
+    const { sessionGalleryImages, addImagesToGallery, t, settings, language, generationHistory } = useAppControls();
     const { openImageEditor } = useImageEditor();
 
     const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>({ 
@@ -850,24 +851,23 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         const { signal } = controller;
     
         setIsLogVisible(true);
-        setRunningJobCount(prev => prev + 1);
+        setRunningJobCount(prev => prev + 1); // Increment for the whole batch
         setError(null);
-    
-        const promptsToGenerate = parseMultiPrompt(aiPrompt);
-        const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
-        const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
-        const currentPreset = presets.find(pr => pr.id === aiPreset);
-    
-        if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
-            setRunningJobCount(prev => Math.max(0, prev - 1));
-            setIsLogVisible(false);
-            return;
-        }
+        setAiProcessLog([]);
     
         try {
+            const promptsToGenerate = parseMultiPrompt(aiPrompt);
+            const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
+            const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
+            const currentPreset = presets.find(pr => pr.id === aiPreset);
+    
+            if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
+                throw new Error("Cannot generate without a prompt for the default preset.");
+            }
+    
             addLog(t('layerComposer_ai_log_start'), 'info');
-            if (promptsToGenerate.length > 1) {
-                addLog(`Detected ${promptsToGenerate.length} prompt variations. Generating all...`, 'info');
+            if (finalPrompts.length > 1) {
+                addLog(`Detected ${finalPrompts.length} prompt variations. Generating all...`, 'info');
             }
     
             const hasLayerContext = selectedLayers.length > 0;
@@ -888,16 +888,13 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 if (currentPreset.refine && hasLayerContext) {
                     addLog(t('layerComposer_ai_log_refining'), 'spinner');
                     if (currentPreset.id === 'architecture') {
-                        addLog(t('layerComposer_ai_log_architect'), 'info');
                         finalPrompt = await refineArchitecturePrompt(template, userPromptChunk, imageUrls);
                     } else {
                         finalPrompt = await refineImageAndPrompt(template, userPromptChunk, imageUrls);
                     }
                     if (signal.aborted) throw new Error("Cancelled");
-                    setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
                 } else {
                     finalPrompt = template.replace('{{userPrompt}}', userPromptChunk).trim();
-                    addLog(t('layerComposer_ai_log_noRefine'), 'info');
                 }
                 if (signal.aborted) throw new Error("Cancelled");
     
@@ -907,19 +904,18 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 if (!hasLayerContext) {
                     const params = await analyzePromptForImageGenerationParams(finalPrompt);
                     if (signal.aborted) throw new Error("Cancelled");
-    
                     const canvasAspectRatioStr = findClosestImagenAspectRatio(canvasSettings.width, canvasSettings.height);
                     const finalAspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : canvasAspectRatioStr;
                     const finalNumImages = finalPrompts.length > 1 ? 1 : params.numberOfImages;
-    
                     return generateFreeImage(params.refinedPrompt, finalNumImages, finalAspectRatio as any);
                 } else {
-                    if (isSimpleImageMode && finalPrompts.length === 1 && selectedLayers.length > 1) {
+                    // Batch Mode: One image per layer. Multi-Input Mode: One image for all layers.
+                    const isBatchMode = !isSimpleImageMode && selectedLayers.length > 1;
+                    if (isBatchMode) {
                         return Promise.all(imageUrls.map(url => editImageWithPrompt(url, finalPrompt)));
-                    } else if (selectedLayers.length === 1) {
-                        return editImageWithPrompt(imageUrls[0], finalPrompt);
                     } else {
-                        return generateFromMultipleImages(imageUrls, finalPrompt);
+                        const resultUrl = await generateFromMultipleImages(imageUrls, finalPrompt);
+                        return [resultUrl];
                     }
                 }
             });
@@ -928,14 +924,11 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             const results = (await Promise.all(generationPromises)).flat();
             if (signal.aborted) return;
     
-            if (results.length === 0) throw new Error("AI did not generate any images.");
+            if (results.length === 0) throw new Error(t('layerComposer_ai_log_noImagesGenerated'));
     
+            addLog(t('layerComposer_ai_log_generatedCount', results.length), 'info');
             const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = url;
+                const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
             }));
             const loadedImages = await Promise.all(imageLoadPromises);
             if (signal.aborted) return;
@@ -943,19 +936,17 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
             addImagesAsLayers(loadedImages, position);
     
-            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
             addLog(t('layerComposer_ai_log_success'), 'success');
-    
         } catch (err) {
             if (signal.aborted || (err instanceof Error && err.message === 'Cancelled')) {
                 console.log("Generation process was cancelled.");
             } else {
                 const errorMessage = err instanceof Error ? err.message : "Unknown error.";
-                setError(t('layerComposer_error', errorMessage));
-                setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+                setError(errorMessage);
                 addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
             }
         } finally {
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
             setRunningJobCount(prev => Math.max(0, prev - 1));
             if (generationController.current === controller) {
                 generationController.current = null;
@@ -1131,42 +1122,57 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setIsLogVisible(true);
         setRunningJobCount(prev => prev + 1);
         setError(null);
-        
+        setAiProcessLog([]);
+    
         try {
             addLog(t('layerComposer_ai_log_start'), 'info');
             const presetTitle = t(`app_${loadedPreset.viewId}_title`);
             addLog(t('layerComposer_ai_log_usingPreset', presetTitle), 'info');
-
+    
             const layersToCaptureCount = selectedLayers.length > 0 ? selectedLayers.length : 0;
             if (layersToCaptureCount > 0) {
-                 addLog(t('layerComposer_ai_log_capturingLayers', layersToCaptureCount), 'info');
+                addLog(t('layerComposer_ai_log_capturingLayers', layersToCaptureCount), 'info');
             } else {
-                 addLog(t('layerComposer_ai_log_noLayersSelected'), 'info');
+                addLog(t('layerComposer_ai_log_noLayersSelected'), 'info');
             }
-            const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
-            
+    
+            const isBatchMode = !isSimpleImageMode && selectedLayers.length > 1;
+            let resultUrls: string[] = [];
+    
             addLog(t('layerComposer_ai_log_generating'), 'spinner');
-            const resultUrls = await generateFromPreset(loadedPreset, selectedLayerUrls);
-
+    
+            if (isBatchMode) {
+                addLog(`Starting batch generation for ${selectedLayers.length} layers.`, 'info');
+                const generationPromises = selectedLayers.map(async (layer) => {
+                    const layerUrl = await captureLayer(layer);
+                    return generateFromPreset(loadedPreset, [layerUrl]);
+                });
+                const resultsFromAllLayers = await Promise.all(generationPromises);
+                resultUrls = resultsFromAllLayers.flat();
+            } else {
+                const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+                resultUrls = await generateFromPreset(loadedPreset, selectedLayerUrls);
+            }
+    
             setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
-
+    
             if (resultUrls.length === 0) {
                 throw new Error(t('layerComposer_ai_log_noImagesGenerated'));
             }
-
+    
             addLog(t('layerComposer_ai_log_generatedCount', resultUrls.length), 'info');
             addLog(t('layerComposer_ai_log_loadingResults'), 'info');
-
+    
             const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
                 const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
             }));
             const loadedImages = await Promise.all(imageLoadPromises);
-            
+    
             addLog(t('layerComposer_ai_log_addingLayers', loadedImages.length), 'info');
             const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(-1));
             const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
             addImagesAsLayers(loadedImages, position);
-
+    
             addLog(t('layerComposer_ai_log_success'), 'success');
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
@@ -1176,7 +1182,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } finally {
             setRunningJobCount(prev => Math.max(0, prev - 1));
         }
-    }, [loadedPreset, selectedLayers, layers, t]);
+    }, [loadedPreset, selectedLayers, layers, t, isSimpleImageMode]);
 
 
     useEffect(() => {
@@ -1369,6 +1375,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                 activeCanvasTool={activeCanvasTool}
                                 shapeFillColor={shapeFillColor}
                                 setShapeFillColor={setShapeFillColor}
+                                generationHistory={generationHistory}
                             />
                             <LayerComposerCanvas
                                 canvasViewRef={canvasViewRef}

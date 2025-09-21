@@ -1,4 +1,5 @@
 
+
 {
   "footer_theme": "Theme",
   "footer_feedback": "Feedback",
@@ -78,6 +79,7 @@
   "infoModal_generalShortcuts_subtitle": "Works everywhere in the app.",
   "infoModal_generalShortcuts_items": {
     "home": "Go to Home",
+    "history": "Open/Close History",
     "search": "Search Apps",
     "gallery": "Open Gallery",
     "editor": "Open Image Editor",
@@ -132,11 +134,12 @@
     "deselect": "Deselect all",
     "export": "Export selected layer (PNG)"
   },
-  "appToolbar_home": "Home (Cmd/Ctrl+H)",
+  "appToolbar_home": "Home",
   "appToolbar_back": "Back (Cmd/Ctrl+Z)",
   "appToolbar_forward": "Forward (Cmd/Ctrl+Shift+Z)",
   "appToolbar_search": "Search (Cmd/Ctrl+F)",
   "appToolbar_info": "Guide (Cmd/Ctrl+/)",
+  "appToolbar_history": "Generation History (Cmd/Ctrl+H)",
   "appToolbar_gallery": "Gallery (Cmd/Ctrl+G)",
   "appToolbar_editor": "Image Editor (Cmd/Ctrl+E)",
   "appToolbar_layerComposer": "Canvas (Cmd/Ctrl+L)",
@@ -249,6 +252,9 @@
   "layerComposer_ai_preset": "Preset",
   "layerComposer_preset_title": "Preset Generation",
   "layerComposer_preset_uploadButton": "Upload Preset...",
+  "layerComposer_preset_loadHistory": "Load from History",
+  "layerComposer_preset_historyTitle": "Load Preset from History",
+  "layerComposer_preset_historyBack": "Back",
   "layerComposer_preset_generateButton": "Generate from Preset",
   "layerComposer_preset_generating_count": "Generating ({0})...",
   "layerComposer_preset_upload_tip": "Tip: You can also drag and drop a .json or .png (The JSON Setting file is exported to the screen to end each main application) file here.",
@@ -271,5 +277,10 @@
   "layerComposer_ai_log_noImagesGenerated": "The AI did not generate any images.",
   "layerComposer_ai_log_generatedCount": "AI successfully generated {0} image(s).",
   "layerComposer_ai_log_loadingResults": "Loading result images...",
-  "layerComposer_ai_log_addingLayers": "Adding {0} new layer(s) to the canvas..."
+  "layerComposer_ai_log_addingLayers": "Adding {0} new layer(s) to the canvas...",
+  "historyPanel_title": "Generation History",
+  "historyPanel_close": "Close History",
+  "historyPanel_empty": "No history has been recorded yet.",
+  "historyPanel_download": "Download Settings (JSON)",
+  "historyPanel_reload": "Reload these settings"
 }

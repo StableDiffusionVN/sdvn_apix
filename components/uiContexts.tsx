@@ -6,7 +6,8 @@ import React, { useState, useEffect, useCallback, useContext, createContext } fr
 import {
     type ImageToEdit, type ViewState, type AnyAppState, type Theme,
 // FIX: Import the Settings type which is now defined in uiTypes.ts.
-    type AppConfig, THEMES, getInitialStateForApp, type Settings
+    type AppConfig, THEMES, getInitialStateForApp, type Settings,
+    type GenerationHistoryEntry
 } from './uiTypes';
 
 // --- Auth Context ---
@@ -191,12 +192,15 @@ interface AppControlContextType {
     isSearchOpen: boolean;
     isGalleryOpen: boolean;
     isInfoOpen: boolean;
+    isHistoryPanelOpen: boolean;
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
     isLayerComposerMounted: boolean;
     isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
+    generationHistory: GenerationHistoryEntry[];
+    addGenerationToHistory: (entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => void;
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
     replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
@@ -215,6 +219,8 @@ interface AppControlContextType {
     handleCloseGallery: () => void;
     handleOpenInfo: () => void;
     handleCloseInfo: () => void;
+    handleOpenHistoryPanel: () => void;
+    handleCloseHistoryPanel: () => void;
     toggleExtraTools: () => void;
     openImageLayoutModal: () => void;
     closeImageLayoutModal: () => void;
@@ -244,6 +250,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
     const [isExtraToolsOpen, setIsExtraToolsOpen] = useState(false);
     const [isImageLayoutModalOpen, setIsImageLayoutModalOpen] = useState(false);
     const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
@@ -251,6 +258,15 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isLayerComposerVisible, setIsLayerComposerVisible] = useState(false);
     const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [generationHistory, setGenerationHistory] = useState<GenerationHistoryEntry[]>(() => {
+        try {
+            const savedHistory = localStorage.getItem('generationHistory');
+            return savedHistory ? JSON.parse(savedHistory) : [];
+        } catch (error) {
+            console.error("Could not load generation history from localStorage", error);
+            return [];
+        }
+    });
 
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
@@ -300,6 +316,31 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
         fetchTranslations();
     }, [language]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('generationHistory', JSON.stringify(generationHistory));
+        } catch (error) {
+            console.error("Could not save generation history to localStorage", error);
+        }
+    }, [generationHistory]);
+
+    const addGenerationToHistory = useCallback((entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => {
+        const newEntry: GenerationHistoryEntry = {
+            ...entryData,
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            timestamp: Date.now(),
+        };
+        
+        setGenerationHistory(prev => {
+            const updatedHistory = [newEntry, ...prev];
+            // Limit history to 50 items
+            if (updatedHistory.length > 50) {
+                return updatedHistory.slice(0, 50);
+            }
+            return updatedHistory;
+        });
+    }, []);
 
     const handleLanguageChange = useCallback((lang: 'vi' | 'en') => {
         setLanguage(lang);
@@ -477,6 +518,8 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const handleCloseGallery = useCallback(() => setIsGalleryOpen(false), []);
     const handleOpenInfo = useCallback(() => setIsInfoOpen(true), []);
     const handleCloseInfo = useCallback(() => setIsInfoOpen(false), []);
+    const handleOpenHistoryPanel = useCallback(() => setIsHistoryPanelOpen(true), []);
+    const handleCloseHistoryPanel = useCallback(() => setIsHistoryPanelOpen(false), []);
     const toggleExtraTools = useCallback(() => setIsExtraToolsOpen(prev => !prev), []);
     const openImageLayoutModal = useCallback(() => {
         setIsImageLayoutModalOpen(true);
@@ -519,12 +562,15 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isSearchOpen,
         isGalleryOpen,
         isInfoOpen,
+        isHistoryPanelOpen,
         isExtraToolsOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
         isLayerComposerMounted,
         isLayerComposerVisible,
         language,
+        generationHistory,
+        addGenerationToHistory,
         addImagesToGallery,
         removeImageFromGallery,
         replaceImageInGallery,
@@ -543,6 +589,8 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         handleCloseGallery,
         handleOpenInfo,
         handleCloseInfo,
+        handleOpenHistoryPanel,
+        handleCloseHistoryPanel,
         toggleExtraTools,
         openImageLayoutModal,
         closeImageLayoutModal,

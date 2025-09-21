@@ -38,6 +38,7 @@ interface ImageInterpolationProps {
     onStateChange: (newState: ImageInterpolationState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
@@ -48,6 +49,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         uploaderCaptionOutput, uploaderDescriptionOutput,
         uploaderCaptionReference, uploaderDescriptionReference,
         addImagesToGallery, appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
     
@@ -141,6 +143,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     const handleGenerate = async () => {
         if (!appState.referenceImage || !appState.generatedPrompt) return;
 
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null, finalPrompt: null });
 
         let intermediatePrompt = appState.generatedPrompt;
@@ -163,6 +166,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('image-interpolation', preGenState, urlWithMetadata);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: finalPromptText }];
             
@@ -189,6 +193,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
 
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
@@ -204,6 +209,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 state: { ...appState, stage: 'configuring', finalPrompt: null, generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('image-interpolation', preGenState, urlWithMetadata);
 
             const newHistory = [...appState.historicalImages, { url: urlWithMetadata, prompt: prompt }];
             

@@ -38,6 +38,7 @@ interface DressTheModelProps {
     onStateChange: (newState: DressTheModelState) => void;
     onReset: () => void;
     onGoBack: () => void;
+    logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
 
@@ -47,6 +48,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         uploaderCaptionClothing, uploaderDescriptionClothing,
         addImagesToGallery,
         appState, onStateChange, onReset,
+        logGeneration,
         ...headerProps
     } = props;
     
@@ -123,6 +125,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
 
     const executeInitialGeneration = async () => {
         if (!appState.modelImage || !appState.clothingImage) return;
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
             // No need to transform options, the service handles '' and 'Tự động' correctly
@@ -132,6 +135,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('dress-the-model', preGenState, urlWithMetadata);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
         } catch (err) {
@@ -142,6 +146,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
     
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
+        const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
@@ -150,6 +155,7 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+            logGeneration('dress-the-model', preGenState, urlWithMetadata);
             onStateChange({ ...appState, stage: 'results', generatedImage: urlWithMetadata, historicalImages: [...appState.historicalImages, urlWithMetadata] });
             addImagesToGallery([urlWithMetadata]);
         } catch (err) {

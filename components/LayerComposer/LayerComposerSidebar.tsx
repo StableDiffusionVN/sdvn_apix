@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls, Switch } from '../uiUtils';
 import { type Layer, type CanvasSettings, type CanvasTool, type AIPreset } from './LayerComposer.types';
+import { type GenerationHistoryEntry } from '../uiTypes';
 import { LayerList } from './LayerList';
 import { TextLayerControls } from './TextLayerControls';
 import { LayerPropertiesControls } from './LayerPropertiesControls';
@@ -26,6 +27,7 @@ interface PresetControlsProps {
     hasAiLog: boolean;
     isLogVisible: boolean;
     setIsLogVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    generationHistory: GenerationHistoryEntry[];
 }
 
 interface LayerComposerSidebarProps {
@@ -70,6 +72,7 @@ interface LayerComposerSidebarProps {
     activeCanvasTool: CanvasTool;
     shapeFillColor: string;
     setShapeFillColor: (color: string) => void;
+    generationHistory: GenerationHistoryEntry[];
 }
 
 const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () => void; children?: React.ReactNode; rightContent?: React.ReactNode; }> = ({ title, isOpen, onClick, rightContent }) => {
@@ -88,10 +91,11 @@ const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () =>
 
 const PresetControls: React.FC<PresetControlsProps> = ({
     loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, runningJobCount, selectedLayersForPreset, t, isSimpleImageMode, setIsSimpleImageMode,
-    onCancelGeneration, hasAiLog, isLogVisible, setIsLogVisible
+    onCancelGeneration, hasAiLog, isLogVisible, setIsLogVisible, generationHistory
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [showHistoryPicker, setShowHistoryPicker] = useState(false);
     const isGenerating = runningJobCount > 0;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +134,39 @@ const PresetControls: React.FC<PresetControlsProps> = ({
         }
     };
 
+    if (showHistoryPicker) {
+        return (
+            <div className="p-3">
+                <div className="flex justify-between items-center mb-2">
+                    <h5 className="font-semibold text-neutral-300">{t('layerComposer_preset_historyTitle')}</h5>
+                    <button onClick={() => setShowHistoryPicker(false)} className="text-xs text-neutral-400 hover:text-white">{t('layerComposer_preset_historyBack')}</button>
+                </div>
+                {generationHistory.length > 0 ? (
+                    <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        {generationHistory.map(entry => (
+                            <li
+                                key={entry.id}
+                                onClick={() => {
+                                    setLoadedPreset(entry.settings);
+                                    setShowHistoryPicker(false);
+                                }}
+                                className="flex items-start gap-3 p-2 bg-neutral-900/50 rounded-lg cursor-pointer hover:bg-neutral-700/80 transition-colors"
+                            >
+                                <img src={entry.thumbnailUrl} alt={`History thumbnail for ${entry.appName}`} className="w-12 h-12 object-cover rounded-md flex-shrink-0 bg-neutral-700" />
+                                <div className="flex-grow min-w-0">
+                                    <p className="font-bold text-sm text-yellow-400 truncate">{entry.appName}</p>
+                                    <p className="text-xs text-neutral-400">{new Date(entry.timestamp).toLocaleString()}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-xs text-neutral-500 text-center py-4">{t('historyPanel_empty')}</p>
+                )}
+            </div>
+        );
+    }
+
     const imageInputMap: Record<string, string[]> = {
         'architecture-ideator': ['Ảnh phác thảo'],
         'avatar-creator': ['Ảnh chân dung'],
@@ -157,9 +194,18 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                 onDrop={handleDrop}
             >
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,.png" className="hidden" />
-                <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm w-full">
-                    {t('layerComposer_preset_uploadButton')}
-                </button>
+                 <div className="flex gap-2">
+                    <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm flex-1">
+                        {t('layerComposer_preset_uploadButton')}
+                    </button>
+                    <button 
+                        onClick={() => setShowHistoryPicker(true)} 
+                        className="btn btn-secondary btn-sm flex-1" 
+                        disabled={generationHistory.length === 0}
+                    >
+                        {t('layerComposer_preset_loadHistory')}
+                    </button>
+                </div>
                 <p className="text-xs text-neutral-500 text-center mt-2">
                     {t('layerComposer_preset_upload_tip')}
                 </p>
@@ -195,6 +241,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                                     id={`preset-${key}`}
                                     checked={!!value}
                                     onChange={(checked) => handleOptionChange(key, checked)}
+                                    disabled={isGenerating}
                                 />
                             </div>
                         );
@@ -209,6 +256,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                                     value={String(value)}
                                     onChange={(e) => handleOptionChange(key, e.target.value)}
                                     className="form-input !p-1.5 !text-sm"
+                                    disabled={isGenerating}
                                 />
                             </div>
                         )
@@ -226,7 +274,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                         id="preset-simple-image-mode"
                         checked={isSimpleImageMode}
                         onChange={setIsSimpleImageMode}
-                        disabled={selectedLayersForPreset.length < 2}
+                        disabled={isGenerating}
                     />
                     <span className={cn( "text-sm font-bold transition-colors", isSimpleImageMode ? "text-yellow-400" : "text-neutral-500" )}>
                         {t('layerComposer_ai_multiInputMode')}
@@ -274,7 +322,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
         hasAiLog, isLogVisible, setIsLogVisible,
         loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset,
         onResizeSelectedLayers,
-        activeCanvasTool, shapeFillColor, setShapeFillColor
+        activeCanvasTool, shapeFillColor, setShapeFillColor, generationHistory
     } = props;
     const { t, language } = useAppControls();
     const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
@@ -345,11 +393,11 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         onChange={e => setAiPrompt(e.target.value)} 
                                         placeholder={t('layerComposer_ai_promptPlaceholder')} 
                                         className="form-input !p-2 !text-sm !h-24" 
-                                        rows={4} 
+                                        rows={4}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                                 e.preventDefault();
-                                                if (aiPreset !== 'default' || aiPrompt.trim()) {
+                                                if (!isGenerating && (aiPreset !== 'default' || aiPrompt.trim())) {
                                                     onGenerateAILayer();
                                                 }
                                             }
@@ -365,7 +413,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                                 id="simple-image-mode"
                                                 checked={isSimpleImageMode}
                                                 onChange={setIsSimpleImageMode}
-                                                disabled={selectedLayerIds.length < 2}
+                                                disabled={isGenerating}
                                             />
                                             <span className={cn( "text-sm font-bold transition-colors", isSimpleImageMode ? "text-yellow-400" : "text-neutral-500" )}>
                                                 {t('layerComposer_ai_multiInputMode')}
@@ -397,7 +445,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         </div>
                                         <button 
                                             onClick={onGenerateAILayer} 
-                                            className="btn btn-primary btn-sm w-full" 
+                                            className="btn btn-primary btn-sm flex-grow w-full" 
                                             disabled={aiPreset === 'default' && !aiPrompt.trim()}
                                             title={t('layerComposer_ai_generate_tooltip')}
                                         >
@@ -428,7 +476,8 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                     hasAiLog={hasAiLog}
                                     isLogVisible={isLogVisible}
                                     setIsLogVisible={setIsLogVisible}
-                                />
+                                    generationHistory={generationHistory}
+                               />
                             </motion.div>
                         )}
                     </AnimatePresence>
