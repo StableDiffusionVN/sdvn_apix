@@ -4,9 +4,8 @@
 */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppControls, Switch } from '../uiUtils';
+import { useAppControls, Switch, type GenerationHistoryEntry } from '../uiUtils';
 import { type Layer, type CanvasSettings, type CanvasTool, type AIPreset } from './LayerComposer.types';
-import { type GenerationHistoryEntry } from '../uiTypes';
 import { LayerList } from './LayerList';
 import { TextLayerControls } from './TextLayerControls';
 import { LayerPropertiesControls } from './LayerPropertiesControls';

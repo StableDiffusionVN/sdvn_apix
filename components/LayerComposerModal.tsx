@@ -15,12 +15,13 @@ import {
     analyzePromptForImageGenerationParams,
     generateFreeImage,
     refineImageAndPrompt
-} from '../../services/geminiService';
+} from '../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
 import { type Layer, type CanvasSettings, type Interaction, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type CanvasTool, type AIPreset } from './LayerComposer/LayerComposer.types';
-import { type GenerationHistoryEntry } from '../uiTypes';
+import { type GenerationHistoryEntry } from './uiTypes';
+import { AIProcessLogger, type AILogMessage } from './LayerComposer/AIProcessLogger';
 
 interface LayerComposerModalProps {
     isOpen: boolean;
@@ -203,74 +204,6 @@ const captureLayer = async (layer: Layer): Promise<string> => {
     return canvas.toDataURL('image/png');
 };
 
-
-interface AILogMessage {
-  id: number;
-  message: string;
-  type: 'info' | 'prompt' | 'success' | 'error' | 'spinner';
-}
-
-const AIProcessLogger: React.FC<{ log: AILogMessage[]; onClose: () => void; t: (key: string, ...args: any[]) => string; }> = ({ log, onClose, t }) => {
-    const [copiedId, setCopiedId] = useState<number | null>(null);
-    const logContainerRef = useRef<HTMLUListElement>(null);
-
-    useEffect(() => {
-        if (logContainerRef.current) {
-            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-        }
-    }, [log]);
-
-    const handleCopy = (message: string, id: number) => {
-        navigator.clipboard.writeText(message).then(() => {
-            setCopiedId(id);
-            setTimeout(() => setCopiedId(null), 2000);
-        });
-    };
-
-    return (
-        <motion.div
-            className="ai-process-logger"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            onClick={(e) => e.stopPropagation()}
-        >
-            <div className="ai-process-logger-header">
-                <h4 className="ai-process-logger-title">{t('layerComposer_ai_processTitle')}</h4>
-                <button onClick={onClose} className="ai-process-logger-close" aria-label="Close log">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-            <ul ref={logContainerRef} className="ai-process-logger-content">
-                {log.map(item => (
-                    <li key={item.id} className={`ai-process-logger-item log-item-${item.type}`}>
-                        {item.type === 'spinner' ? (
-                            <div className="log-item-spinner">
-                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>{item.message}</span>
-                            </div>
-                        ) : item.type === 'prompt' ? (
-                            <div className="log-item-prompt">
-                                <pre>{item.message}</pre>
-                                <button onClick={() => handleCopy(item.message, item.id)} className="copy-btn" title={copiedId === item.id ? t('layerComposer_ai_log_copied') : t('layerComposer_ai_log_copy')}>
-                                    {copiedId === item.id ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                    )}
-                                </button>
-                            </div>
-                        ) : (
-                            <span>{item.message}</span>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </motion.div>
-    );
-};
-
 const findClosestImagenAspectRatio = (width: number, height: number): '1:1' | '3:4' | '4:3' | '9:16' | '16:9' => {
     if (width <= 0 || height <= 0) return '1:1';
     const targetRatio = width / height;
@@ -366,7 +299,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         panY: 0,
         scale: 1,
     });
-
+    
     // Keep the ref in sync with the state
     useEffect(() => {
         appStateRef.current.layers = layers;
@@ -375,6 +308,20 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         appStateRef.current.canvasInitialized = canvasInitialized;
         appStateRef.current.canvasSettings = canvasSettings;
     }, [layers, history, historyIndex, canvasInitialized, canvasSettings]);
+
+    const addLog = useCallback((message: string, type: AILogMessage['type']) => {
+        setAiProcessLog(prev => {
+            // Add a separator for a new job if the last log was a success/error
+            const lastLog = prev[prev.length - 1];
+            if (lastLog && (lastLog.type === 'success' || lastLog.type === 'error') && type === 'info') {
+                 const newId = prev[prev.length - 1].id + 1;
+                 const nextId = newId + 1;
+                 return [...prev, {id: newId, message: '---', type: 'info'}, { id: nextId, message, type }];
+            }
+            const newId = (prev.length > 0 ? prev[prev.length - 1].id : -1) + 1;
+            return [...prev, { id: newId, message, type }];
+        });
+    }, []);
 
     const onRectBorderRadiusChange = (radius: number) => {
         setRectBorderRadius(radius);
@@ -816,10 +763,6 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             setRunningJobCount(prev => Math.max(0, prev - 1));
         }
     };
-
-    const addLog = (message: string, type: AILogMessage['type']) => {
-        setAiProcessLog(prev => [...prev, { id: Date.now() + Math.random(), message, type }]);
-    };
     
     const handleMergeLayers = useCallback(async () => {
         if (selectedLayers.length < 2) return; beginInteraction(); setRunningJobCount(prev => prev + 1); setError(null);
@@ -851,21 +794,26 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         const { signal } = controller;
     
         setIsLogVisible(true);
-        setRunningJobCount(prev => prev + 1); // Increment for the whole batch
+        setRunningJobCount(prev => prev + 1);
         setError(null);
-        setAiProcessLog([]);
+    
+        if (aiProcessLog.length > 0) {
+            addLog('---', 'info');
+        }
+        addLog(`${t('layerComposer_ai_log_start')} (${new Date().toLocaleTimeString()})`, 'info');
+    
+        const promptsToGenerate = parseMultiPrompt(aiPrompt);
+        const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
+        const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
+        const currentPreset = presets.find(pr => pr.id === aiPreset);
+    
+        if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+            setIsLogVisible(false);
+            return;
+        }
     
         try {
-            const promptsToGenerate = parseMultiPrompt(aiPrompt);
-            const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
-            const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
-            const currentPreset = presets.find(pr => pr.id === aiPreset);
-    
-            if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
-                throw new Error("Cannot generate without a prompt for the default preset.");
-            }
-    
-            addLog(t('layerComposer_ai_log_start'), 'info');
             if (finalPrompts.length > 1) {
                 addLog(`Detected ${finalPrompts.length} prompt variations. Generating all...`, 'info');
             }
@@ -959,7 +907,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             generationController.current.abort();
             addLog(`${t('layerComposer_ai_cancel')}...`, 'error');
         }
-    }, [t]);
+    }, [t, addLog]);
 
     const handleMoveLayers = useCallback((direction: 'up' | 'down') => {
         if (selectedLayerIds.length === 0) return;
@@ -1122,10 +1070,13 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         setIsLogVisible(true);
         setRunningJobCount(prev => prev + 1);
         setError(null);
-        setAiProcessLog([]);
+
+        if (aiProcessLog.length > 0) {
+            addLog('---', 'info');
+        }
+        addLog(`${t('layerComposer_ai_log_start')} (${new Date().toLocaleTimeString()})`, 'info');
     
         try {
-            addLog(t('layerComposer_ai_log_start'), 'info');
             const presetTitle = t(`app_${loadedPreset.viewId}_title`);
             addLog(t('layerComposer_ai_log_usingPreset', presetTitle), 'info');
     
@@ -1182,7 +1133,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } finally {
             setRunningJobCount(prev => Math.max(0, prev - 1));
         }
-    }, [loadedPreset, selectedLayers, layers, t, isSimpleImageMode]);
+    }, [loadedPreset, selectedLayers, layers, t, isSimpleImageMode, addLog, aiProcessLog.length]);
 
 
     useEffect(() => {
