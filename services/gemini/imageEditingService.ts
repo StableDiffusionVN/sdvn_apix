@@ -298,13 +298,20 @@ export async function refineImageAndPrompt(
     return { inlineData: { mimeType, data } };
   });
 
-  const metaPrompt = `Bạn là một kỹ sư prompt chuyên nghiệp cho AI tạo ảnh. Nhiệm vụ của bạn là kết hợp "Prompt Gốc", "Ghi chú của người dùng", và ngữ cảnh từ (các) "Ảnh đính kèm" để tạo ra một prompt cuối cùng, duy nhất, chi tiết và hiệu quả bằng tiếng Việt. Prompt mới phải mạch lạc, kết hợp tất cả các chỉ dẫn.
-        
+  const metaPrompt = `Bạn là một chuyên gia ra lệnh cho AI chỉnh sửa ảnh (image editing AI). Nhiệm vụ của bạn là chuyển đổi ý định của người dùng thành một câu lệnh **ngắn gọn, trực tiếp, và rõ ràng**.
+Phân tích (các) "Ảnh đính kèm", "Prompt Gốc", và "Ghi chú của người dùng" để hiểu bối cảnh và yêu cầu.
+
 **Prompt Gốc (Mục tiêu chính):** "${basePrompt}"
 **Ghi chú của người dùng (Yêu cầu cụ thể, ưu tiên cao hơn):** "${userNotes}"
-**Ảnh đính kèm:** (Cung cấp dưới dạng input)
-        
-**Yêu cầu:** Chỉ xuất ra văn bản prompt cuối cùng đã được tinh chỉnh. Không thêm bất kỳ lời dẫn nào.`;
+**Ảnh đính kèm:** (Được cung cấp làm ngữ cảnh)
+
+**Yêu cầu:**
+1.  Tạo ra một câu lệnh duy nhất bằng tiếng Việt.
+2.  Câu lệnh phải ở dạng mệnh lệnh (imperative), ra lệnh cho AI thực hiện một hành động cụ thể trên (các) ảnh. Ví dụ: "thay đổi bầu trời thành dải ngân hà", "thêm một chiếc mũ cho nhân vật", "biến đổi phong cách thành tranh sơn dầu".
+3.  **KHÔNG** sử dụng các cụm từ mô tả dài dòng như "một bức ảnh của...", "tạo ra một hình ảnh...". Tập trung vào hành động.
+4.  Kết hợp các yêu cầu từ Ghi chú của người dùng vào lệnh cuối cùng một cách hợp lý.
+
+**Đầu ra:** Chỉ xuất ra câu lệnh cuối cùng, không có lời dẫn.`;
 
   const parts: any[] = [...imageParts, { text: metaPrompt }];
   const fallbackPrompt = `${basePrompt}. ${userNotes}`.trim();

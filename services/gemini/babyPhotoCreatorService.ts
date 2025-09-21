@@ -25,7 +25,7 @@ export async function estimateAgeGroup(imageDataUrl: string): Promise<'newborn' 
     
     try {
         const response = await ai.models.generateContent({
-// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
+            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, { text: prompt }] },
         });

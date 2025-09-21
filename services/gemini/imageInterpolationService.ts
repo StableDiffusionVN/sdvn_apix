@@ -52,7 +52,7 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
     try {
         console.log("Attempting to analyze image pair for prompt...");
         const response = await ai.models.generateContent({
-// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
+            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -123,7 +123,7 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
     try {
         console.log("Attempting to analyze image pair for DETAILED prompt...");
         const response = await ai.models.generateContent({
-// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
+            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -189,7 +189,7 @@ export async function interpolatePrompts(basePrompt: string, userNotes: string):
     try {
         console.log("Attempting to interpolate prompts with prioritization...");
         const response = await ai.models.generateContent({
-// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
+            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
@@ -225,7 +225,7 @@ export async function adaptPromptToContext(imageDataUrl: string, basePrompt: str
     try {
         console.log("Attempting to adapt prompt to image context...");
         const response = await ai.models.generateContent({
-// FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
+            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, textPart] },
         });

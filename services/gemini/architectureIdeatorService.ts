@@ -91,28 +91,31 @@ export async function generateArchitecturalImage(imageDataUrl: string, options: 
  * @param imageDataUrls Optional array of image data URLs for context.
  * @returns A promise that resolves to the refined prompt string.
  */
-export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls: string[]): Promise<string> {
+export async function refineArchitecturePrompt(basePrompt: string, userPrompt: string, imageDataUrls: string[]): Promise<string> {
     const imageParts = imageDataUrls.map(url => {
         const { mimeType, data } = parseDataUrl(url);
         return { inlineData: { mimeType, data } };
     });
 
     const metaPrompt = `
-        You are an expert prompt engineer for an architectural visualization AI.
-        Your task is to refine a user's prompt to be more descriptive and effective, using the provided image(s) as context. The goal is to generate a realistic architectural rendering.
+        Bạn là một chuyên gia ra lệnh cho AI chỉnh sửa ảnh kiến trúc. Nhiệm vụ của bạn là kết hợp các yêu cầu để tạo ra một câu lệnh **ngắn gọn, trực tiếp, và rõ ràng** để biến đổi (các) ảnh phác thảo/3D thành ảnh kiến trúc chân thực.
 
-        **Context Image(s):** The user has provided one or more images showing a sketch, model, or existing structure.
-        **User's Prompt:** "${userPrompt}"
+        **Ảnh ngữ cảnh:** (Được cung cấp)
+        **Mục tiêu chính (từ Preset):** "${basePrompt}"
+        **Yêu cầu của người dùng (ưu tiên hơn):** "${userPrompt}"
 
-        **Instructions:**
-        1.  Analyze the context image(s) to understand the core architectural forms, shapes, and layout.
-        2.  Integrate the user's request into a new, single, highly descriptive prompt in Vietnamese.
-        3.  The refined prompt MUST instruct the AI to maintain the core structure from the context image(s) while applying the user's specific requests.
-        4.  Add architectural details like materials (e.g., concrete, glass, wood), lighting (e.g., golden hour, overcast, studio lighting), environment (e.g., city street, forest, coastline), and overall mood (e.g., minimalist, brutalist, futuristic).
-        5.  **Output only the refined prompt text**, without any introductory phrases like "Here is the refined prompt:".
+        **Yêu cầu:**
+        1.  Tạo ra một câu lệnh duy nhất bằng tiếng Việt.
+        2.  Câu lệnh phải ở dạng mệnh lệnh, ra lệnh cho AI thực hiện một hành động. Ví dụ: "biến phác thảo này thành một toà nhà bê tông theo phong cách brutalist vào buổi hoàng hôn", "thêm vật liệu gỗ và nhiều cây xanh cho công trình này".
+        3.  Câu lệnh phải yêu cầu AI **giữ lại bố cục và hình khối cốt lõi** từ (các) ảnh ngữ cảnh.
+        4.  **KHÔNG** sử dụng các cụm từ mô tả dài dòng như "một bức ảnh của...", "tạo ra một hình ảnh...". Tập trung vào hành động.
+        5.  Kết hợp các yêu cầu một cách tự nhiên.
+
+        **Đầu ra:** Chỉ xuất ra câu lệnh cuối cùng, không có lời dẫn.
     `;
     
     const parts: any[] = [...imageParts, { text: metaPrompt }];
+    const fallbackPrompt = `${basePrompt}. ${userPrompt}`.trim();
 
     try {
         console.log("Attempting to refine architecture prompt...");
@@ -126,12 +129,12 @@ export async function refineArchitecturePrompt(userPrompt: string, imageDataUrls
             return text.trim();
         }
 
-        console.warn("AI did not return text for architecture prompt refinement. Falling back to user prompt.");
-        return userPrompt;
+        console.warn("AI did not return text for architecture prompt refinement. Falling back to simple combination.");
+        return fallbackPrompt;
 
     } catch (error) {
         const processedError = processApiError(error);
         console.error("Error during architecture prompt refinement:", processedError);
-        return userPrompt; // Fallback on error
+        return fallbackPrompt; // Fallback on error
     }
 }

@@ -11,10 +11,11 @@ import {
     generateFromPreset, 
     editImageWithPrompt, 
     generateFromMultipleImages, 
-    refineImageAndPrompt, 
+    refineArchitecturePrompt, 
     analyzePromptForImageGenerationParams,
-    generateFreeImage
-} from '../services/geminiService';
+    generateFreeImage,
+    refineImageAndPrompt
+} from '../../services/geminiService';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
 import { StartScreen } from './LayerComposer/StartScreen';
@@ -208,7 +209,7 @@ interface AILogMessage {
   type: 'info' | 'prompt' | 'success' | 'error' | 'spinner';
 }
 
-const AIProcessLogger: React.FC<{ log: AILogMessage[]; onClose: () => void; t: (key: string) => string; }> = ({ log, onClose, t }) => {
+const AIProcessLogger: React.FC<{ log: AILogMessage[]; onClose: () => void; t: (key: string, ...args: any[]) => string; }> = ({ log, onClose, t }) => {
     const [copiedId, setCopiedId] = useState<number | null>(null);
     const logContainerRef = useRef<HTMLUListElement>(null);
 
@@ -335,7 +336,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const [selectedLayerIds, setSelectedLayerIds] = useState<string[]>([]);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [isWebcamOpen, setIsWebcamOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [runningJobCount, setRunningJobCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const canvasViewRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -353,6 +354,27 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const [activeCanvasTool, setActiveCanvasTool] = useState<CanvasTool>('select');
     const [shapeFillColor, setShapeFillColor] = useState<string>('#FFFFFF');
 
+    // Create a ref to hold all relevant state for async updates
+    const appStateRef = useRef({
+        layers,
+        history,
+        historyIndex,
+        canvasInitialized,
+        canvasSettings,
+        panX: 0,
+        panY: 0,
+        scale: 1,
+    });
+
+    // Keep the ref in sync with the state
+    useEffect(() => {
+        appStateRef.current.layers = layers;
+        appStateRef.current.history = history;
+        appStateRef.current.historyIndex = historyIndex;
+        appStateRef.current.canvasInitialized = canvasInitialized;
+        appStateRef.current.canvasSettings = canvasSettings;
+    }, [layers, history, historyIndex, canvasInitialized, canvasSettings]);
+
     const onRectBorderRadiusChange = (radius: number) => {
         setRectBorderRadius(radius);
     };
@@ -365,7 +387,13 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     const panY = useMotionValue(0);
     const scale = useMotionValue(1);
     const [zoomDisplay, setZoomDisplay] = useState(100);
-    useMotionValueEvent(scale, "change", (latest) => setZoomDisplay(Math.round(latest * 100)));
+    useMotionValueEvent(scale, "change", (latest) => {
+        setZoomDisplay(Math.round(latest * 100));
+        appStateRef.current.scale = latest;
+    });
+    useMotionValueEvent(panX, "change", (latest) => { appStateRef.current.panX = latest; });
+    useMotionValueEvent(panY, "change", (latest) => { appStateRef.current.panY = latest; });
+
 
     const [isSpacePanning, setIsSpacePanning] = useState(false);
     const panStartRef = useRef<{ pan: { x: number; y: number; }; pointer: { x: number; y: number; }; } | null>(null);
@@ -409,7 +437,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                         description: { vi: "Biến phác thảo hoặc ảnh 3D thành ảnh kiến trúc chân thực, giữ lại bố cục gốc.", en: "Turns sketches or 3D images into realistic architectural photos, preserving the original layout." },
                         requiresImageContext: true,
                         refine: true,
-                        promptTemplate: { vi: "Giữ nguyên đường nét, bố cục và hình khối từ hình ảnh một cách chính xác nhất, hãy tạo ra một bức ảnh phối cảnh kiến trúc chân thực của công trình này.", en: "Maintaining the lines, layout, and form from the image as accurately as possible, create a realistic architectural perspective photo of this structure."}
+                        promptTemplate: { vi: "Chuyển đổi hình ảnh thành ảnh chụp kiến trúc chân thực, giữ lại bố cục và hình khối gốc.", en: "Transform the image into a realistic architectural photo, preserving the original layout and form."}
                     }
                 ]);
             }
@@ -421,18 +449,18 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     }, [isOpen]);
 
     useEffect(() => {
-        if (prevIsLoadingRef.current && !isLoading && isLogVisible) {
+        if (prevIsLoadingRef.current && runningJobCount === 0 && isLogVisible) {
             const timer = setTimeout(() => {
                 setIsLogVisible(false);
             }, 5000); 
     
             return () => clearTimeout(timer);
         }
-    }, [isLoading, isLogVisible]);
+    }, [runningJobCount, isLogVisible]);
     
     useEffect(() => {
-        prevIsLoadingRef.current = isLoading;
-    }, [isLoading]);
+        prevIsLoadingRef.current = runningJobCount > 0;
+    }, [runningJobCount]);
     
     const beginInteraction = useCallback(() => {
         interactionStartHistoryState.current = layers;
@@ -568,49 +596,57 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         reader.readAsText(file);
     };
 
-    const addImagesAsLayers = useCallback((loadedImages: HTMLImageElement[], position?: { x: number; y: number }) => {
+    // This function adds loaded images as new layers, reading the latest state from a ref
+    // to prevent race conditions with async operations.
+    const addImagesAsLayers = (loadedImages: HTMLImageElement[], position?: { x: number; y: number }) => {
         if (loadedImages.length === 0) return;
-        beginInteraction();
-        let currentLayers = [...layers];
-        let newSelectedIds: string[] = [];
-        let canvasNeedsInit = layers.length === 0 && !canvasInitialized;
-        let canvasSettingsToUpdate = { ...canvasSettings };
-    
+
+        const {
+            layers: currentLayers,
+            history: currentHistory,
+            historyIndex: currentHistoryIndex,
+            canvasInitialized: currentCanvasInitialized,
+            canvasSettings: currentCanvasSettings,
+            panX: currentPanX,
+            panY: currentPanY,
+            scale: currentScale
+        } = appStateRef.current;
+        
+        let nextLayers = [...currentLayers];
+        const newSelectedIds: string[] = [];
+        let canvasNeedsInit = nextLayers.length === 0 && !currentCanvasInitialized;
+        let canvasSettingsToUpdate = { ...currentCanvasSettings };
+
         if (canvasNeedsInit) {
             const firstImg = loadedImages[0];
-            canvasSettingsToUpdate = { ...canvasSettings, width: firstImg.naturalWidth, height: firstImg.naturalHeight };
+            canvasSettingsToUpdate = { ...currentCanvasSettings, width: firstImg.naturalWidth, height: firstImg.naturalHeight };
             setCanvasSettings(canvasSettingsToUpdate);
             setCanvasInitialized(true);
             setIsInfiniteCanvas(false);
         }
-    
+
         let nextY = position ? position.y : 0;
         let nextX = position ? position.x : 0;
 
-        [...loadedImages].reverse().forEach((img, index) => {
+        [...loadedImages].reverse().forEach((img) => {
             const initialWidth = img.naturalWidth;
             const initialHeight = img.naturalHeight;
-
-            let newX: number;
-            let newY: number;
+            let newX: number, newY: number;
 
             if (position) {
                 newX = nextX;
                 newY = nextY;
-                // Offset subsequent images slightly so they don't perfectly overlap
                 nextX += 20;
                 nextY += 20;
             } else {
                  if (canvasViewRef.current) {
                     const viewWidth = canvasViewRef.current.clientWidth;
                     const viewHeight = canvasViewRef.current.clientHeight;
-                    // Calculate center of the current viewport in canvas coordinates
-                    const canvasCenterX = (-panX.get() / scale.get()) + (viewWidth / 2 / scale.get());
-                    const canvasCenterY = (-panY.get() / scale.get()) + (viewHeight / 2 / scale.get());
+                    const canvasCenterX = (-currentPanX / currentScale) + (viewWidth / 2 / currentScale);
+                    const canvasCenterY = (-currentPanY / currentScale) + (viewHeight / 2 / currentScale);
                     newX = canvasCenterX - initialWidth / 2;
                     newY = canvasCenterY - initialHeight / 2;
                 } else {
-                    // Fallback to canvas center if view ref is not available
                     newX = (canvasSettingsToUpdate.width - initialWidth) / 2;
                     newY = (canvasSettingsToUpdate.height - initialHeight) / 2;
                 }
@@ -620,31 +656,23 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 id: Math.random().toString(36).substring(2, 9),
                 type: 'image',
                 url: img.src,
-                x: newX,
-                y: newY,
-                width: initialWidth,
-                height: initialHeight,
-                rotation: 0,
-                opacity: 100,
-                blendMode: 'source-over',
-                isVisible: true,
-                isLocked: false,
-                fontWeight: 'normal',
-                fontStyle: 'normal',
-                textTransform: 'none',
+                x: newX, y: newY,
+                width: initialWidth, height: initialHeight,
+                rotation: 0, opacity: 100, blendMode: 'source-over',
+                isVisible: true, isLocked: false,
+                fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none',
             };
-            currentLayers = [newLayer, ...currentLayers];
+            nextLayers = [newLayer, ...nextLayers];
             newSelectedIds.push(newLayer.id);
         });
-    
-        setLayers(currentLayers);
+        
+        setLayers(nextLayers);
         setSelectedLayerIds(newSelectedIds);
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(currentLayers);
+        const newHistory = currentHistory.slice(0, currentHistoryIndex + 1);
+        newHistory.push(nextLayers);
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
-        interactionStartHistoryState.current = null;
-    }, [layers, canvasInitialized, canvasSettings, history, historyIndex, beginInteraction, panX, panY, scale, canvasViewRef]);
+    };
 
     const handleAddImage = useCallback((url: string, referenceBounds?: Rect | null) => {
         const img = new Image(); img.crossOrigin = "Anonymous";
@@ -655,7 +683,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             addImagesAsLayers([img], position); 
         };
         img.src = url; setIsGalleryOpen(false); setIsWebcamOpen(false);
-    }, [addImagesAsLayers]);
+    }, []);
     
     const handleAddTextLayer = useCallback(() => {
         if (!canvasInitialized) { setCanvasInitialized(true); }
@@ -756,7 +784,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     
     const handleExportSelectedLayers = useCallback(async () => {
         if (selectedLayers.length < 1) return;
-        setIsLoading(true); setError(null);
+        setRunningJobCount(prev => prev + 1); setError(null);
         try {
             for (const layer of selectedLayers) {
                 const exportedUrl = await captureLayer(layer);
@@ -767,11 +795,13 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error.";
             setError(t('layerComposer_error', errorMessage));
-        } finally { setIsLoading(false); }
+        } finally {
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+        }
     }, [selectedLayers, addImagesToGallery, t]);
 
     const handleSave = async () => {
-        setIsLoading(true); setError(null);
+        setRunningJobCount(prev => prev + 1); setError(null);
         try {
             const canvasState = { canvasSettings: { ...canvasSettings, isInfinite: isInfiniteCanvas }, layers };
             downloadJson(canvasState, `aPix-canvas-state-${Date.now()}.json`);
@@ -781,7 +811,9 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 handleCloseAndReset();
             }
         } catch (err) { const errorMessage = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', errorMessage)); }
-        finally { setIsLoading(false); }
+        finally {
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+        }
     };
 
     const addLog = (message: string, type: AILogMessage['type']) => {
@@ -789,7 +821,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     };
     
     const handleMergeLayers = useCallback(async () => {
-        if (selectedLayers.length < 2) return; beginInteraction(); setIsLoading(true); setError(null);
+        if (selectedLayers.length < 2) return; beginInteraction(); setRunningJobCount(prev => prev + 1); setError(null);
         try {
             const bbox = getBoundingBoxForLayers(selectedLayers); if (!bbox) throw new Error("Could not calculate bounding box.");
             const mergedImageUrl = await captureCanvas(selectedLayers, bbox, null);
@@ -807,17 +839,19 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             setHistoryIndex(newHistory.length - 1);
             interactionStartHistoryState.current = null;
         } catch (err) { const msg = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', msg)); interactionStartHistoryState.current = null; }
-        finally { setIsLoading(false); }
+        finally {
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+        }
     }, [selectedLayers, layers, selectedLayerIds, beginInteraction, history, historyIndex, t]);
     
     const handleGenerateAILayer = async () => {
-        generationController.current = new AbortController();
-        const { signal } = generationController.current;
+        const controller = new AbortController();
+        generationController.current = controller;
+        const { signal } = controller;
     
         setIsLogVisible(true);
-        setIsLoading(true);
+        setRunningJobCount(prev => prev + 1);
         setError(null);
-        setAiProcessLog([]);
     
         const promptsToGenerate = parseMultiPrompt(aiPrompt);
         const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
@@ -825,7 +859,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         const currentPreset = presets.find(pr => pr.id === aiPreset);
     
         if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
-            setIsLoading(false);
+            setRunningJobCount(prev => Math.max(0, prev - 1));
             setIsLogVisible(false);
             return;
         }
@@ -853,7 +887,13 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
     
                 if (currentPreset.refine && hasLayerContext) {
                     addLog(t('layerComposer_ai_log_refining'), 'spinner');
-                    finalPrompt = await refineImageAndPrompt(template, userPromptChunk, imageUrls);
+                    if (currentPreset.id === 'architecture') {
+                        addLog(t('layerComposer_ai_log_architect'), 'info');
+                        finalPrompt = await refineArchitecturePrompt(template, userPromptChunk, imageUrls);
+                    } else {
+                        finalPrompt = await refineImageAndPrompt(template, userPromptChunk, imageUrls);
+                    }
+                    if (signal.aborted) throw new Error("Cancelled");
                     setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
                 } else {
                     finalPrompt = template.replace('{{userPrompt}}', userPromptChunk).trim();
@@ -916,23 +956,18 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                 addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
             }
         } finally {
-            if (!generationController.current?.signal.aborted) {
-                setIsLoading(false);
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+            if (generationController.current === controller) {
+                generationController.current = null;
             }
-            generationController.current = null;
         }
     };
     
     const handleCancelGeneration = useCallback(() => {
         if (generationController.current) {
             generationController.current.abort();
+            addLog(`${t('layerComposer_ai_cancel')}...`, 'error');
         }
-        setIsLoading(false);
-        setAiProcessLog(prev => {
-            const newLog = prev.filter(l => l.type !== 'spinner');
-            newLog.push({ id: Date.now(), message: `${t('layerComposer_ai_cancel')}...`, type: 'error' });
-            return newLog;
-        });
     }, [t]);
 
     const handleMoveLayers = useCallback((direction: 'up' | 'down') => {
@@ -1031,7 +1066,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
         const layerToBake = selectedLayers[0];
 
         beginInteraction();
-        setIsLoading(true);
+        setRunningJobCount(prev => prev + 1);
         setError(null);
 
         try {
@@ -1086,34 +1121,52 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             const errorMessage = err instanceof Error ? err.message : "Unknown error.";
             setError(t('layerComposer_error', errorMessage));
         } finally {
-            setIsLoading(false);
+            setRunningJobCount(prev => Math.max(0, prev - 1));
         }
-    }, [selectedLayers, layers, history, historyIndex, beginInteraction, editingMaskForLayerId, setLayers, setHistory, setHistoryIndex, setSelectedLayerIds, setIsLoading, setError, t]);
+    }, [selectedLayers, layers, history, historyIndex, beginInteraction, editingMaskForLayerId, setLayers, setHistory, setHistoryIndex, setSelectedLayerIds, setError, t]);
 
     const handleGenerateFromPreset = useCallback(async () => {
         if (!loadedPreset) return;
     
         setIsLogVisible(true);
-        setIsLoading(true);
+        setRunningJobCount(prev => prev + 1);
         setError(null);
-        setAiProcessLog([]);
-        addLog(t('layerComposer_ai_log_start'), 'info');
         
         try {
+            addLog(t('layerComposer_ai_log_start'), 'info');
+            const presetTitle = t(`app_${loadedPreset.viewId}_title`);
+            addLog(t('layerComposer_ai_log_usingPreset', presetTitle), 'info');
+
+            const layersToCaptureCount = selectedLayers.length > 0 ? selectedLayers.length : 0;
+            if (layersToCaptureCount > 0) {
+                 addLog(t('layerComposer_ai_log_capturingLayers', layersToCaptureCount), 'info');
+            } else {
+                 addLog(t('layerComposer_ai_log_noLayersSelected'), 'info');
+            }
             const selectedLayerUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+            
+            addLog(t('layerComposer_ai_log_generating'), 'spinner');
             const resultUrls = await generateFromPreset(loadedPreset, selectedLayerUrls);
 
-            if (resultUrls.length > 0) {
-                 const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
-                }));
-                const loadedImages = await Promise.all(imageLoadPromises);
-                const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(-1));
-                const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
-                addImagesAsLayers(loadedImages, position);
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+
+            if (resultUrls.length === 0) {
+                throw new Error(t('layerComposer_ai_log_noImagesGenerated'));
             }
 
-            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            addLog(t('layerComposer_ai_log_generatedCount', resultUrls.length), 'info');
+            addLog(t('layerComposer_ai_log_loadingResults'), 'info');
+
+            const imageLoadPromises = resultUrls.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url;
+            }));
+            const loadedImages = await Promise.all(imageLoadPromises);
+            
+            addLog(t('layerComposer_ai_log_addingLayers', loadedImages.length), 'info');
+            const referenceBounds = getBoundingBoxForLayers(selectedLayers.length > 0 ? selectedLayers : layers.slice(-1));
+            const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
+            addImagesAsLayers(loadedImages, position);
+
             addLog(t('layerComposer_ai_log_success'), 'success');
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error during preset generation.";
@@ -1121,9 +1174,9 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
             setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
             addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
         } finally {
-            setIsLoading(false);
+            setRunningJobCount(prev => Math.max(0, prev - 1));
         }
-    }, [loadedPreset, selectedLayers, layers, addImagesAsLayers, t]);
+    }, [loadedPreset, selectedLayers, layers, t]);
 
 
     useEffect(() => {
@@ -1282,7 +1335,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                 selectedLayerId={selectedLayer?.id || null}
                                 selectedLayerIds={selectedLayerIds}
                                 selectedLayers={selectedLayers}
-                                isLoading={isLoading}
+                                runningJobCount={runningJobCount}
                                 error={error}
                                 aiPrompt={aiPrompt}
                                 setAiPrompt={setAiPrompt}

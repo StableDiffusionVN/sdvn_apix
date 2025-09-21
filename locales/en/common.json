@@ -226,6 +226,7 @@
   "layerComposer_ai_promptPlaceholder": "e.g., make it look like a vintage photograph...",
   "layerComposer_ai_generate": "Generate",
   "layerComposer_ai_generating": "Generating...",
+  "layerComposer_ai_generating_count": "Generating ({0})...",
   "layerComposer_ai_generate_tooltip": "Generate (Ctrl+Enter)",
   "layerComposer_ai_cancel": "Cancel",
   "layerComposer_ai_simpleMode": "Multi-Input (Disables Batch Generation)",
@@ -249,6 +250,7 @@
   "layerComposer_preset_title": "Preset Generation",
   "layerComposer_preset_uploadButton": "Upload Preset...",
   "layerComposer_preset_generateButton": "Generate from Preset",
+  "layerComposer_preset_generating_count": "Generating ({0})...",
   "layerComposer_preset_upload_tip": "Tip: You can also drag and drop a .json or .png (The JSON Setting file is exported to the screen to end each main application) file here.",
   "layerComposer_ai_processTitle": "AI Process",
   "layerComposer_ai_log_start": "Starting generation process...",
@@ -262,5 +264,12 @@
   "layerComposer_ai_log_copied": "Copied!",
   "layerComposer_ai_showLog": "Show Log",
   "layerComposer_ai_hideLog": "Hide Log",
-  "layerComposer_ai_log_noRefine": "Using original prompt (no analysis)."
+  "layerComposer_ai_log_noRefine": "Using original prompt (no analysis).",
+  "layerComposer_ai_log_usingPreset": "Using preset: \"{0}\"",
+  "layerComposer_ai_log_capturingLayers": "Capturing {0} selected layer(s) as input...",
+  "layerComposer_ai_log_noLayersSelected": "No layers selected, using image(s) from preset.",
+  "layerComposer_ai_log_noImagesGenerated": "The AI did not generate any images.",
+  "layerComposer_ai_log_generatedCount": "AI successfully generated {0} image(s).",
+  "layerComposer_ai_log_loadingResults": "Loading result images...",
+  "layerComposer_ai_log_addingLayers": "Adding {0} new layer(s) to the canvas..."
 }

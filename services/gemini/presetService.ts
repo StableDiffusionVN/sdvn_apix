@@ -2,21 +2,18 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import {
-    generateArchitecturalImage,
-    generatePatrioticImage,
-    generateBabyPhoto,
-    generateDressedModelImage,
-    restoreOldPhoto,
-    convertImageToRealistic,
-    swapImageStyle,
-    mixImageStyle,
-    generateFreeImage,
-    generateToyModelImage,
-    interpolatePrompts,
-    adaptPromptToContext,
-    editImageWithPrompt
-} from '../geminiService';
+import { generateArchitecturalImage } from './architectureIdeatorService';
+import { generatePatrioticImage } from './avatarCreatorService';
+import { generateBabyPhoto } from './babyPhotoCreatorService';
+import { generateDressedModelImage } from './dressTheModelService';
+import { restoreOldPhoto } from './photoRestorationService';
+import { convertImageToRealistic } from './imageToRealService';
+import { swapImageStyle } from './swapStyleService';
+import { mixImageStyle } from './mixStyleService';
+import { generateFreeImage } from './freeGenerationService';
+import { generateToyModelImage } from './toyModelCreatorService';
+import { interpolatePrompts, adaptPromptToContext } from './imageInterpolationService';
+import { editImageWithPrompt } from './imageEditingService';
 import { type Layer } from '../../components/LayerComposer/LayerComposer.types';
 
 type PresetData = {

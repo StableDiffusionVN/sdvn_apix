@@ -17,11 +17,15 @@ interface PresetControlsProps {
     setLoadedPreset: React.Dispatch<React.SetStateAction<any | null>>;
     onPresetFileLoad: (file: File) => void;
     onGenerateFromPreset: () => void;
-    isLoading: boolean;
+    runningJobCount: number;
     selectedLayersForPreset: Layer[];
     t: (key: string, ...args: any[]) => any;
     isSimpleImageMode: boolean;
     setIsSimpleImageMode: (isSimple: boolean) => void;
+    onCancelGeneration: () => void;
+    hasAiLog: boolean;
+    isLogVisible: boolean;
+    setIsLogVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface LayerComposerSidebarProps {
@@ -32,7 +36,7 @@ interface LayerComposerSidebarProps {
     selectedLayerId: string | null;
     selectedLayerIds: string[];
     selectedLayers: Layer[];
-    isLoading: boolean;
+    runningJobCount: number;
     error: string | null;
     aiPrompt: string;
     setAiPrompt: (prompt: string) => void;
@@ -83,10 +87,12 @@ const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () =>
 };
 
 const PresetControls: React.FC<PresetControlsProps> = ({
-    loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, isLoading, selectedLayersForPreset, t, isSimpleImageMode, setIsSimpleImageMode
+    loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, runningJobCount, selectedLayersForPreset, t, isSimpleImageMode, setIsSimpleImageMode,
+    onCancelGeneration, hasAiLog, isLogVisible, setIsLogVisible
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const isGenerating = runningJobCount > 0;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -226,13 +232,33 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                         {t('layerComposer_ai_multiInputMode')}
                     </span>
                 </div>
-                 <button 
-                    onClick={onGenerateFromPreset} 
-                    className="btn btn-primary btn-sm w-full" 
-                    disabled={isLoading}
-                >
-                    {isLoading ? t('common_creating') : t('layerComposer_preset_generateButton')}
-                </button>
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        {hasAiLog && (
+                            <button
+                                onClick={() => setIsLogVisible(v => !v)}
+                                className="btn btn-secondary btn-sm flex-grow"
+                            >
+                                {isLogVisible ? t('layerComposer_ai_hideLog') : t('layerComposer_ai_showLog')}
+                            </button>
+                        )}
+                        {isGenerating && (
+                             <button
+                                onClick={onCancelGeneration}
+                                className="btn btn-secondary btn-sm !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white flex-grow"
+                            >
+                                {t('layerComposer_ai_cancel')}
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        onClick={onGenerateFromPreset}
+                        className="btn btn-primary btn-sm w-full"
+                        disabled={!loadedPreset}
+                    >
+                        {isGenerating ? t('layerComposer_preset_generating_count', runningJobCount) : t('layerComposer_preset_generateButton')}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -240,7 +266,7 @@ const PresetControls: React.FC<PresetControlsProps> = ({
 
 export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props) => {
     const {
-        layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, selectedLayers, isLoading, error, aiPrompt, setAiPrompt, onGenerateAILayer,
+        layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, selectedLayers, runningJobCount, error, aiPrompt, setAiPrompt, onGenerateAILayer,
         onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose, onHide,
         beginInteraction,
         presets,
@@ -254,6 +280,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
     const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
     const [activeTab, setActiveTab] = useState<'properties' | 'text'>('properties');
     const selectedLayer = selectedLayers[0];
+    const isGenerating = runningJobCount > 0;
 
     useEffect(() => {
         if (selectedLayer) {
@@ -304,7 +331,6 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                             value={aiPreset}
                                             onChange={(e) => setAiPreset(e.target.value)}
                                             className="form-input !p-2 !text-sm w-full"
-                                            disabled={isLoading}
                                         >
                                             {presets.map(preset => (
                                                 <option key={preset.id} value={preset.id} title={preset.description[language as keyof typeof preset.description]}>
@@ -320,11 +346,10 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         placeholder={t('layerComposer_ai_promptPlaceholder')} 
                                         className="form-input !p-2 !text-sm !h-24" 
                                         rows={4} 
-                                        disabled={isLoading}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                                 e.preventDefault();
-                                                if (!isLoading && (aiPreset !== 'default' || aiPrompt.trim())) {
+                                                if (aiPreset !== 'default' || aiPrompt.trim()) {
                                                     onGenerateAILayer();
                                                 }
                                             }
@@ -351,32 +376,33 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         </p>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
-                                        {hasAiLog && (
-                                            <button
-                                                onClick={() => setIsLogVisible(v => !v)}
-                                                className="btn btn-secondary btn-sm"
-                                            >
-                                                {isLogVisible ? t('layerComposer_ai_hideLog') : t('layerComposer_ai_showLog')}
-                                            </button>
-                                        )}
-                                        {isLoading ? (
-                                             <button
-                                                onClick={onCancelGeneration}
-                                                className="btn btn-secondary btn-sm !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white flex-grow"
-                                            >
-                                                {t('layerComposer_ai_cancel')}
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                onClick={onGenerateAILayer} 
-                                                className="btn btn-primary btn-sm flex-grow" 
-                                                disabled={isLoading || (aiPreset === 'default' && !aiPrompt.trim())}
-                                                title={t('layerComposer_ai_generate_tooltip')}
-                                            >
-                                                {t('layerComposer_ai_generate')}
-                                            </button>
-                                        )}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            {hasAiLog && (
+                                                <button
+                                                    onClick={() => setIsLogVisible(v => !v)}
+                                                    className="btn btn-secondary btn-sm flex-grow"
+                                                >
+                                                    {isLogVisible ? t('layerComposer_ai_hideLog') : t('layerComposer_ai_showLog')}
+                                                </button>
+                                            )}
+                                            {isGenerating && (
+                                                 <button
+                                                    onClick={onCancelGeneration}
+                                                    className="btn btn-secondary btn-sm !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white flex-grow"
+                                                >
+                                                    {t('layerComposer_ai_cancel')}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button 
+                                            onClick={onGenerateAILayer} 
+                                            className="btn btn-primary btn-sm w-full" 
+                                            disabled={aiPreset === 'default' && !aiPrompt.trim()}
+                                            title={t('layerComposer_ai_generate_tooltip')}
+                                        >
+                                            {isGenerating ? t('layerComposer_ai_generating_count', runningJobCount) : t('layerComposer_ai_generate')}
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -393,12 +419,16 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                     setLoadedPreset={setLoadedPreset}
                                     onPresetFileLoad={onPresetFileLoad}
                                     onGenerateFromPreset={onGenerateFromPreset}
-                                    isLoading={isLoading}
+                                    runningJobCount={runningJobCount}
                                     selectedLayersForPreset={selectedLayersForPreset}
                                     t={t}
                                     isSimpleImageMode={isSimpleImageMode}
                                     setIsSimpleImageMode={setIsSimpleImageMode}
-                               />
+                                    onCancelGeneration={onCancelGeneration}
+                                    hasAiLog={hasAiLog}
+                                    isLogVisible={isLogVisible}
+                                    setIsLogVisible={setIsLogVisible}
+                                />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -433,7 +463,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                 {error && <p className="text-red-400 text-center text-sm mb-2">{error}</p>}
                 <div className="flex items-center gap-2">
                     <button onClick={onClose} className="btn btn-secondary w-full btn-sm"> {t('common_cancel')} </button>
-                    <button onClick={onSave} className="btn btn-primary w-full btn-sm" disabled={(layers.length === 0 && !isInfiniteCanvas) || isLoading} title={isInfiniteCanvas ? t('layerComposer_exportJsonTooltip') : t('layerComposer_saveTooltip')} > {isLoading ? t('layerComposer_saving') : (isInfiniteCanvas ? t('layerComposer_exportJson') : t('layerComposer_save'))} </button>
+                    <button onClick={onSave} className="btn btn-primary w-full btn-sm" disabled={(layers.length === 0 && !isInfiniteCanvas) || isGenerating} title={isInfiniteCanvas ? t('layerComposer_exportJsonTooltip') : t('layerComposer_saveTooltip')} > {isGenerating ? t('layerComposer_saving') : (isInfiniteCanvas ? t('layerComposer_exportJson') : t('layerComposer_save'))} </button>
                 </div>
             </div>
         </aside>
