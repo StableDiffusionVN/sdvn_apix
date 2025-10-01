@@ -1,5 +1,4 @@
 
-
 {
   "footer_theme": "Giao diện",
   "footer_feedback": "Góp ý",
@@ -92,13 +91,11 @@
     "undo": "Quay lại (Undo)",
     "redo": "Tiến lên (Redo)"
   },
-  "infoModal_editorUndo_title": "Trình chỉnh sửa ảnh: Hoàn tác",
-  "infoModal_editorUndo_subtitle": "Chỉ hoạt động khi Trình chỉnh sửa ảnh đang mở.",
   "infoModal_editorUndo_items": {
     "undo": "Hoàn tác (Undo)",
     "redo": "Làm lại (Redo)"
   },
-  "infoModal_editorTools_title": "Trình chỉnh sửa ảnh: Công cụ",
+  "infoModal_editorTools_title": "Trình chỉnh sửa ảnh",
   "infoModal_editorTools_items": {
     "crop": "Cắt ảnh (Crop)",
     "brush": "Cọ vẽ (Brush)",
@@ -113,26 +110,23 @@
     "dragDrop": "Kéo & thả file ảnh hoặc .json trực tiếp vào thư viện, canvas, hoặc trình chỉnh sửa.",
     "tempPicker": "Giữ phím Alt trong trình chỉnh sửa để tạm thời chuyển sang công cụ Chấm màu.",
     "quickDuplicate": "Giữ phím Alt và kéo một layer trong Canvas để nhân bản nhanh.",
-    "multiSelect": "Giữ phím Shift khi nhấp vào các layer hoặc đối tượng để chọn nhiều mục.",
-    "aiContext": "Trong Canvas, AI sẽ tạo ảnh dựa trên các layer đã chọn. Nếu không chọn, AI sẽ dùng toàn bộ canvas.",
-    "quickEdit": "Nhấp đúp vào một layer chữ trên canvas để sửa nhanh nội dung."
+    "multiSelect": "Giữ phím Shift khi nhấp vào các layer hoặc đối tượng để chọn nhiều mục."
   },
-  "infoModal_layerComposerTools_title": "Canvas: Công cụ & Điều hướng",
+  "infoModal_layerComposerTools_title": "Canvas",
   "infoModal_layerComposerTools_subtitle": "Các phím tắt chính cho Canvas.",
   "infoModal_layerComposerTools_items": {
     "select": "Công cụ Chọn",
     "hand": "Công cụ Bàn tay",
-    "pan": "Di chuyển Canvas"
+    "pan": "Di chuyển Canvas",
+    "toggleLog": "Hiện/Ẩn Log",
+    "toggleChatbot": "Ẩn/Hiện Trợ lý AI"
   },
-  "infoModal_layerComposerActions_title": "Canvas: Thao tác Layer",
-  "infoModal_layerComposerActions_subtitle": "Quản lý các layer của bạn.",
   "infoModal_layerComposerActions_items": {
     "delete": "Xoá các layer đã chọn",
     "duplicate": "Nhân bản các layer đã chọn",
     "moveUp": "Di chuyển layer lên trên",
     "moveDown": "Di chuyển layer xuống dưới",
-    "deselect": "Bỏ chọn tất cả",
-    "export": "Xuất layer đã chọn (PNG)"
+    "deselect": "Bỏ chọn tất cả"
   },
   "appToolbar_home": "Trang chủ",
   "appToolbar_back": "Quay lại (Cmd/Ctrl+Z)",
@@ -282,5 +276,15 @@
   "historyPanel_close": "Đóng lịch sử",
   "historyPanel_empty": "Chưa có lịch sử nào được ghi lại.",
   "historyPanel_download": "Tải về cài đặt (JSON)",
-  "historyPanel_reload": "Tải lại cài đặt này"
+  "historyPanel_reload": "Tải lại cài đặt này",
+  "polaroid_dropPrompt": "Thả ảnh vào đây",
+  "layerComposer_chatbot_title": "Trợ lý AI",
+  "layerComposer_chatbot_placeholder": "Hỏi về prompt hoặc phân tích ảnh...",
+  "layerComposer_chatbot_analyze": "Phân tích Layer đã chọn",
+  "layerComposer_chatbot_analyzing": "Đang phân tích...",
+  "layerComposer_chatbot_noLayer": "Vui lòng chọn một layer để phân tích.",
+  "layerComposer_chatbot_analysisPrompt": "Phân tích hình ảnh này. Mô tả chi tiết về nội dung, phong cách, bố cục và bảng màu của nó. Đưa ra gợi ý về cách cải thiện hoặc thay đổi nó.",
+  "layerComposer_new_title": "Tạo Canvas mới?",
+  "layerComposer_new_message": "Thao tác này sẽ xóa canvas hiện tại và mọi công việc chưa được lưu. Hành động này không thể hoàn tác. Bạn có chắc chắn không?",
+  "layerComposer_new_confirm": "Xóa Canvas"
 }

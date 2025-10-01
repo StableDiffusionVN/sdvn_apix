@@ -13,9 +13,9 @@ import { useLightbox } from './uiHooks';
 import { ImageThumbnail } from './ImageThumbnail';
 import { GalleryToolbar } from './GalleryToolbar';
 import { ImageThumbnailActions } from './ImageThumbnailActions';
-// FIX: Import combineImages from the uiUtils aggregator
-import { combineImages, downloadJson } from './uiUtils';
+import { combineImages, downloadJson } from './uiFileUtilities';
 import Lightbox from './Lightbox';
+import { AvatarCreatorState, BabyPhotoCreatorState, ViewState } from './uiTypes';
 export * from './SearchableSelect';
 
 /**
@@ -208,7 +208,7 @@ interface ResultsViewProps {
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
     const isTotalError = !!error;
-    const { currentView, t } = useAppControls();
+    const { currentView, t, viewHistory } = useAppControls();
 
     useEffect(() => {
         if (hasPartialError && stage === 'results') {
@@ -218,6 +218,30 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
 
     const getExportableState = (state: any) => {
         const exportableState = JSON.parse(JSON.stringify(state));
+
+        // NEW: Intelligently find the pre-generation state to ensure "Random" is correctly saved.
+        if (currentView.viewId === 'avatar-creator' || currentView.viewId === 'baby-photo-creator') {
+            // Find the last 'configuring' state in the view history, which represents the user's choices *before* generation.
+            const preGenState = [...viewHistory].reverse().find(
+                (view) => view.viewId === currentView.viewId && view.state.stage === 'configuring'
+            )?.state;
+            
+            // FIX: Use a type guard ('in') to safely access 'selectedIdeas' on the preGenState union type.
+            if (preGenState && 'selectedIdeas' in preGenState) {
+                // If we find the pre-generation state, use its selected ideas. This is the most reliable source.
+                exportableState.selectedIdeas = (preGenState as AvatarCreatorState | BabyPhotoCreatorState).selectedIdeas;
+            } else if (!exportableState.selectedIdeas || exportableState.selectedIdeas.length === 0) {
+                // Fallback for safety: if no pre-gen state is found (e.g., page reload on results screen)
+                // and the current state has no ideas, assume it was a "Random" run.
+                const camelCaseViewId = currentView.viewId.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
+                const randomConceptKey = `${camelCaseViewId}_randomConcept`;
+                const randomConceptString = t(randomConceptKey);
+                if (randomConceptString) {
+                    exportableState.selectedIdeas = [randomConceptString];
+                }
+            }
+        }
+
         const keysToRemove = [
             'generatedImage', 'generatedImages', 'historicalImages', 
             'finalPrompt', 'error',
@@ -475,46 +499,15 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         e.stopPropagation();
         const urlToEdit = images[indexToEdit];
         if (!urlToEdit || urlToEdit.startsWith('blob:')) {
-            toast.error('Không thể chỉnh sửa video.');
+            alert('Không thể chỉnh sửa video.');
             return;
-        };
+        }
 
         openImageEditor(urlToEdit, (newUrl) => {
             replaceImageInGallery(indexToEdit, newUrl);
         });
     };
-
-     const handleCombine = async (direction: 'horizontal' | 'vertical') => {
-        if (selectedIndices.length < 2) return;
-        setIsCombining(true);
-        try {
-            const itemsToCombine = selectedIndices.map(index => ({
-                url: images[index],
-                label: '' // Gallery picker doesn't manage labels, so they are empty.
-            }));
-            const resultUrl = await combineImages(itemsToCombine, {
-                layout: direction,
-                gap: 0,
-                backgroundColor: '#FFFFFF',
-                labels: { enabled: false }
-            });
-            addImagesToGallery([resultUrl]);
-            // Reset state after combining
-            setSelectedIndices([]);
-            setIsSelectionMode(false);
-        } catch (err) {
-            console.error("Failed to combine images in picker:", err);
-            toast.error(`Lỗi: Không thể ghép ảnh. ${err instanceof Error ? err.message : "Lỗi không xác định."}`);
-        } finally {
-            setIsCombining(false);
-        }
-    };
     
-    const handleQuickView = (index: number, e: React.MouseEvent) => {
-        e.stopPropagation();
-        openLightbox(index);
-    };
-
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -527,34 +520,24 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         setIsDraggingOver(false);
     };
 
-    const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
+        
         isDroppingRef.current = true;
         setIsDraggingOver(false);
 
         const files = e.dataTransfer.files;
-        if (!files || files.length === 0) {
-            isDroppingRef.current = false;
-            return;
-        }
+        if (!files || files.length === 0) return;
 
-        const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-        if (imageFiles.length === 0) {
-            isDroppingRef.current = false;
-            return;
-        }
+        // FIX: Add type assertion to resolve 'unknown' type error.
+        const imageFiles = Array.from(files).filter(file => (file as File).type.startsWith('image/'));
+        if (imageFiles.length === 0) return;
 
         const readImageAsDataURL = (file: File): Promise<string> => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => {
-                    if (typeof reader.result === 'string') {
-                        resolve(reader.result);
-                    } else {
-                        reject(new Error('Failed to read file as Data URL.'));
-                    }
-                };
+                reader.onloadend = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Failed to read file.'));
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
@@ -566,313 +549,169 @@ export const GalleryPicker: React.FC<GalleryPickerProps> = ({ isOpen, onClose, o
         } catch (error) {
             console.error("Error reading dropped files:", error);
         } finally {
-             setTimeout(() => { isDroppingRef.current = false; }, 100);
+            isDroppingRef.current = false;
         }
-    };
+    }, [addImagesToGallery]);
     
-    const handleClose = () => {
-        if (isDroppingRef.current) return;
-        onClose();
-    };
-
     if (!isOpen) {
         return null;
     }
 
     return ReactDOM.createPortal(
-    <>
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={handleClose}
-                    className="modal-overlay z-[80]"
-                    aria-modal="true"
-                    role="dialog"
-                >
+        <>
+            <AnimatePresence>
+                {isOpen && (
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="modal-content !max-w-4xl !h-[85vh] flex flex-col relative"
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="modal-overlay z-[75]" // Higher z-index
+                        aria-modal="true"
+                        role="dialog"
                     >
-                        <GalleryToolbar
-                            isSelectionMode={isSelectionMode}
-                            selectedCount={selectedIndices.length}
-                            imageCount={images.length}
-                            title="Chọn ảnh từ Thư viện"
-                            isCombining={isCombining}
-                            onToggleSelectionMode={handleToggleSelectionMode}
-                            onDeleteSelected={handleDeleteSelected}
-                            onClose={handleClose}
-                            onCombineHorizontal={() => handleCombine('horizontal')}
-                            onCombineVertical={() => handleCombine('vertical')}
-                        />
-                        {images.length > 0 ? (
-                            <div className="gallery-grid">
-                                {images.map((img, index) => (
-                                    <ImageThumbnail
-                                        key={`${img.slice(-20)}-${index}`}
-                                        index={index}
-                                        imageUrl={img}
-                                        isSelectionMode={isSelectionMode}
-                                        isSelected={selectedIndices.includes(index)}
-                                        onSelect={handleThumbnailClick}
-                                        onEdit={handleEditImage}
-                                        onDelete={(indexToDelete, e) => {
-                                            e.stopPropagation();
-                                           removeImageFromGallery(indexToDelete);
-                                        }}
-                                        onQuickView={handleQuickView}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                             <div className="text-center text-neutral-400 py-8 flex-1 flex items-center justify-center">
-                                <p>Chưa có ảnh nào trong thư viện.<br/>Bạn có thể kéo và thả ảnh vào đây để tải lên.</p>
-                            </div>
-                        )}
-                         <AnimatePresence>
-                            {isDraggingOver && (
-                                <motion.div
-                                    className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <p className="text-2xl font-bold text-yellow-400">Thả ảnh vào đây để tải lên</p>
-                                </motion.div>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="modal-content !max-w-3xl !h-[80vh] flex flex-col"
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                        >
+                            <GalleryToolbar 
+                                isSelectionMode={isSelectionMode}
+                                selectedCount={selectedIndices.length}
+                                imageCount={images.length}
+                                title="Chọn từ thư viện"
+                                onToggleSelectionMode={handleToggleSelectionMode}
+                                onDeleteSelected={handleDeleteSelected}
+                                onClose={onClose}
+                            />
+                            {images.length > 0 ? (
+                                <div className="gallery-grid">
+                                    {images.map((img, index) => (
+                                        <ImageThumbnail
+                                            key={`${img.slice(-20)}-${index}`}
+                                            index={index}
+                                            imageUrl={img}
+                                            isSelectionMode={isSelectionMode}
+                                            isSelected={selectedIndices.includes(index)}
+                                            onSelect={handleThumbnailClick}
+                                            onEdit={handleEditImage}
+                                            onDelete={(index, e) => {
+                                                e.stopPropagation();
+                                                removeImageFromGallery(index);
+                                            }}
+                                            onQuickView={(index, e) => {
+                                                e.stopPropagation();
+                                                openLightbox(index);
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                 <div className="text-center text-neutral-400 py-8 flex-1 flex items-center justify-center">
+                                    <p>Thư viện của bạn đang trống.</p>
+                                </div>
                             )}
-                        </AnimatePresence>
+                             <AnimatePresence>
+                                {isDraggingOver && (
+                                    <motion.div
+                                        className="absolute inset-0 z-10 bg-black/70 border-4 border-dashed border-yellow-400 rounded-lg flex flex-col items-center justify-center pointer-events-none"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                        <p className="text-2xl font-bold text-yellow-400">Thả ảnh vào đây</p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    <Lightbox images={images} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
-    </>,
+                )}
+            </AnimatePresence>
+            <Lightbox images={images} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
+        </>,
         document.body
     );
 };
 
-// --- Reusable Prompt Result Card ---
-
-interface PromptResultCardProps {
-    title: string;
-    promptText: string | null;
-    className?: string;
-}
-
-export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promptText, className }) => {
-    const { t } = useAppControls();
-
-    const handleCopyPrompt = useCallback(() => {
-        if (promptText) {
-            navigator.clipboard.writeText(promptText).then(() => {
-                toast.success(t('layerComposer_ai_log_copied') || 'Đã sao chép prompt!');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-                toast.error('Không thể sao chép prompt.');
-            });
-        }
-    }, [promptText, t]);
-
-    return (
-        <div className={cn("prompt-card", className)}>
-            {promptText && (
-                <button
-                    onClick={handleCopyPrompt}
-                    className="absolute top-3 right-3 p-1.5 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200 rounded-full transition-colors"
-                    aria-label="Sao chép prompt"
-                    title="Sao chép prompt"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                </button>
-            )}
-            <h4 className="polaroid-caption !text-left !text-lg !text-black !pb-2 border-b border-neutral-300 mb-2 !p-0 pr-8">
-                {title}
-            </h4>
-            <div className="prompt-card-content">
-                <p className="text-sm whitespace-pre-wrap text-neutral-700 base-font">
-                    {promptText || '...'}
-                </p>
-            </div>
-        </div>
-    );
-};
-
-// --- NEW: Reusable Switch Component ---
-interface SwitchProps {
-    id: string;
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-    disabled?: boolean;
-}
-
-export const Switch: React.FC<SwitchProps> = ({ id, checked, onChange, disabled }) => {
-    return (
-        <label htmlFor={id} className="switch">
-            <input
-                type="checkbox"
-                id={id}
-                checked={checked}
-                onChange={(e) => onChange(e.target.checked)}
-                disabled={disabled}
-            />
-            <span className="switch-slider"></span>
-        </label>
-    );
-};
-
-// --- NEW: Webcam Capture Modal ---
+// --- Webcam Capture Modal ---
 interface WebcamCaptureModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCapture: (imageDataUrl: string) => void;
 }
-
 export const WebcamCaptureModal: React.FC<WebcamCaptureModalProps> = ({ isOpen, onClose, onCapture }) => {
+    const { t } = useAppControls();
     const videoRef = useRef<HTMLVideoElement>(null);
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isStreaming, setIsStreaming] = useState(false);
 
     useEffect(() => {
-        const startWebcam = async () => {
-            setError(null);
-            setIsStreaming(false);
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-            try {
-                const mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                    audio: false,
-                });
-                streamRef.current = mediaStream;
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                    videoRef.current.onloadedmetadata = () => {
-                        setIsStreaming(true);
-                    };
-                }
-            } catch (err) {
-                console.error("Webcam error:", err);
-                if (err instanceof DOMException && err.name === 'NotAllowedError') {
-                    setError("Bạn cần cấp quyền truy cập camera trong trình duyệt để sử dụng tính năng này.");
-                } else {
-                    setError("Không thể truy cập camera. Vui lòng kiểm tra lại thiết bị của bạn.");
-                }
-            }
-        };
-
-        const stopWebcam = () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-            if (videoRef.current) {
-                videoRef.current.srcObject = null;
-            }
-            setIsStreaming(false);
-        };
-
         if (isOpen) {
-            startWebcam();
+            const startCamera = async () => {
+                setError(null);
+                try {
+                    const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    setStream(mediaStream);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = mediaStream;
+                    }
+                } catch (err) {
+                    console.error("Error accessing webcam:", err);
+                    if (err instanceof DOMException && err.name === "NotAllowedError") {
+                        setError(t('webcam_error_permission'));
+                    } else {
+                        setError(t('webcam_error_device'));
+                    }
+                }
+            };
+            startCamera();
         } else {
-            stopWebcam();
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                setStream(null);
+            }
         }
-
-        return () => {
-            stopWebcam();
-        };
-    }, [isOpen]);
+    }, [isOpen, t]);
 
     const handleCapture = () => {
-        if (videoRef.current && canvasRef.current && isStreaming) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
-            if (context) {
-                context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-                onCapture(dataUrl);
-            }
+        if (videoRef.current) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            onCapture(canvas.toDataURL('image/png'));
             onClose();
         }
     };
     
+    if (!isOpen) {
+        return null;
+    }
+    
     return ReactDOM.createPortal(
         <AnimatePresence>
             {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={onClose}
-                    className="modal-overlay z-[90]"
-                    aria-modal="true"
-                    role="dialog"
-                >
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="modal-content !max-w-3xl"
-                    >
-                         <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                            <h3 className="base-font font-bold text-2xl text-yellow-400">Chụp ảnh từ Webcam</h3>
-                            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors" aria-label="Đóng webcam">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div className="aspect-video bg-neutral-900 rounded-md overflow-hidden relative flex items-center justify-center">
-                            {error ? (
-                                <div className="text-center p-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    <p className="text-red-300">{error}</p>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="modal-overlay z-[80]" aria-modal="true" role="dialog" >
+                    <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-xl" >
+                        <h3 className="base-font font-bold text-2xl text-yellow-400">{t('webcam_title')}</h3>
+                        <div className="aspect-video bg-neutral-900 rounded-md overflow-hidden relative">
+                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                             {error && (
+                                <div className="absolute inset-0 flex items-center justify-center p-4 bg-black/70">
+                                    <p className="text-red-400 text-center">{error}</p>
                                 </div>
-                            ) : (
-                                <>
-                                    <video
-                                        ref={videoRef}
-                                        autoPlay
-                                        playsInline
-                                        className={cn(
-                                            "w-full h-full object-cover transition-opacity duration-300",
-                                            isStreaming ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {!isStreaming && (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <svg className="animate-spin h-8 w-8 text-neutral-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </div>
-                                    )}
-                                </>
                             )}
-                            <canvas ref={canvasRef} className="hidden" />
                         </div>
-                         <div className="flex justify-end items-center gap-4 mt-4">
-                            <button onClick={onClose} className="btn btn-secondary btn-sm">Hủy</button>
-                            <button onClick={handleCapture} className="btn btn-primary btn-sm" disabled={!isStreaming || !!error}>Chụp ảnh</button>
+                        <div className="flex justify-end items-center gap-4 mt-2">
+                            <button onClick={onClose} className="btn btn-secondary btn-sm">{t('webcam_close')}</button>
+                            <button onClick={handleCapture} className="btn btn-primary btn-sm" disabled={!stream || !!error}>{t('webcam_submit')}</button>
                         </div>
                     </motion.div>
                 </motion.div>
@@ -881,3 +720,66 @@ export const WebcamCaptureModal: React.FC<WebcamCaptureModalProps> = ({ isOpen, 
         document.body
     );
 };
+
+// --- Prompt Result Card ---
+interface PromptResultCardProps {
+    title: string;
+    promptText: string;
+    className?: string;
+}
+
+export const PromptResultCard: React.FC<PromptResultCardProps> = ({ title, promptText, className }) => {
+    const handleCopy = () => {
+        navigator.clipboard.writeText(promptText);
+        toast.success("Đã sao chép prompt!");
+    };
+
+    return (
+        <div className={cn("prompt-card", className)}>
+             <div className="flex justify-between items-center mb-2 flex-shrink-0">
+                <h3 className="base-font font-bold text-lg text-neutral-800">{title}</h3>
+                <button
+                    onClick={handleCopy}
+                    className="p-2 bg-black/10 rounded-full text-neutral-600 hover:bg-black/20 hover:text-black focus:outline-none focus:ring-2 focus:ring-neutral-500 transition-colors"
+                    aria-label="Sao chép prompt"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </button>
+            </div>
+            <div className="prompt-card-content">
+                <p className="base-font text-sm text-neutral-700 whitespace-pre-wrap">{promptText}</p>
+            </div>
+        </div>
+    );
+};
+
+// FIX: Added missing Switch component
+export const Switch: React.FC<{
+    id: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    disabled?: boolean;
+}> = ({ id, checked, onChange, disabled }) => (
+    <button
+        id={id}
+        role="switch"
+        aria-checked={checked}
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+        className={cn(
+            "relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-neutral-800",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            checked ? "bg-yellow-400" : "bg-neutral-600"
+        )}
+    >
+        <span
+            aria-hidden="true"
+            className={cn(
+                "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                checked ? "translate-x-[8px]" : "-translate-x-[8px]"
+            )}
+        />
+    </button>
+);

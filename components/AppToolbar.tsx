@@ -83,15 +83,16 @@ const AppToolbar: React.FC = () => {
             const isRedo = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && e.shiftKey;
             const isSearch = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f';
             const isGallery = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'g';
-            const isHistoryToggle = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+            const isGoHome = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h';
+            const isHistoryToggle = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y';
             const isInfo = (e.metaKey || e.ctrlKey) && e.key === '/';
             const isEditor = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e';
             const isLayerComposer = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l';
 
-            if (isUndo && !isEditorOpen) {
+            if (isUndo && !isEditorOpen && !isLayerComposerVisible) {
                 e.preventDefault();
                 handleGoBack();
-            } else if (isRedo && !isEditorOpen) {
+            } else if (isRedo && !isEditorOpen && !isLayerComposerVisible) {
                 e.preventDefault();
                 handleGoForward();
             } else if (isSearch) {
@@ -100,6 +101,9 @@ const AppToolbar: React.FC = () => {
             } else if (isGallery) {
                 e.preventDefault();
                 handleOpenGallery();
+            } else if (isGoHome) {
+                e.preventDefault();
+                handleGoHome();
             } else if (isHistoryToggle) {
                 e.preventDefault();
                 if (isHistoryPanelOpen) {
@@ -123,7 +127,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleOpenInfo, handleOpenHistoryPanel, handleCloseHistoryPanel, isHistoryPanelOpen, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleGoHome, handleOpenInfo, handleOpenHistoryPanel, handleCloseHistoryPanel, isHistoryPanelOpen, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
 
     return (
         <>

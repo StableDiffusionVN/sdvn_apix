@@ -93,7 +93,7 @@ export const useVideoGeneration = () => {
     }, [addImagesToGallery]);
 
     useEffect(() => {
-        const tasksToPoll = Object.entries(videoTasks).filter(([, task]) => task.status === 'pending' && task.operation);
+        const tasksToPoll = Object.entries(videoTasks).filter(([, task]) => (task as VideoTask).status === 'pending' && (task as VideoTask).operation);
         if (tasksToPoll.length === 0) return;
     
         let isCancelled = false;
@@ -105,9 +105,10 @@ export const useVideoGeneration = () => {
             let tasksUpdated = false;
     
             await Promise.all(tasksToPoll.map(async ([sourceUrl, task]) => {
-                if (!task.operation) return;
+                const typedTask = task as VideoTask;
+                if (!typedTask.operation) return;
                 try {
-                    const updatedOp = await pollVideoOperation(task.operation);
+                    const updatedOp = await pollVideoOperation(typedTask.operation);
                     if (isCancelled) return;
     
                     if (updatedOp.done) {
@@ -123,7 +124,8 @@ export const useVideoGeneration = () => {
                             throw new Error(updatedOp.error?.message || "Video generation finished but no URI was found.");
                         }
                     } else {
-                        newTasks[sourceUrl] = { ...task, operation: updatedOp };
+                        // FIX: Replaced spread operator with Object.assign for type safety, as `typedTask` could potentially not be an object, causing a runtime error.
+                        newTasks[sourceUrl] = Object.assign({}, typedTask, { operation: updatedOp });
                     }
                     tasksUpdated = true;
                 } catch (err) {
@@ -137,7 +139,7 @@ export const useVideoGeneration = () => {
                 setVideoTasks(newTasks);
             }
     
-            const stillPending = Object.values(newTasks).some(t => t.status === 'pending');
+            const stillPending = Object.values(newTasks).some(t => (t as VideoTask).status === 'pending');
             if (!isCancelled && stillPending) {
                 setTimeout(poll, 10000);
             }

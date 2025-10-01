@@ -4,6 +4,8 @@
 */
 import toast from 'react-hot-toast';
 import { type ImageForZip, type VideoTask } from './uiTypes';
+// FIX: Add missing React import.
+import React, { type ChangeEvent } from 'react';
 
 // Declare JSZip for creating zip files
 declare const JSZip: any;
@@ -14,7 +16,7 @@ declare const JSZip: any;
  * @param callback A function to call with the resulting file data URL.
  */
 export const handleFileUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: ChangeEvent<HTMLInputElement>,
     callback: (result: string) => void
 ) => {
     if (e.target.files && e.target.files[0]) {
@@ -630,4 +632,45 @@ export const combineImages = async (items: CombineItem[], options: CombineOption
     ctx.drawImage(contentCanvas, scaledGap, contentYOffset, finalContentWidth, finalContentHeight);
     
     return canvas.toDataURL('image/png');
+};
+
+/**
+ * Resizes an image from a data URL to a smaller thumbnail.
+ * @param imageDataUrl The data URL of the source image.
+ * @param maxWidth The maximum width of the thumbnail.
+ * @param maxHeight The maximum height of the thumbnail.
+ * @returns A promise that resolves to the data URL of the thumbnail (as JPEG for better compression).
+ */
+export const createThumbnailDataUrl = (
+    imageDataUrl: string, 
+    maxWidth: number = 128, 
+    maxHeight: number = 128
+): Promise<string> => {
+    return new Promise((resolve) => {
+        if (!imageDataUrl || !imageDataUrl.startsWith('data:image')) {
+            return resolve(imageDataUrl); // Return original if not a valid data URL
+        }
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                // Cannot create context, return original URL
+                return resolve(imageDataUrl);
+            }
+
+            let { width, height } = img;
+            if (width > height) {
+                if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+            } else {
+                if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.8)); // Use JPEG for smaller size
+        };
+        img.onerror = () => resolve(imageDataUrl); // Fallback to original URL on error
+        img.src = imageDataUrl;
+    });
 };

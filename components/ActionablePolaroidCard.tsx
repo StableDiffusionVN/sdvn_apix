@@ -68,11 +68,12 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     regenerationPlaceholder,
 }) => {
     const { openImageEditor } = useImageEditor();
-    const { sessionGalleryImages } = useAppControls();
+    const { imageGallery, t } = useAppControls();
     const [isRegenModalOpen, setIsRegenModalOpen] = useState(false);
     const [isGalleryPickerOpen, setGalleryPickerOpen] = useState(false);
     const [isWebcamModalOpen, setWebcamModalOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
     // --- Determine button visibility based on the card's role (type) ---
     const isDownloadable = type === 'output';
@@ -87,6 +88,39 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
             handleFileUpload(e, onImageChange);
         }
     }, [onImageChange]);
+
+    const handleFile = useCallback((file: File) => {
+        if (onImageChange && file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (typeof reader.result === 'string') {
+                    onImageChange(reader.result);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    }, [onImageChange]);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
+    }, [handleFile]);
 
     const handleSwapClick = useCallback(() => {
         fileInputRef.current?.click();
@@ -180,6 +214,10 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 onSelectFromGallery={isGallerySelectable ? handleOpenGalleryPicker : undefined}
                 onCaptureFromWebcam={isWebcamSelectable ? handleOpenWebcam : undefined}
                 onShake={showButtons && canDoSomething ? handleRegenerateClick : undefined}
+                isDraggingOver={isDraggingOver}
+                onDragOver={isSwappable ? handleDragOver : undefined}
+                onDragLeave={isSwappable ? handleDragLeave : undefined}
+                onDrop={isSwappable ? handleDrop : undefined}
             />
             {canDoSomething && (
                 <RegenerationModal
@@ -188,16 +226,16 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                     onConfirmImage={handleConfirmImage}
                     onConfirmVideo={onGenerateVideoFromPrompt ? handleConfirmVideo : undefined}
                     itemToModify={caption}
-                    title={regenerationTitle}
-                    description={regenerationDescription}
-                    placeholder={regenerationPlaceholder}
+                    title={regenerationTitle || t('regenerationModal_title')}
+                    description={regenerationDescription || t('regenerationModal_description')}
+                    placeholder={regenerationPlaceholder || t('regenerationModal_placeholder')}
                 />
             )}
             <GalleryPicker
                 isOpen={isGalleryPickerOpen}
                 onClose={() => setGalleryPickerOpen(false)}
                 onSelect={handleGalleryImageSelect}
-                images={sessionGalleryImages}
+                images={imageGallery}
             />
             <WebcamCaptureModal
                 isOpen={isWebcamModalOpen}

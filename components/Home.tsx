@@ -2,11 +2,12 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// FIX: Update AppConfig import to be a type import and define a more specific type for the processed app data.
-import { useAppControls, extractJsonFromPng, type AppConfig } from './uiUtils';
-import { CloudUploadIcon } from './icons';
+import toast from 'react-hot-toast';
+import { useAppControls, useImageEditor, extractJsonFromPng, type AppConfig } from './uiUtils';
+import * as db from '../lib/db';
+import { CloudUploadIcon, LayerComposerIcon, EditorIcon } from './icons';
 
 interface ProcessedAppConfig extends AppConfig {
   title: string;
@@ -21,10 +22,12 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
-  const { t, importSettingsAndNavigate } = useAppControls();
+  const { t, importSettingsAndNavigate, openLayerComposer, addImagesToGallery } = useAppControls();
+  const { openEmptyImageEditor } = useImageEditor();
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const APPS_PER_PAGE = 8;
   const totalPages = Math.ceil(apps.length / APPS_PER_PAGE);
@@ -48,6 +51,12 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
     }
   };
 
+  const handleOpenEditor = useCallback(() => {
+      openEmptyImageEditor((newUrl) => {
+          addImagesToGallery([newUrl]);
+      });
+  }, [openEmptyImageEditor, addImagesToGallery]);
+
 
   // Handle layout for app cards: center single card, left-align multiple cards.
   const appListContainerClasses =
@@ -61,23 +70,43 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
   };
   
   const handleFile = async (file: File) => {
-    let settings = null;
-    if (file.type === 'image/png') {
-        settings = await extractJsonFromPng(file);
-    } else if (file.type === 'application/json') {
-        try {
+    let settings: any = null;
+    try {
+        if (file.type === 'image/png') {
+            settings = await extractJsonFromPng(file);
+        } else if (file.type === 'application/json') {
             settings = JSON.parse(await file.text());
-        } catch (e) {
-            console.error("Failed to parse JSON file", e);
-            alert("Invalid JSON file.");
         }
-    }
 
-    if (settings) {
-        importSettingsAndNavigate(settings);
-    } else {
-        alert("Could not find any settings in the provided file.");
+        if (settings) {
+            // Check if it's a Canvas file
+            if (settings.canvasSettings && Array.isArray(settings.layers)) {
+                await db.saveCanvasState(settings);
+                openLayerComposer();
+            } 
+            // Check if it's a regular app settings file
+            else if (settings.viewId && settings.state) {
+                importSettingsAndNavigate(settings);
+            } 
+            // Unrecognized format
+            else {
+                toast.error("File không hợp lệ hoặc không được nhận dạng.");
+            }
+        } else {
+            toast.error("Không tìm thấy dữ liệu cài đặt trong file.");
+        }
+    } catch (e) {
+        console.error("Failed to process file", e);
+        toast.error("Lỗi khi xử lý file. File có thể bị hỏng.");
     }
+  };
+
+  const handleFileUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          handleFile(e.target.files[0]);
+      }
+      // Reset input value to allow re-uploading the same file
+      e.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -113,6 +142,36 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
       <div className="text-center mb-12">
           <h1 className="text-6xl/[1.3] md:text-8xl/[1.3] title-font font-bold text-white [text-shadow:1px_1px_3px_rgba(0,0,0,0.4)] tracking-wider">{title}</h1>
           <p className="sub-title-font font-bold text-neutral-200 mt-2 text-xl tracking-wide">{subtitle}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".json,.png"
+                  onChange={handleFileUploadChange}
+              />
+              <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              >
+                  <CloudUploadIcon className="h-4 w-4" />
+                  {t('home_uploadJson')}
+              </button>
+              <button
+                  onClick={openLayerComposer}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              >
+                  <LayerComposerIcon className="h-4 w-4" strokeWidth="1.5" />
+                  {t('home_openCanvas')}
+              </button>
+              <button
+                  onClick={handleOpenEditor}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              >
+                  <EditorIcon className="h-4 w-4" />
+                  {t('home_openEditor')}
+              </button>
+          </div>
       </div>
 
 

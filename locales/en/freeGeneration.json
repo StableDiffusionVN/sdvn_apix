@@ -24,5 +24,8 @@
   "freeGeneration_regenTitle": "Refine Image or Create Video",
   "freeGeneration_regenDescription": "Add a request to improve the image, or use it to create a video",
   "freeGeneration_regenPlaceholder": "e.g., make the colors brighter...",
-  "common_deleteImages": "Delete Images"
+  "common_deleteImages": "Delete Images",
+  "freeGeneration_enhancePrompt": "Enhance Prompt",
+  "freeGeneration_enhancing": "Enhancing...",
+  "freeGeneration_enhanceError": "Could not enhance prompt."
 }

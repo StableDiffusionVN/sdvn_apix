@@ -19,8 +19,29 @@
   "architectureIdeator_regenTitle": "Refine Architectural Image",
   "architectureIdeator_regenDescription": "Add notes to improve the image",
   "architectureIdeator_regenPlaceholder": "e.g., add a swimming pool, wooden materials, night lighting...",
-  "architectureIdeator_contextOptions": ["Auto", "Modern city", "Countryside", "Coastal", "Mountainous", "Desert", "Jungle", "Industrial zone", "Outer space", "Fairy tale world", "Cyberpunk city", "Underwater city", "City on clouds", "Ancient ruins", "Japanese garden", "Victorian London", "Brazilian favela", "Arctic station", "Mars colony", "Post-apocalyptic wasteland", "Mediterranean village", "Volcanic landscape"],
-  "architectureIdeator_styleOptions": ["Auto", "Modern", "Minimalist", "Brutalist", "Indochine", "Classical", "Tropical", "Cabin", "Gothic", "Art Deco", "Deconstructivism", "Sustainable", "Biophilic/Organic", "Parametricism", "Industrial", "Scandinavian", "Modern Farmhouse", "Mediterranean", "Futuristic", "Steampunk", "Treehouse", "Cave architecture", "Container home"],
-  "architectureIdeator_colorOptions": ["Auto", "Warm tones", "Cool tones", "Neutral colors", "Monochromatic", "High contrast", "Soft pastels", "Vibrant colors", "Earthy tones", "Jewel tones", "Neon colors", "Rust & Metallic", "White & Wood", "Concrete gray", "Mint & Coral", "Navy & Brass", "Sepia", "Black & White", "Sunset palette", "Sunrise palette", "Rainbow", "Oceanic colors"],
-  "architectureIdeator_lightingOptions": ["Auto", "Natural daylight", "Golden hour", "Night lighting", "Overcast, soft light", "Harsh sun, hard shadows", "Neon lighting", "Ethereal lighting", "Volumetric rays", "Stage lighting", "Lantern light", "Flickering firelight", "Bioluminescent glow", "Film noir shadows", "Studio lighting", "Uplighting", "Twinkling lights", "Overexposed", "Dark and moody", "Water reflection", "Caustic shadows"]
+  "architectureIdeator_contextOptions": [
+    "Auto",
+    { "group": "Urban", "options": ["Modern city", "Industrial zone", "Cyberpunk city", "Victorian London", "Brazilian favela"] },
+    { "group": "Natural", "options": ["Countryside", "Coastal", "Mountainous", "Desert", "Jungle", "Japanese garden", "Volcanic landscape"] },
+    { "group": "Sci-Fi & Fantasy", "options": ["Outer space", "Fairy tale world", "Underwater city", "City on clouds", "Ancient ruins", "Arctic station", "Mars colony", "Post-apocalyptic wasteland", "Mediterranean village"] }
+  ],
+  "architectureIdeator_styleOptions": [
+    "Auto",
+    { "group": "Modern", "options": ["Modern", "Minimalist", "Brutalist", "Deconstructivism", "Sustainable", "Biophilic/Organic", "Parametricism", "Industrial", "Modern Farmhouse", "Futuristic"] },
+    { "group": "Classical & Historic", "options": ["Indochine", "Classical", "Gothic", "Art Deco"] },
+    { "group": "Themed & Unique", "options": ["Tropical", "Cabin", "Scandinavian", "Mediterranean", "Steampunk", "Treehouse", "Cave architecture", "Container home"] }
+  ],
+  "architectureIdeator_colorOptions": [
+    "Auto",
+    { "group": "Color Temperature", "options": ["Warm tones", "Cool tones", "Neutral colors"] },
+    { "group": "Saturation & Contrast", "options": ["Monochromatic", "High contrast", "Soft pastels", "Vibrant colors"] },
+    { "group": "Themed Palettes", "options": ["Earthy tones", "Jewel tones", "Neon colors", "Rust & Metallic", "White & Wood", "Concrete gray", "Mint & Coral", "Navy & Brass", "Sunset palette", "Sunrise palette", "Oceanic colors"] },
+    { "group": "Special", "options": ["Sepia", "Black & White", "Rainbow"] }
+  ],
+  "architectureIdeator_lightingOptions": [
+    "Auto",
+    { "group": "Natural Light", "options": ["Natural daylight", "Golden hour", "Overcast, soft light", "Harsh sun, hard shadows"] },
+    { "group": "Artificial Light", "options": ["Night lighting", "Neon lighting", "Stage lighting", "Lantern light", "Studio lighting", "Uplighting"] },
+    { "group": "Dramatic & Stylized", "options": ["Ethereal lighting", "Volumetric rays", "Twinkling lights", "Flickering firelight", "Bioluminescent glow", "Film noir shadows", "Overexposed", "Dark and moody", "Water reflection", "Caustic shadows"] }
+  ]
 }

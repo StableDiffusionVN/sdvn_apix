@@ -1,6 +1,9 @@
 {
   "home_mainTitle": "aPix",
-  "home_subtitle": "Hãy chọn ứng dụng và bắt đầu sáng tạo",
+  "home_subtitle": "Chọn ứng dụng hoặc tải lên json setting để bắt đầu",
+  "home_uploadJson": "Tải lên JSON",
+  "home_openCanvas": "Canvas",
+  "home_openEditor": "Image Editor",
   "app_free-generation_title": "Tạo ảnh tự do",
   "app_free-generation_description": "Tạo ảnh mới từ văn bản hoặc chỉnh sửa ảnh tải lên bằng prompt của riêng bạn.",
   "app_baby-photo-creator_title": "Tạo ảnh cho bé",

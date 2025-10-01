@@ -301,14 +301,14 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                     actions={
                         <>
                             {appState.generatedImage && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-primary">
+                                <button onClick={handleDownloadAll} className="btn btn-secondary">
                                     {t('common_downloadAll')}
                                 </button>
                             )}
                             <button onClick={handleBackToOptions} className="btn btn-secondary">
                                 {t('common_editOptions')}
                             </button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
+                            <button onClick={onReset} className="btn btn-secondary">
                                 {t('common_startOver')}
                             </button>
                         </>

@@ -1,5 +1,4 @@
 
-
 {
   "footer_theme": "Theme",
   "footer_feedback": "Feedback",
@@ -92,13 +91,11 @@
     "undo": "Go Back (Undo)",
     "redo": "Go Forward (Redo)"
   },
-  "infoModal_editorUndo_title": "Image Editor: History",
-  "infoModal_editorUndo_subtitle": "Only works when the Image Editor is open.",
   "infoModal_editorUndo_items": {
     "undo": "Undo",
     "redo": "Redo"
   },
-  "infoModal_editorTools_title": "Image Editor: Tools",
+  "infoModal_editorTools_title": "Image Editor",
   "infoModal_editorTools_items": {
     "crop": "Crop Tool",
     "brush": "Brush Tool",
@@ -113,26 +110,23 @@
     "dragDrop": "Drag & drop image or .json files directly onto the gallery, canvas, or editor.",
     "tempPicker": "Hold `Alt` in the editor to temporarily switch to the Color Picker tool.",
     "quickDuplicate": "Hold `Alt` and drag a layer in Canvas to quickly duplicate it.",
-    "multiSelect": "Hold `Shift` while clicking on layers or objects to select multiple items.",
-    "aiContext": "In Canvas, AI generates based on selected layers. If none are selected, it uses the whole canvas.",
-    "quickEdit": "Double-click a text layer on the canvas to quickly edit its content."
+    "multiSelect": "Hold `Shift` while clicking on layers or objects to select multiple items."
   },
-  "infoModal_layerComposerTools_title": "Canvas: Tools & Navigation",
-  "infoModal_layerComposerTools_subtitle": "Main shortcuts for Canvas.",
+  "infoModal_layerComposerTools_title": "Canvas",
+  "infoModal_layerComposerTools_subtitle": "Main shortcuts for Canvas & Manage your layers.",
   "infoModal_layerComposerTools_items": {
     "select": "Select Tool",
     "hand": "Hand Tool",
-    "pan": "Pan Canvas"
+    "pan": "Pan Canvas",
+    "toggleLog": "Show/Hide Log",
+    "toggleChatbot": "Toggle AI Assistant"
   },
-  "infoModal_layerComposerActions_title": "Canvas: Layer Actions",
-  "infoModal_layerComposerActions_subtitle": "Manage your layers.",
   "infoModal_layerComposerActions_items": {
     "delete": "Delete selected layer(s)",
     "duplicate": "Duplicate selected layer(s)",
     "moveUp": "Move layer(s) up",
     "moveDown": "Move layer(s) down",
-    "deselect": "Deselect all",
-    "export": "Export selected layer (PNG)"
+    "deselect": "Deselect all"
   },
   "appToolbar_home": "Home",
   "appToolbar_back": "Back (Cmd/Ctrl+Z)",
@@ -282,5 +276,15 @@
   "historyPanel_close": "Close History",
   "historyPanel_empty": "No history has been recorded yet.",
   "historyPanel_download": "Download Settings (JSON)",
-  "historyPanel_reload": "Reload these settings"
+  "historyPanel_reload": "Reload these settings",
+  "polaroid_dropPrompt": "Drop image here",
+  "layerComposer_chatbot_title": "AI Assistant",
+  "layerComposer_chatbot_placeholder": "Ask for prompt ideas or analyze an image...",
+  "layerComposer_chatbot_analyze": "Analyze Selected Layer",
+  "layerComposer_chatbot_analyzing": "Analyzing...",
+  "layerComposer_chatbot_noLayer": "Please select a layer to analyze.",
+  "layerComposer_chatbot_analysisPrompt": "Analyze this image. Describe its content, style, composition, and color palette in detail. Provide suggestions for how to improve or alter it.",
+  "layerComposer_new_title": "Create New Canvas?",
+  "layerComposer_new_message": "This will clear your current canvas and any unsaved work. This action cannot be undone. Are you sure?",
+  "layerComposer_new_confirm": "Clear Canvas"
 }

@@ -2,19 +2,18 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useRef, useEffect } from 'react';
-import { motion, MotionValue } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
-// FIX: Import `CanvasTool` to use the more general type.
 import { type Layer, type CanvasTool } from './LayerComposer/LayerComposer.types';
 
 interface LayerItemProps {
     layer: Layer;
     onLayerPointerDown: (e: React.PointerEvent<HTMLDivElement>, layerId: string) => void;
     zIndex: number;
-    // FIX: Changed type to `CanvasTool` to allow for all tool types.
     activeCanvasTool: CanvasTool;
     isSpacePanning: boolean;
+    isInteracting: boolean;
     captureLayer: (layer: Layer) => Promise<string>;
 }
 
@@ -22,6 +21,7 @@ export const LayerItem: React.FC<LayerItemProps> = React.memo(({
     layer, zIndex,
     activeCanvasTool, isSpacePanning,
     onLayerPointerDown,
+    isInteracting,
 }) => {
     
     const isHandToolActive = activeCanvasTool === 'hand' || isSpacePanning;
@@ -47,6 +47,7 @@ export const LayerItem: React.FC<LayerItemProps> = React.memo(({
                 opacity: layer.opacity / 100,
                 zIndex: zIndex,
             }}
+            transition={isInteracting ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 50 }}
         >
              {layer.type === 'image' && layer.url ? (
                 <img
@@ -73,6 +74,14 @@ export const LayerItem: React.FC<LayerItemProps> = React.memo(({
                 >
                     {layer.text}
                 </div>
+            ) : layer.type === 'shape' ? (
+                <div
+                    className="w-full h-full pointer-events-none"
+                    style={{
+                        backgroundColor: layer.fillColor || '#FFFFFF',
+                        borderRadius: layer.shapeType === 'ellipse' ? '50%' : `${layer.borderRadius || 0}px`,
+                    }}
+                />
             ) : null}
         </motion.div>
     );

@@ -1,3 +1,4 @@
+
 {
   "imageInterpolation_mainTitle": "Image Interpolation",
   "imageInterpolation_subtitle": "Upload an image pair and a reference image to start",
@@ -6,7 +7,7 @@
   "imageInterpolation_uploaderCaptionOutput": "Output Image",
   "imageInterpolation_uploaderDescriptionOutput": "The desired image",
   "imageInterpolation_uploaderCaptionReference": "Reference Image",
-  "imageInterpolation_uploaderDescriptionReference": "The image to apply the change to",
+  "imageInterpolation_uploaderDescriptionReference": "Image to apply changes to (if empty, the Input image will be used)",
   "imageInterpolation_inputChangedError": "Input Image has changed. Please Analyze again.",
   "imageInterpolation_outputChangedError": "Output Image has changed. Please Analyze again.",
   "imageInterpolation_analysisError": "Analysis Error: {0}",
@@ -14,9 +15,11 @@
   "imageInterpolation_reanalyze": "Re-analyze",
   "imageInterpolation_analyze": "Analyze Transformation",
   "imageInterpolation_analyzeGeneral": "General Analysis",
-  "imageInterpolation_analyzeDetailed": "Detailed Analysis",
+  "imageInterpolation_analyzeDeep": "Deep Analysis",
+  "imageInterpolation_analyzeExpert": "Expert Analysis",
   "imageInterpolation_analyzingGeneral": "Analyzing...",
-  "imageInterpolation_analyzingDetailed": "Analyzing (Detailed)...",
+  "imageInterpolation_analyzingDeep": "Analyzing (Deep)...",
+  "imageInterpolation_analyzingExpert": "Performing expert analysis...",
   "imageInterpolation_generatedPromptTitle": "Generated Prompt",
   "imageInterpolation_mainPromptLabel": "Main Prompt",
   "imageInterpolation_suggestionsTitle": "Creative Suggestions",

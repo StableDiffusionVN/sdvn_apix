@@ -306,7 +306,9 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                             <div>
                                 <label className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('toyModelCreator_conceptLabel')}</label>
                                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                                     {Object.entries(CONCEPTS_DATA).map(([id, { name }]) => {
+                                     {/* FIX: Changed destructuring to handle 'any' type from translation and cast to get 'name' property. */}
+                                     {Object.entries(CONCEPTS_DATA).map(([id, data]) => {
+                                        const { name } = data as { name: string; [key: string]: any; };
                                         const isSelected = appState.concept === id;
                                         return (
                                             <button
@@ -348,16 +350,32 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                                     }}
                                     placeholder={t('toyModelCreator_notesPlaceholder')}
                                     className="form-input h-24"
-                                    rows={3}
                                 />
                             </div>
-                            <div className="flex items-center pt-2">
-                                <input type="checkbox" id="remove-watermark-toy" checked={appState.options.removeWatermark} onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)} className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
-                                <label htmlFor="remove-watermark-toy" className="ml-3 block text-sm font-medium text-neutral-300">{t('common_removeWatermark')}</label>
+                             <div className="flex items-center pt-2">
+                                <input
+                                    type="checkbox"
+                                    id="remove-watermark-toy"
+                                    checked={appState.options.removeWatermark}
+                                    onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
+                                    className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
+                                    aria-label={t('common_removeWatermark')}
+                                />
+                                <label htmlFor="remove-watermark-toy" className="ml-3 block text-sm font-medium text-neutral-300">
+                                    {t('common_removeWatermark')}
+                                </label>
                             </div>
                             <div className="flex items-center justify-end gap-4 pt-4">
-                                <button onClick={onReset} className="btn btn-secondary">{t('common_changeImage')}</button>
-                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? t('common_creating') : t('toyModelCreator_createButton')}</button>
+                                <button onClick={onReset} className="btn btn-secondary">
+                                    {t('common_changeImage')}
+                                </button>
+                                <button 
+                                    onClick={executeInitialGeneration} 
+                                    className="btn btn-primary"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? t('common_creating') : t('toyModelCreator_createButton')}
+                                </button>
                             </div>
                         </OptionsPanel>
                     </AppOptionsLayout>
@@ -372,35 +390,61 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     error={appState.error}
                     actions={
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_editOptions')}</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
+                            {appState.generatedImage && !appState.error && (
+                                <button onClick={handleDownloadAll} className="btn btn-secondary">
+                                    {t('common_downloadAll')}
+                                </button>
+                            )}
+                            <button onClick={handleBackToOptions} className="btn btn-secondary">
+                                {t('common_editOptions')}
+                            </button>
+                            <button onClick={onReset} className="btn btn-secondary">
+                                {t('common_startOver')}
+                            </button>
                         </>
-                    }>
-                    <motion.div className="w-full md:w-auto flex-shrink-0" key="generated-toy" initial={{ opacity: 0, scale: 0.5, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
+                    }
+                >
+                    <motion.div
+                        className="w-full md:w-auto flex-shrink-0"
+                        key="generated-toy"
+                        initial={{ opacity: 0, scale: 0.5, y: 100 }}
+                        animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
+                        transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}
+                    >
                         <ActionablePolaroidCard
                             type="output"
-                            caption={CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA].name} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')} mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
+                            caption={t('common_result')}
+                            status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                            mediaUrl={appState.generatedImage ?? undefined}
+                            error={appState.error ?? undefined}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
-                            regenerationTitle={t('toyModelCreator_regenTitle')}
+                            regenerationTitle={t('common_regenTitle')}
                             regenerationDescription={t('common_regenDescription')}
                             regenerationPlaceholder={t('toyModelCreator_regenPlaceholder')}
-                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined} />
+                        />
                     </motion.div>
                     {appState.historicalImages.map(sourceUrl => {
                         const videoTask = videoTasks[sourceUrl];
                         if (!videoTask) return null;
                         return (
-                            <motion.div className="w-full md:w-auto flex-shrink-0" key={`${sourceUrl}-video`} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
+                            <motion.div
+                                className="w-full md:w-auto flex-shrink-0"
+                                key={`${sourceUrl}-video`}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                            >
                                 <ActionablePolaroidCard
                                     type="output"
                                     caption={t('common_video')}
                                     status={videoTask.status}
                                     mediaUrl={videoTask.resultUrl}
                                     error={videoTask.error}
-                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined} />
+                                    onClick={videoTask.resultUrl ? () => openLightbox(lightboxImages.indexOf(videoTask.resultUrl!)) : undefined}
+                                />
                             </motion.div>
                         );
                     })}

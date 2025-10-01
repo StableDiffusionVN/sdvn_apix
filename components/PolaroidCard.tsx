@@ -2,7 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { memo } from 'react';
+import React, { memo, type DragEvent, type MouseEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useAppControls } from './uiUtils';
 import { 
@@ -19,7 +20,8 @@ import {
     GalleryIcon, 
     WebcamIcon, 
     RegenerateIcon, 
-    DownloadIcon 
+    DownloadIcon,
+    CloudUploadIcon,
 } from './icons';
 
 type ImageStatus = 'pending' | 'done' | 'error';
@@ -38,6 +40,10 @@ interface PolaroidCardProps {
     isMobile?: boolean;
     placeholderType?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style';
     onClick?: () => void;
+    isDraggingOver?: boolean;
+    onDragOver?: (e: DragEvent) => void;
+    onDragLeave?: (e: DragEvent) => void;
+    onDrop?: (e: DragEvent) => void;
 }
 
 const LoadingSpinner = () => (
@@ -53,7 +59,8 @@ const ErrorDisplay = ({ message }: { message?: string }) => (
     </div>
 );
 
-const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | 'clothing' | 'magic' | 'style' }) => {
+// FIX: Modified Placeholder to safely handle `type` as a string, preventing type errors.
+const Placeholder = ({ type = 'person' }: { type?: string }) => {
     const icons = {
         person: <PlaceholderPersonIcon className="w-full h-full" />,
         architecture: <PlaceholderArchitectureIcon className="w-full h-full" />,
@@ -61,22 +68,25 @@ const Placeholder = ({ type = 'person' }: { type?: 'person' | 'architecture' | '
         magic: <PlaceholderMagicIcon className="w-full h-full" />,
         style: <PlaceholderStyleIcon className="w-full h-full" />,
     };
+    
+    type IconKey = keyof typeof icons;
+    const key: IconKey = (type && Object.prototype.hasOwnProperty.call(icons, type)) ? type as IconKey : 'person';
 
     return (
         <div className="flex items-center justify-center h-full p-8 placeholder-icon-wrapper">
-            {icons[type]}
+            {icons[key]}
         </div>
     );
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, onCaptureFromWebcam, isMobile, placeholderType = 'person', onClick }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, onCaptureFromWebcam, isMobile, placeholderType = 'person', onClick, isDraggingOver, onDragOver, onDragLeave, onDrop }) => {
     const { t } = useAppControls();
     const hasMedia = status === 'done' && mediaUrl;
     const isVideo = hasMedia && mediaUrl!.startsWith('blob:');
     const isClickable = !!onClick;
 
-    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleClick = (e: MouseEvent<HTMLDivElement>) => {
         if (isClickable && onClick) {
             e.preventDefault();
             e.stopPropagation();
@@ -85,7 +95,13 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
     };
 
     return (
-        <div className={cn("polaroid-card", isClickable && "cursor-pointer")} onClick={handleClick}>
+        <div 
+            className={cn("polaroid-card", isClickable && "cursor-pointer")} 
+            onClick={handleClick}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+        >
             <div className={cn(
                 "polaroid-image-container group",
                 !hasMedia && 'aspect-square',
@@ -208,6 +224,19 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
                     )}
                 </div>
             </div>
+             <AnimatePresence>
+                {isDraggingOver && (
+                    <motion.div
+                        className="absolute inset-0 z-30 bg-black/70 border-4 border-dashed border-yellow-400 rounded-md flex flex-col items-center justify-center pointer-events-none p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <CloudUploadIcon className="h-12 w-12 text-yellow-400 mb-4" strokeWidth={1}/>
+                        <p className="text-xl font-bold text-yellow-400 text-center base-font">{t('polaroid_dropPrompt')}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <div className="absolute bottom-4 left-4 right-4 text-center px-2">
                 <p className={cn(
                     "polaroid-caption",

@@ -20,7 +20,7 @@ interface ImageEditorModalProps {
 
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit, onClose }) => {
     const { 
-        sessionGalleryImages,
+        imageGallery,
         t
     } = useAppControls();
 
@@ -179,7 +179,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                     <p className="text-neutral-400 text-center max-w-sm">{t('imageEditor_startSubtitle')}</p>
                                     <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
                                         <button onClick={() => fileInputRef.current?.click()} className="btn btn-primary btn-sm">{t('imageEditor_uploadButton')}</button>
-                                        <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={sessionGalleryImages.length === 0}>{t('imageEditor_galleryButton')}</button>
+                                        <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={imageGallery.length === 0}>{t('imageEditor_galleryButton')}</button>
                                         <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">{t('imageEditor_webcamButton')}</button>
                                         <button onClick={handleCreateBlank} className="btn btn-secondary btn-sm">{t('imageEditor_createButton')}</button>
                                     </div>
@@ -197,7 +197,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                         )}
                                     </AnimatePresence>
                                 </div>
-                                <GalleryPicker isOpen={isGalleryPickerOpen} onClose={() => setIsGalleryPickerOpen(false)} onSelect={handleGallerySelect} images={sessionGalleryImages} />
+                                <GalleryPicker isOpen={isGalleryPickerOpen} onClose={() => setIsGalleryPickerOpen(false)} onSelect={handleGallerySelect} images={imageGallery} />
                                 <WebcamCaptureModal
                                     isOpen={isWebcamModalOpen}
                                     onClose={() => setIsWebcamModalOpen(false)}

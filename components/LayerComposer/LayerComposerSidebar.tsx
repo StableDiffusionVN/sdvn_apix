@@ -10,7 +10,7 @@ import { LayerList } from './LayerList';
 import { TextLayerControls } from './TextLayerControls';
 import { LayerPropertiesControls } from './LayerPropertiesControls';
 import { cn } from '../../lib/utils';
-import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon } from '../icons';
+import { AccordionArrowIcon, AddTextIcon, AddIcon, InfoIcon, ChatIcon, NewFileIcon } from '../icons';
 
 interface PresetControlsProps {
     loadedPreset: any | null;
@@ -58,6 +58,7 @@ interface LayerComposerSidebarProps {
     onSave: () => void;
     onClose: () => void;
     onHide: () => void;
+    onNew: () => void;
     beginInteraction: () => void;
     hasAiLog: boolean;
     isLogVisible: boolean;
@@ -72,6 +73,7 @@ interface LayerComposerSidebarProps {
     shapeFillColor: string;
     setShapeFillColor: (color: string) => void;
     generationHistory: GenerationHistoryEntry[];
+    onOpenChatbot: () => void;
 }
 
 const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () => void; children?: React.ReactNode; rightContent?: React.ReactNode; }> = ({ title, isOpen, onClick, rightContent }) => {
@@ -314,14 +316,15 @@ const PresetControls: React.FC<PresetControlsProps> = ({
 export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props) => {
     const {
         layers, canvasSettings, isInfiniteCanvas, setIsInfiniteCanvas, selectedLayerId, selectedLayerIds, selectedLayers, runningJobCount, error, aiPrompt, setAiPrompt, onGenerateAILayer,
-        onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose, onHide,
+        onCancelGeneration, onLayersReorder, onLayerUpdate, onLayerDelete, onLayerSelect, onCanvasSettingsChange, onAddImage, onAddText, onSave, onClose, onHide, onNew,
         beginInteraction,
         presets,
         isSimpleImageMode, setIsSimpleImageMode, aiPreset, setAiPreset,
         hasAiLog, isLogVisible, setIsLogVisible,
         loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset,
         onResizeSelectedLayers,
-        activeCanvasTool, shapeFillColor, setShapeFillColor, generationHistory
+        activeCanvasTool, shapeFillColor, setShapeFillColor, generationHistory,
+        onOpenChatbot
     } = props;
     const { t, language } = useAppControls();
     const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
@@ -422,7 +425,24 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                             {isSimpleImageMode ? t('layerComposer_ai_multiInputMode_desc') : t('layerComposer_ai_batchMode_desc')}
                                         </p>
                                     </div>
-
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={onOpenChatbot}
+                                            className="btn btn-secondary btn-sm flex-grow flex items-center justify-center gap-2"
+                                            title={t('layerComposer_chatbot_title')}
+                                        >
+                                            <ChatIcon className="h-4 w-4" />
+                                            Trợ lý
+                                        </button>
+                                        <button 
+                                            onClick={onGenerateAILayer} 
+                                            className="btn btn-primary btn-sm flex-grow" 
+                                            disabled={aiPreset === 'default' && !aiPrompt.trim()}
+                                            title={t('layerComposer_ai_generate_tooltip')}
+                                        >
+                                            {t('layerComposer_ai_generate')}
+                                        </button>
+                                    </div>
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
                                             {hasAiLog && (
@@ -442,14 +462,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                                 </button>
                                             )}
                                         </div>
-                                        <button 
-                                            onClick={onGenerateAILayer} 
-                                            className="btn btn-primary btn-sm flex-grow w-full" 
-                                            disabled={aiPreset === 'default' && !aiPrompt.trim()}
-                                            title={t('layerComposer_ai_generate_tooltip')}
-                                        >
-                                            {isGenerating ? t('layerComposer_ai_generating_count', runningJobCount) : t('layerComposer_ai_generate')}
-                                        </button>
+                                        
                                     </div>
                                 </div>
                             </motion.div>
@@ -510,8 +523,11 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
             <div className="flex-shrink-0 pt-6 border-t border-white/10">
                 {error && <p className="text-red-400 text-center text-sm mb-2">{error}</p>}
                 <div className="flex items-center gap-2">
-                    <button onClick={onClose} className="btn btn-secondary w-full btn-sm"> {t('common_cancel')} </button>
-                    <button onClick={onSave} className="btn btn-primary w-full btn-sm" disabled={(layers.length === 0 && !isInfiniteCanvas) || isGenerating} title={isInfiniteCanvas ? t('layerComposer_exportJsonTooltip') : t('layerComposer_saveTooltip')} > {isGenerating ? t('layerComposer_saving') : (isInfiniteCanvas ? t('layerComposer_exportJson') : t('layerComposer_save'))} </button>
+                    <button onClick={onNew} className="btn btn-secondary btn-sm p-2.5" title="New Canvas">
+                        <NewFileIcon className="h-5 w-5" />
+                    </button>
+                    <button onClick={onClose} className="btn btn-secondary btn-sm flex-grow"> {t('common_cancel')} </button>
+                    <button onClick={onSave} className="btn btn-primary btn-sm flex-grow" disabled={(layers.length === 0 && !isInfiniteCanvas) || isGenerating} title={isInfiniteCanvas ? t('layerComposer_exportJsonTooltip') : t('layerComposer_saveTooltip')} > {isGenerating ? t('layerComposer_saving') : (isInfiniteCanvas ? t('layerComposer_exportJson') : t('layerComposer_save'))} </button>
                 </div>
             </div>
         </aside>

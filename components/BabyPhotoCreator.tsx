@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+// FIX: Corrected typo in React import.
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -118,28 +119,39 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         onStateChange({ ...appState, selectedIdeas: newSelectedIdeas });
     };
 
-    const handleGenerateClick = async () => {
-        if (!appState.uploadedImage || appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas) return;
-        
+    const executeGeneration = async (ideas: string[]) => {
+        if (!appState.uploadedImage) return;
+        if (ideas.length > maxIdeas && !ideas.includes(t('babyPhotoCreator_randomConcept'))) {
+            toast.error(t('babyPhotoCreator_maxIdeasError', maxIdeas));
+            return;
+        }
+
         hasLoggedGeneration.current = false;
-        const preGenState = { ...appState };
-        let ideasToGenerate = [...appState.selectedIdeas];
-        const randomCount = ideasToGenerate.filter(i => i === 'Random').length;
+        const preGenState = { ...appState, selectedIdeas: ideas };
+        
+        const randomConceptString = t('babyPhotoCreator_randomConcept');
+        
+        let ideasToGenerate = [...ideas];
+        const randomCount = ideasToGenerate.filter(i => i === randomConceptString).length;
 
         if (randomCount > 0) {
             setIsEstimatingAge(true);
             try {
                 const ageGroup = await estimateAgeGroup(appState.uploadedImage);
                 const ageGroupConfig = IDEAS_BY_CATEGORY.find((c: any) => c.key === ageGroup);
-                const availableIdeas = ageGroupConfig ? ageGroupConfig.ideas : [].concat(...IDEAS_BY_CATEGORY.map((c: any) => c.ideas));
+                const allIdeas = [].concat(...IDEAS_BY_CATEGORY.filter((c: any) => c.key !== 'random').map((c: any) => c.ideas));
+                const availableIdeas = ageGroupConfig ? ageGroupConfig.ideas : allIdeas;
                 
                 const randomIdeas: string[] = [];
                 for (let i = 0; i < randomCount; i++) {
                     if (availableIdeas.length > 0) {
-                         randomIdeas.push(availableIdeas[Math.floor(Math.random() * availableIdeas.length)]);
+                         const randomIndex = Math.floor(Math.random() * availableIdeas.length);
+                         randomIdeas.push(availableIdeas[randomIndex]);
+                         // Optional: remove to avoid duplicates
+                         availableIdeas.splice(randomIndex, 1);
                     }
                 }
-                ideasToGenerate = ideasToGenerate.filter(i => i !== 'Random').concat(randomIdeas);
+                ideasToGenerate = ideasToGenerate.filter(i => i !== randomConceptString).concat(randomIdeas);
                 ideasToGenerate = [...new Set(ideasToGenerate)]; // Ensure unique ideas
             } catch (err) {
                 toast.error(t('babyPhotoCreator_ageEstimationError'));
@@ -158,7 +170,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             initialGeneratedImages[idea] = { status: 'pending' };
         });
         
-        onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages });
+        onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate });
 
         const concurrencyLimit = 2;
         const ideasQueue = [...ideasToGenerate];
@@ -166,7 +178,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         let currentAppState: BabyPhotoCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
         const settingsToEmbed = {
             viewId: 'baby-photo-creator',
-            state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
+            state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
         };
 
         const processIdea = async (idea: string) => {
@@ -218,9 +230,25 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         onStateChange({ ...currentAppState, stage: 'results' });
     };
 
+    const handleGenerateClick = async () => {
+        const effectiveIdeas = appState.selectedIdeas.length > 0
+            ? appState.selectedIdeas
+            : [t('babyPhotoCreator_randomConcept')];
+        await executeGeneration(effectiveIdeas);
+    };
+
+    const handleRandomGenerateClick = async () => {
+        await executeGeneration([t('babyPhotoCreator_randomConcept')]);
+    };
+
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         const imageToEditState = appState.generatedImages[idea];
-        if (imageToEditState?.status !== 'done' || !imageToEditState.url) {
+        if (!imageToEditState) {
+            return;
+        }
+
+        // FIX: Added type guard to ensure imageToEditState is a valid object before property access.
+        if (typeof imageToEditState !== 'object' || imageToEditState === null || !('status' in imageToEditState) || imageToEditState.status !== 'done' || !('url' in imageToEditState) || !imageToEditState.url) {
             return;
         }
 
@@ -272,7 +300,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         if (appState.uploadedImage) {
             inputImages.push({
                 url: appState.uploadedImage,
-                filename: 'anh-goc-cua-be',
+                filename: 'anh-goc',
                 folder: 'input',
             });
         }
@@ -281,20 +309,20 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'anh-concept-cho-be.zip',
-            baseOutputFilename: 'anh-be',
+            zipFilename: 'anh-be-yeu.zip',
+            baseOutputFilename: 'anh-be-yeu',
         });
     };
 
+    const isLoading = appState.stage === 'generating' || isEstimatingAge;
+
     const getButtonText = () => {
         if (isEstimatingAge) return t('babyPhotoCreator_estimatingAge');
-        if (appState.stage === 'generating') return t('common_creating');
-        if (appState.selectedIdeas.length < minIdeas) return t('babyPhotoCreator_selectAtLeast', minIdeas);
+        if (isLoading) return t('common_creating');
         return t('babyPhotoCreator_createButton');
     };
     
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
-    const isLoading = appState.stage === 'generating' || isEstimatingAge;
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -331,25 +359,28 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
 
                     <div className="w-full max-w-4xl text-center mt-4">
                         <h2 className="base-font font-bold text-2xl text-neutral-200">{t('babyPhotoCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
-                        <p className="text-neutral-400 mb-4">{t('babyPhotoCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
-                        
-                        <button 
-                            onClick={() => handleIdeaSelect('Random')}
-                            className={`base-font font-bold p-3 rounded-md text-base transition-all duration-200 inline-flex items-center gap-2 mb-4 ${
-                                appState.selectedIdeas.includes('Random')
-                                ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
-                                : 'bg-white/10 text-neutral-300 hover:bg-white/20'
-                            } ${!appState.selectedIdeas.includes('Random') && appState.selectedIdeas.length === maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            disabled={!appState.selectedIdeas.includes('Random') && appState.selectedIdeas.length === maxIdeas}
-                        >
-                            <MagicWandIcon className="h-5 w-5" />
-                            {t('babyPhotoCreator_randomConcept')}
-                        </button>
-
+                        <p className="text-neutral-400 mb-2">{t('babyPhotoCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                        <div className="mb-4">
+                            <button
+                                onClick={handleRandomGenerateClick}
+                                className="btn btn-primary btn-sm"
+                                disabled={isLoading || isEstimatingAge}
+                            >
+                                {t('babyPhotoCreator_randomButton')}
+                            </button>
+                        </div>
                         <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
-                            {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.map((categoryObj: any) => (
+                            {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.filter((categoryObj: any) => categoryObj.key !== 'random').map((categoryObj: any) => (
                                 <div key={categoryObj.category}>
-                                    <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
+                                    <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10 flex items-center gap-2">
+                                        {categoryObj.category}
+                                        {categoryObj.key === 'random' && (
+                                            <span className="text-xs font-normal bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <MagicWandIcon className="h-3 w-3" />
+                                                {t('babyPhotoCreator_autoAgeDetection')}
+                                            </span>
+                                        )}
+                                    </h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                         {categoryObj.ideas.map((p: string) => {
                                             const isSelected = appState.selectedIdeas.includes(p);
@@ -376,9 +407,9 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
-                            <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                            <label htmlFor="aspect-ratio-baby" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                             <select
-                                id="aspect-ratio"
+                                id="aspect-ratio-baby"
                                 value={appState.options.aspectRatio}
                                 onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
                                 className="form-input"
@@ -387,9 +418,9 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
+                            <label htmlFor="additional-prompt-baby" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
-                                id="additional-prompt"
+                                id="additional-prompt-baby"
                                 value={localPrompt}
                                 onChange={(e) => setLocalPrompt(e.target.value)}
                                 onBlur={() => {
@@ -400,6 +431,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                                 placeholder={t('babyPhotoCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}
+                                aria-label="Ghi chú bổ sung cho ảnh"
                             />
                         </div>
                         <div className="flex items-center pt-2">
@@ -424,7 +456,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                         <button 
                             onClick={handleGenerateClick} 
                             className="btn btn-primary"
-                            disabled={appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas || isLoading}
+                            disabled={(appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('babyPhotoCreator_randomConcept')) || appState.selectedIdeas.length > maxIdeas || isLoading || isEstimatingAge}
                         >
                             {getButtonText()}
                         </button>
@@ -441,13 +473,13 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     hasPartialError={hasPartialError}
                     actions={
                         <>
-                            <button onClick={handleDownloadAll} className="btn btn-primary">
+                            <button onClick={handleDownloadAll} className="btn btn-secondary">
                                 {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
                                 {t('babyPhotoCreator_chooseOtherIdeas')}
                             </button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
+                            <button onClick={onReset} className="btn btn-secondary">
                                 {t('common_startOver')}
                             </button>
                         </>

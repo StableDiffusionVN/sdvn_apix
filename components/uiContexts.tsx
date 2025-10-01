@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React, { useState, useEffect, useCallback, useContext, createContext } from 'react';
+import toast from 'react-hot-toast';
 import {
     type ImageToEdit, type ViewState, type AnyAppState, type Theme,
-// FIX: Import the Settings type which is now defined in uiTypes.ts.
     type AppConfig, THEMES, getInitialStateForApp, type Settings,
     type GenerationHistoryEntry
 } from './uiTypes';
+import * as db from '../lib/db';
 
 // --- Auth Context ---
 interface Account {
@@ -186,7 +187,7 @@ interface AppControlContextType {
     currentView: ViewState;
     settings: Settings | null;
     theme: Theme;
-    sessionGalleryImages: string[];
+    imageGallery: string[];
     historyIndex: number;
     viewHistory: ViewState[];
     isSearchOpen: boolean;
@@ -244,7 +245,6 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (savedTheme && THEMES.includes(savedTheme)) {
             return savedTheme;
         }
-        // If no theme is saved, pick a random one
         return THEMES[Math.floor(Math.random() * THEMES.length)];
     });
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -256,20 +256,14 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
     const [isLayerComposerMounted, setIsLayerComposerMounted] = useState(false);
     const [isLayerComposerVisible, setIsLayerComposerVisible] = useState(false);
-    const [sessionGalleryImages, setSessionGalleryImages] = useState<string[]>([]);
-    const [settings, setSettings] = useState<Settings | null>(null);
-    const [generationHistory, setGenerationHistory] = useState<GenerationHistoryEntry[]>(() => {
-        try {
-            const savedHistory = localStorage.getItem('generationHistory');
-            return savedHistory ? JSON.parse(savedHistory) : [];
-        } catch (error) {
-            console.error("Could not load generation history from localStorage", error);
-            return [];
-        }
-    });
+    const [imageGallery, setImageGallery] = useState<string[]>([]);
+    const [generationHistory, setGenerationHistory] = useState<GenerationHistoryEntry[]>([]);
+    const [isDbLoaded, setIsDbLoaded] = useState(false);
 
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
+    // FIX: Add missing `settings` state to resolve multiple 'settings' related errors.
+    const [settings, setSettings] = useState<Settings | null>(null);
 
     const currentView = viewHistory[historyIndex];
 
@@ -316,35 +310,20 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
         fetchTranslations();
     }, [language]);
-
+    
+    // Effect to initialize DB, migrate, and load data on app start
     useEffect(() => {
-        try {
-            localStorage.setItem('generationHistory', JSON.stringify(generationHistory));
-        } catch (error) {
-            console.error("Could not save generation history to localStorage", error);
+        async function loadData() {
+            await db.migrateFromLocalStorageToIdb();
+            const [gallery, history] = await Promise.all([
+                db.getAllGalleryImages(),
+                db.getAllHistoryEntries()
+            ]);
+            setImageGallery(gallery);
+            setGenerationHistory(history);
+            setIsDbLoaded(true);
         }
-    }, [generationHistory]);
-
-    const addGenerationToHistory = useCallback((entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => {
-        const newEntry: GenerationHistoryEntry = {
-            ...entryData,
-            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            timestamp: Date.now(),
-        };
-        
-        setGenerationHistory(prev => {
-            const updatedHistory = [newEntry, ...prev];
-            // Limit history to 50 items
-            if (updatedHistory.length > 50) {
-                return updatedHistory.slice(0, 50);
-            }
-            return updatedHistory;
-        });
-    }, []);
-
-    const handleLanguageChange = useCallback((lang: 'vi' | 'en') => {
-        setLanguage(lang);
-        localStorage.setItem('app-language', lang);
+        loadData();
     }, []);
 
     const t = useCallback((key: string, ...args: any[]): any => {
@@ -371,28 +350,55 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         return translation;
     }, [translations]);
-
-
-    const addImagesToGallery = useCallback((newImages: string[]) => {
-        setSessionGalleryImages(prev => {
-            const uniqueNewImages = newImages.filter(img => !prev.includes(img));
-            return [...prev, ...uniqueNewImages];
+    
+    const addGenerationToHistory = useCallback(async (entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => {
+        const newEntry: GenerationHistoryEntry = {
+            ...entryData,
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            timestamp: Date.now(),
+        };
+        await db.addHistoryEntry(newEntry);
+        setGenerationHistory(prev => {
+            const updatedHistory = [newEntry, ...prev];
+            // Pruning can be done here if desired, but IndexedDB is large
+            return updatedHistory;
         });
     }, []);
 
-    const removeImageFromGallery = useCallback((indexToRemove: number) => {
-        setSessionGalleryImages(prev => prev.filter((_, index) => index !== indexToRemove));
-    }, []);
 
-    const replaceImageInGallery = useCallback((indexToReplace: number, newImageUrl: string) => {
-        setSessionGalleryImages(prev => {
-            const newImages = [...prev];
-            if (indexToReplace >= 0 && indexToReplace < newImages.length) {
+    const handleLanguageChange = useCallback((lang: 'vi' | 'en') => {
+        setLanguage(lang);
+        localStorage.setItem('app-language', lang);
+    }, []);
+    
+    const addImagesToGallery = useCallback(async (newImages: string[]) => {
+        const uniqueNewImages = newImages.filter(img => img && !imageGallery.includes(img));
+        if (uniqueNewImages.length === 0) {
+            return;
+        }
+        await db.addMultipleGalleryImages(uniqueNewImages);
+        setImageGallery(prev => [...uniqueNewImages, ...prev]);
+    }, [imageGallery]);
+
+    const removeImageFromGallery = useCallback(async (indexToRemove: number) => {
+        const urlToDelete = imageGallery[indexToRemove];
+        if (urlToDelete) {
+            await db.deleteGalleryImage(urlToDelete);
+            setImageGallery(prev => prev.filter((_, index) => index !== indexToRemove));
+        }
+    }, [imageGallery]);
+
+    const replaceImageInGallery = useCallback(async (indexToReplace: number, newImageUrl: string) => {
+        const oldUrl = imageGallery[indexToReplace];
+        if (oldUrl) {
+            await db.replaceGalleryImage(oldUrl, newImageUrl);
+            setImageGallery(prev => {
+                const newImages = [...prev];
                 newImages[indexToReplace] = newImageUrl;
-            }
-            return newImages;
-        });
-    }, []);
+                return newImages;
+            });
+        }
+    }, [imageGallery]);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -400,8 +406,6 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 const response = await fetch('/setting.json');
                  if (!response.ok) {
                     console.warn('Could not load setting.json, using built-in settings.');
-                    // In a real-world scenario, you might have default settings hardcoded here.
-                    // For now, we'll just log the issue.
                     return;
                 }
                 const data = await response.json();
@@ -414,7 +418,10 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }, []);
 
     useEffect(() => {
-        document.body.classList.remove('theme-sdvn', 'theme-vietnam', 'theme-dark', 'theme-ocean-blue', 'theme-blue-sky', 'theme-black-night', 'theme-clear-sky', 'theme-skyline', 'theme-blulagoo', 'theme-life', 'theme-emerald-water');
+        // Dynamically remove all possible theme classes to prevent conflicts
+        THEMES.forEach(t => document.body.classList.remove(`theme-${t}`));
+        
+        // Add the current theme class
         document.body.classList.add(`theme-${theme}`);
         localStorage.setItem('app-theme', theme);
     }, [theme]);
@@ -422,6 +429,33 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const handleThemeChange = (newTheme: Theme) => {
         setTheme(newTheme);
     };
+
+    const restoreStateFromGallery = useCallback((stateToRestore: any, gallery: string[]): AnyAppState => {
+        const restoredState = JSON.parse(JSON.stringify(stateToRestore));
+    
+        const restoreRefs = (obj: any) => {
+            if (typeof obj !== 'object' || obj === null) return;
+            
+            for (const key in obj) {
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    if (obj[key].type === 'galleryRef' && typeof obj[key].index === 'number') {
+                        const galleryIndex = obj[key].index;
+                        if (gallery[galleryIndex]) {
+                            obj[key] = gallery[galleryIndex];
+                        } else {
+                            console.warn(`Gallery reference with index ${galleryIndex} not found.`);
+                            obj[key] = null;
+                        }
+                    } else {
+                        restoreRefs(obj[key]);
+                    }
+                }
+            }
+        };
+    
+        restoreRefs(restoredState);
+        return restoredState;
+    }, []);
 
     const navigateTo = useCallback((viewId: string) => {
         const current = viewHistory[historyIndex];
@@ -459,16 +493,14 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
         const { viewId, state: importedState } = settings;
         
-        // This relies on getInitialStateForApp to know all valid viewIds
         const initialState = getInitialStateForApp(viewId);
-        if (initialState.stage === 'home') { // a simple check if the viewId is valid
+        if (initialState.stage === 'home') {
             alert(`Unknown app in settings file: ${viewId}`);
             return;
         }
     
-        // Merge states to ensure we have all required properties.
-        // Imported state overrides defaults.
-        const mergedState = { ...initialState, ...importedState };
+        const restoredState = restoreStateFromGallery(importedState, imageGallery);
+        const mergedState = { ...initialState, ...restoredState };
     
         const newHistory = viewHistory.slice(0, historyIndex + 1);
         newHistory.push({ viewId, state: mergedState } as ViewState);
@@ -476,7 +508,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setViewHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
     
-    }, [viewHistory, historyIndex]);
+    }, [viewHistory, historyIndex, imageGallery, restoreStateFromGallery]);
 
     const handleSelectApp = useCallback((appId: string) => {
         if (settings) {
@@ -556,7 +588,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         currentView,
         settings,
         theme,
-        sessionGalleryImages,
+        imageGallery,
         historyIndex,
         viewHistory,
         isSearchOpen,

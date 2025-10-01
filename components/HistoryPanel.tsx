@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls } from './uiUtils';
 import { type GenerationHistoryEntry } from './uiTypes';
@@ -12,16 +12,14 @@ import { downloadJson } from './uiFileUtilities';
 interface HistoryItemProps {
     entry: GenerationHistoryEntry;
     onReload: (settings: GenerationHistoryEntry['settings']) => void;
+    onDownload: (entry: GenerationHistoryEntry) => void;
 }
 
-const HistoryItem: React.FC<HistoryItemProps> = ({ entry, onReload }) => {
+const HistoryItem: React.FC<HistoryItemProps> = ({ entry, onReload, onDownload }) => {
     const { t } = useAppControls();
 
     const handleDownload = () => {
-        downloadJson(
-            entry.settings,
-            `aPix-history-${entry.appId}-${entry.timestamp}.json`
-        );
+        onDownload(entry);
     };
 
     const handleReload = () => {
@@ -66,6 +64,14 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) => {
         importSettingsAndNavigate(settings);
         onClose();
     };
+
+    const handleDownload = useCallback((entry: GenerationHistoryEntry) => {
+        // Since history now directly embeds image data, no rehydration is needed.
+        downloadJson(
+            entry.settings,
+            `aPix-history-${entry.appId}-${entry.timestamp}.json`
+        );
+    }, []);
     
     return (
         <AnimatePresence>
@@ -97,7 +103,12 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose }) => {
                         <ul className="flex-grow overflow-y-auto p-4 space-y-3">
                            <AnimatePresence>
                                 {generationHistory.map(entry => (
-                                    <HistoryItem key={entry.id} entry={entry} onReload={handleReload} />
+                                    <HistoryItem 
+                                        key={entry.id} 
+                                        entry={entry} 
+                                        onReload={handleReload}
+                                        onDownload={handleDownload}
+                                    />
                                 ))}
                             </AnimatePresence>
                         </ul>

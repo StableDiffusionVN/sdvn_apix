@@ -4,7 +4,7 @@
 */
 import React, { useEffect, ChangeEvent, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { analyzeImagePairForPrompt, analyzeImagePairForPromptDetailed, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
+import { analyzeImagePairForPrompt, analyzeImagePairForPromptDeep, analyzeImagePairForPromptExpert, editImageWithPrompt, interpolatePrompts, adaptPromptToContext } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -125,14 +125,23 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
         });
     };
 
-    const handleAnalyzeClick = async (mode: 'general' | 'detailed') => {
+    const handleAnalyzeClick = async (mode: 'general' | 'deep' | 'expert') => {
         if (!appState.inputImage || !appState.outputImage) return;
 
         onStateChange({ ...appStateRef.current, stage: 'prompting', error: null, analysisMode: mode });
         try {
-            const result = mode === 'detailed'
-                ? await analyzeImagePairForPromptDetailed(appState.inputImage, appState.outputImage)
-                : await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
+            let result;
+            switch (mode) {
+                case 'expert':
+                    result = await analyzeImagePairForPromptExpert(appState.inputImage, appState.outputImage);
+                    break;
+                case 'deep':
+                    result = await analyzeImagePairForPromptDeep(appState.inputImage, appState.outputImage);
+                    break;
+                default:
+                    result = await analyzeImagePairForPrompt(appState.inputImage, appState.outputImage);
+                    break;
+            }
             onStateChange({ ...appStateRef.current, stage: 'configuring', generatedPrompt: result.mainPrompt, promptSuggestions: result.suggestions || '' });
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -141,21 +150,28 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     };
 
     const handleGenerate = async () => {
-        if (!appState.referenceImage || !appState.generatedPrompt) return;
+        const referenceImageToUse = appState.referenceImage || appState.inputImage;
+        if (!referenceImageToUse || !appState.generatedPrompt) return;
 
         const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null, finalPrompt: null });
 
-        let intermediatePrompt = appState.generatedPrompt;
+        const skipAdaptation = !appState.referenceImage && !appState.additionalNotes.trim();
+        let finalPromptText = '';
+        
         try {
-            if (appState.additionalNotes.trim()) {
-                intermediatePrompt = await interpolatePrompts(appState.generatedPrompt, appState.additionalNotes);
+            if (skipAdaptation) {
+                finalPromptText = appState.generatedPrompt;
+            } else {
+                let intermediatePrompt = appState.generatedPrompt;
+                if (appState.additionalNotes.trim()) {
+                    intermediatePrompt = await interpolatePrompts(appState.generatedPrompt, appState.additionalNotes);
+                }
+                finalPromptText = await adaptPromptToContext(referenceImageToUse, intermediatePrompt);
             }
             
-            const finalPromptText = await adaptPromptToContext(appState.referenceImage, intermediatePrompt);
-            
             const resultUrl = await editImageWithPrompt(
-                appState.referenceImage,
+                referenceImageToUse,
                 finalPromptText,
                 appState.options.aspectRatio,
                 appState.options.removeWatermark
@@ -185,7 +201,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 ...appState, 
                 stage: 'results', 
                 error: errorMessage,
-                finalPrompt: intermediatePrompt,
+                finalPrompt: finalPromptText,
             });
         }
     };
@@ -251,8 +267,14 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
     const isLoading = appState.stage === 'prompting' || appState.stage === 'generating';
     const getAnalyzingText = () => {
         if (appState.stage !== 'prompting') return '';
-        return appState.analysisMode === 'detailed' ? t('imageInterpolation_analyzingDetailed') : t('imageInterpolation_analyzingGeneral');
+        switch (appState.analysisMode) {
+            case 'expert': return t('imageInterpolation_analyzingExpert');
+            case 'deep': return t('imageInterpolation_analyzingDeep');
+            default: return t('imageInterpolation_analyzingGeneral');
+        }
     };
+
+    const referenceImageToShow = appState.referenceImage || appState.inputImage;
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -266,28 +288,39 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                 <motion.div className="flex flex-col items-center gap-6 w-full max-w-screen-2xl py-6 overflow-y-auto" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <div className="w-full overflow-x-auto pb-4">
                         <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-6 md:gap-8 w-full md:w-max mx-auto px-4">
-                            <ActionablePolaroidCard
-                                type={appState.inputImage ? 'content-input' : 'uploader'}
-                                caption={uploaderCaptionInput}
-                                status="done"
-                                mediaUrl={appState.inputImage || undefined}
-                                placeholderType="magic"
-                                onImageChange={handleInputImageChange}
-                            />
-                             <ActionablePolaroidCard
-                                type={appState.outputImage ? 'content-input' : 'uploader'}
-                                caption={uploaderCaptionOutput}
-                                status="done"
-                                mediaUrl={appState.outputImage || undefined}
-                                placeholderType="magic"
-                                onImageChange={handleOutputImageChange}
-                            />
+                            <div className="flex flex-col items-center gap-4">
+                                <ActionablePolaroidCard
+                                    type={appState.inputImage ? 'content-input' : 'uploader'}
+                                    caption={uploaderCaptionInput}
+                                    status="done"
+                                    mediaUrl={appState.inputImage || undefined}
+                                    placeholderType="magic"
+                                    onImageChange={handleInputImageChange}
+                                />
+                                <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">
+                                    {uploaderDescriptionInput}
+                                </p>
+                            </div>
+                            <div className="flex flex-col items-center gap-4">
+                                 <ActionablePolaroidCard
+                                    type={appState.outputImage ? 'content-input' : 'uploader'}
+                                    caption={uploaderCaptionOutput}
+                                    status="done"
+                                    mediaUrl={appState.outputImage || undefined}
+                                    placeholderType="magic"
+                                    onImageChange={handleOutputImageChange}
+                                />
+                                <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">
+                                    {uploaderDescriptionOutput}
+                                </p>
+                            </div>
                             <AnimatePresence>
                                 {(appState.stage === 'configuring' || appState.stage === 'prompting') && (
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.8 }}
                                         animate={{ opacity: 1, scale: 1 }}
                                         exit={{ opacity: 0, scale: 0.8 }}
+                                        className="flex flex-col items-center gap-4"
                                     >
                                         <ActionablePolaroidCard
                                             type={appState.referenceImage ? 'content-input' : 'uploader'}
@@ -297,6 +330,9 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                             placeholderType="magic"
                                             onImageChange={handleReferenceImageChange}
                                         />
+                                        <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">
+                                            {uploaderDescriptionReference}
+                                        </p>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -308,8 +344,11 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                              <button onClick={() => handleAnalyzeClick('general')} className="btn btn-secondary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
                                 {appState.stage === 'prompting' && appState.analysisMode === 'general' ? getAnalyzingText() : t('imageInterpolation_analyzeGeneral')}
                             </button>
-                            <button onClick={() => handleAnalyzeClick('detailed')} className="btn btn-primary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
-                                {appState.stage === 'prompting' && appState.analysisMode === 'detailed' ? getAnalyzingText() : t('imageInterpolation_analyzeDetailed')}
+                            <button onClick={() => handleAnalyzeClick('deep')} className="btn btn-secondary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
+                                {appState.stage === 'prompting' && appState.analysisMode === 'deep' ? getAnalyzingText() : t('imageInterpolation_analyzeDeep')}
+                            </button>
+                             <button onClick={() => handleAnalyzeClick('expert')} className="btn btn-secondary" disabled={!appState.inputImage || !appState.outputImage || appState.stage === 'prompting'}>
+                                {appState.stage === 'prompting' && appState.analysisMode === 'expert' ? getAnalyzingText() : t('imageInterpolation_analyzeExpert')}
                             </button>
                         </div>
                         {appState.error && <p className="text-yellow-300 text-sm mt-2 max-w-md text-center">{appState.error}</p>}
@@ -348,7 +387,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                 {appState.promptSuggestions && (
                                                     <div>
                                                         <h4 className="base-font font-bold text-lg text-neutral-200 mb-2">{t('imageInterpolation_suggestionsTitle')}</h4>
-                                                        <div className="flex flex-wrap gap-2">
+                                                        <div className="flex flex-col items-start gap-2">
                                                             {appState.promptSuggestions.split('\n').map((suggestion, index) => {
                                                                 const cleanSuggestion = suggestion.replace(/^- /, '').trim();
                                                                 if (!cleanSuggestion) return null;
@@ -356,7 +395,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                                                     <button 
                                                                         key={index}
                                                                         onClick={() => onStateChange({ ...appState, additionalNotes: `${appState.additionalNotes.trim()} ${cleanSuggestion}`.trim() })}
-                                                                        className="bg-yellow-400/10 text-yellow-300 text-sm px-3 py-1 rounded-full border border-yellow-400/20 hover:bg-yellow-400/20 transition-colors"
+                                                                        className="bg-neutral-700/60 text-neutral-300 text-sm px-3 py-1.5 rounded-md hover:bg-neutral-700 transition-colors text-left w-full"
                                                                         title={t('imageInterpolation_addSuggestionTooltip')}
                                                                     >
                                                                         {cleanSuggestion}
@@ -401,7 +440,7 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
                                         </div>
                                         <div className="flex items-center justify-end gap-4 pt-4">
                                             <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
-                                            <button onClick={handleGenerate} className="btn btn-primary" disabled={!appState.referenceImage || !appState.generatedPrompt || isLoading}>{isLoading ? t('common_creating') : t('imageInterpolation_createButton')}</button>
+                                            <button onClick={handleGenerate} className="btn btn-primary" disabled={!appState.generatedPrompt || isLoading}>{isLoading ? t('common_creating') : t('imageInterpolation_createButton')}</button>
                                         </div>
                                     </div>
                                 </OptionsPanel>
@@ -414,14 +453,14 @@ const ImageInterpolation: React.FC<ImageInterpolationProps> = (props) => {
             {(appState.stage === 'generating' || appState.stage === 'results') && (
                 <ResultsView
                     stage={appState.stage}
-                    originalImage={appState.referenceImage}
-                    onOriginalClick={() => openLightbox(lightboxImages.indexOf(appState.referenceImage!))}
+                    originalImage={referenceImageToShow}
+                    onOriginalClick={referenceImageToShow ? () => openLightbox(lightboxImages.indexOf(referenceImageToShow!)) : undefined}
                     error={appState.error}
                     actions={(
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-secondary">{t('common_downloadAll')}</button>)}
                             <button onClick={() => onStateChange({...appState, stage: 'configuring'})} className="btn btn-secondary">{t('common_edit')}</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
+                            <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                         </>
                     )}
                 >

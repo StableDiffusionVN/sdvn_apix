@@ -25,7 +25,8 @@ import {
     BeforeAfterModal,
     LayerComposerModal,
     useAuth,
-    AppConfig,
+    createThumbnailDataUrl,
+    type AppConfig,
     type GenerationHistoryEntry,
 } from './components/uiUtils';
 import { LoadingSpinnerIcon } from './components/icons';
@@ -50,11 +51,26 @@ const AppLoadingFallback = () => (
     </div>
 );
 
+const AppComponents: Record<string, any> = {
+    'architecture-ideator': { Component: ArchitectureIdeator, settingsKey: 'architectureIdeator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'avatar-creator': { Component: AvatarCreator, settingsKey: 'avatarCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'baby-photo-creator': { Component: BabyPhotoCreator, settingsKey: 'babyPhotoCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'dress-the-model': { Component: DressTheModel, settingsKey: 'dressTheModel', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionModel: t(s.uploaderCaptionModelKey), uploaderDescriptionModel: t(s.uploaderDescriptionModelKey), uploaderCaptionClothing: t(s.uploaderCaptionClothingKey), uploaderDescriptionClothing: t(s.uploaderDescriptionClothingKey) }) },
+    'photo-restoration': { Component: PhotoRestoration, settingsKey: 'photoRestoration', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'image-to-real': { Component: ImageToReal, settingsKey: 'imageToReal', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'swap-style': { Component: SwapStyle, settingsKey: 'swapStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'mix-style': { Component: MixStyle, settingsKey: 'mixStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionContent: t(s.uploaderCaptionContentKey), uploaderDescriptionContent: t(s.uploaderDescriptionContentKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'free-generation': { Component: FreeGeneration, settingsKey: 'freeGeneration', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption1: t(s.uploaderCaption1Key), uploaderDescription1: t(s.uploaderDescription1Key), uploaderCaption2: t(s.uploaderCaption2Key), uploaderDescription2: t(s.uploaderDescription2Key) }) },
+    'toy-model-creator': { Component: ToyModelCreator, settingsKey: 'toyModelCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'image-interpolation': { Component: ImageInterpolation, settingsKey: 'imageInterpolation', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionInput: t(s.uploaderCaptionInputKey), uploaderDescriptionInput: t(s.uploaderDescriptionInputKey), uploaderCaptionOutput: t(s.uploaderCaptionOutputKey), uploaderDescriptionOutput: t(s.uploaderDescriptionOutputKey), uploaderCaptionReference: t(s.uploaderCaptionReferenceKey), uploaderDescriptionReference: t(s.uploaderDescriptionReferenceKey) }) },
+};
+
+
 function App() {
     const {
         currentView,
         settings,
-        sessionGalleryImages,
+        imageGallery,
         isSearchOpen,
         isGalleryOpen,
         isInfoOpen,
@@ -105,51 +121,54 @@ function App() {
         };
     }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerVisible, imageToEdit]);
 
-    const getExportableState = useCallback((appState: any, viewId: string) => {
+    const getExportableState = useCallback((appState: any, appId: string): any => {
         const exportableState = JSON.parse(JSON.stringify(appState));
+        
         const keysToRemove = [
             'generatedImage', 'generatedImages', 'historicalImages', 
             'finalPrompt', 'error',
         ];
 
-        if (viewId !== 'image-interpolation') {
+        if (appId !== 'image-interpolation') {
             keysToRemove.push('generatedPrompt', 'promptSuggestions');
         }
 
-        const removeKeys = (obj: any) => {
+        const processState = (obj: any) => {
             if (typeof obj !== 'object' || obj === null) return;
+
             for (const key of keysToRemove) {
                 if (key in obj) delete obj[key];
             }
-            if ('stage' in obj && (obj.stage === 'generating' || obj.stage === 'results' || obj.stage === 'prompting')) {
-                 if (viewId === 'free-generation') obj.stage = 'configuring';
-                 else if ( ('uploadedImage' in obj && obj.uploadedImage) || ('modelImage' in obj && obj.modelImage) || ('contentImage' in obj && obj.contentImage) || ('inputImage' in obj && obj.inputImage) ) {
-                      obj.stage = 'configuring';
-                 } else {
-                     obj.stage = 'idle';
-                 }
-            }
+
             for (const key in obj) {
-                if (typeof obj[key] === 'object') removeKeys(obj[key]);
+                if (typeof obj[key] === 'object') {
+                    processState(obj[key]);
+                }
+            }
+
+            if ('stage' in obj && (obj.stage === 'generating' || obj.stage === 'results' || obj.stage === 'prompting')) {
+                obj.stage = 'configuring';
             }
         };
 
-        removeKeys(exportableState);
+        processState(exportableState);
         return exportableState;
     }, []);
 
-    const logGeneration = useCallback((appId: string, preGenState: any, thumbnailUrl: string) => {
+    const logGeneration = useCallback(async (appId: string, preGenState: any, thumbnailUrl: string) => {
         if (!settings) return;
 
         const appConfig = settings.apps.find((app: AppConfig) => app.id === appId);
         const appName = appConfig ? t(appConfig.titleKey) : appId;
 
         const cleanedState = getExportableState(preGenState, appId);
+        
+        const smallThumbnailUrl = await createThumbnailDataUrl(thumbnailUrl, 128, 128);
 
         const entry: Omit<GenerationHistoryEntry, 'id' | 'timestamp'> = {
             appId,
             appName: appName.replace(/\n/g, ' '),
-            thumbnailUrl,
+            thumbnailUrl: smallThumbnailUrl,
             settings: {
                 viewId: appId,
                 state: cleanedState,
@@ -161,13 +180,6 @@ function App() {
     const renderContent = () => {
         if (!settings) return null; // Wait for settings to load
 
-        const motionProps = {
-            className: "w-full h-full flex-1 min-h-0",
-            initial: { opacity: 0, y: 20 },
-            animate: { opacity: 1, y: 0 },
-            exit: { opacity: 0, y: -20 },
-            transition: { duration: 0.4 },
-        };
         const commonProps = { 
             addImagesToGallery,
             onStateChange: handleStateChange,
@@ -175,215 +187,51 @@ function App() {
             onGoBack: handleGoBack,
             logGeneration,
         };
+        
+        const motionProps = {
+            className: "w-full h-full flex-1 min-h-0",
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: -20 },
+            transition: { duration: 0.4 },
+        };
 
-        switch (currentView.viewId) {
-            case 'home':
-                return (
-                    <Home 
-                        key="home"
-                        onSelectApp={handleSelectApp} 
-                        title={renderSmartlyWrappedTitle(t(settings.home.mainTitleKey), settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
-                        subtitle={t(settings.home.subtitleKey)}
-                        apps={settings.apps.map((app: AppConfig) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)}))}
-                    />
-                );
-            case 'free-generation':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="free-generation" {...motionProps}>
-                            <FreeGeneration 
-                                {...settings.freeGeneration}
-                                mainTitle={t(settings.freeGeneration.mainTitleKey)}
-                                subtitle={t(settings.freeGeneration.subtitleKey)}
-                                uploaderCaption1={t(settings.freeGeneration.uploaderCaption1Key)}
-                                uploaderDescription1={t(settings.freeGeneration.uploaderDescription1Key)}
-                                uploaderCaption2={t(settings.freeGeneration.uploaderCaption2Key)}
-                                uploaderDescription2={t(settings.freeGeneration.uploaderDescription2Key)}
-                                {...commonProps} 
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'architecture-ideator':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="architecture-ideator" {...motionProps}>
-                            <ArchitectureIdeator 
-                                {...settings.architectureIdeator} 
-                                mainTitle={t(settings.architectureIdeator.mainTitleKey)}
-                                subtitle={t(settings.architectureIdeator.subtitleKey)}
-                                uploaderCaption={t(settings.architectureIdeator.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.architectureIdeator.uploaderDescriptionKey)}
-                                {...commonProps} 
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'dress-the-model':
-                return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="dress-the-model" {...motionProps}>
-                            <DressTheModel 
-                                {...settings.dressTheModel}
-                                mainTitle={t(settings.dressTheModel.mainTitleKey)}
-                                subtitle={t(settings.dressTheModel.subtitleKey)}
-                                uploaderCaptionModel={t(settings.dressTheModel.uploaderCaptionModelKey)}
-                                uploaderDescriptionModel={t(settings.dressTheModel.uploaderDescriptionModelKey)}
-                                uploaderCaptionClothing={t(settings.dressTheModel.uploaderCaptionClothingKey)}
-                                uploaderDescriptionClothing={t(settings.dressTheModel.uploaderDescriptionClothingKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'photo-restoration':
-                return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="photo-restoration" {...motionProps}>
-                            <PhotoRestoration 
-                                {...settings.photoRestoration} 
-                                mainTitle={t(settings.photoRestoration.mainTitleKey)}
-                                subtitle={t(settings.photoRestoration.subtitleKey)}
-                                uploaderCaption={t(settings.photoRestoration.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.photoRestoration.uploaderDescriptionKey)}
-                                {...commonProps} 
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'image-to-real':
-                return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="image-to-real" {...motionProps}>
-                            <ImageToReal 
-                                {...settings.imageToReal} 
-                                mainTitle={t(settings.imageToReal.mainTitleKey)}
-                                subtitle={t(settings.imageToReal.subtitleKey)}
-                                uploaderCaption={t(settings.imageToReal.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.imageToReal.uploaderDescriptionKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'swap-style':
-                return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="swap-style" {...motionProps}>
-                            <SwapStyle 
-                                {...settings.swapStyle} 
-                                mainTitle={t(settings.swapStyle.mainTitleKey)}
-                                subtitle={t(settings.swapStyle.subtitleKey)}
-                                uploaderCaption={t(settings.swapStyle.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.swapStyle.uploaderDescriptionKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'mix-style':
-                return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="mix-style" {...motionProps}>
-                            <MixStyle 
-                                {...settings.mixStyle} 
-                                mainTitle={t(settings.mixStyle.mainTitleKey)}
-                                subtitle={t(settings.mixStyle.subtitleKey)}
-                                uploaderCaptionContent={t(settings.mixStyle.uploaderCaptionContentKey)}
-                                uploaderDescriptionContent={t(settings.mixStyle.uploaderDescriptionContentKey)}
-                                uploaderCaptionStyle={t(settings.mixStyle.uploaderCaptionStyleKey)}
-                                uploaderDescriptionStyle={t(settings.mixStyle.uploaderDescriptionStyleKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'toy-model-creator':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="toy-model-creator" {...motionProps}>
-                            <ToyModelCreator 
-                                {...settings.toyModelCreator}
-                                mainTitle={t(settings.toyModelCreator.mainTitleKey)}
-                                subtitle={t(settings.toyModelCreator.subtitleKey)}
-                                uploaderCaption={t(settings.toyModelCreator.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.toyModelCreator.uploaderDescriptionKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                );
-            case 'avatar-creator':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="avatar-creator" {...motionProps}>
-                            <AvatarCreator 
-                                {...settings.avatarCreator}
-                                mainTitle={t(settings.avatarCreator.mainTitleKey)}
-                                subtitle={t(settings.avatarCreator.subtitleKey)}
-                                uploaderCaption={t(settings.avatarCreator.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.avatarCreator.uploaderDescriptionKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                 );
-             case 'baby-photo-creator':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="baby-photo-creator" {...motionProps}>
-                            <BabyPhotoCreator 
-                                {...settings.babyPhotoCreator}
-                                mainTitle={t(settings.babyPhotoCreator.mainTitleKey)}
-                                subtitle={t(settings.babyPhotoCreator.subtitleKey)}
-                                uploaderCaption={t(settings.babyPhotoCreator.uploaderCaptionKey)}
-                                uploaderDescription={t(settings.babyPhotoCreator.uploaderDescriptionKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                 );
-            case 'image-interpolation':
-                 return (
-                    <Suspense fallback={<AppLoadingFallback />}>
-                        <motion.div key="image-interpolation" {...motionProps}>
-                            <ImageInterpolation 
-                                {...settings.imageInterpolation}
-                                mainTitle={t(settings.imageInterpolation.mainTitleKey)}
-                                subtitle={t(settings.imageInterpolation.subtitleKey)}
-                                uploaderCaptionInput={t(settings.imageInterpolation.uploaderCaptionInputKey)}
-                                uploaderDescriptionInput={t(settings.imageInterpolation.uploaderDescriptionInputKey)}
-                                uploaderCaptionOutput={t(settings.imageInterpolation.uploaderCaptionOutputKey)}
-                                uploaderDescriptionOutput={t(settings.imageInterpolation.uploaderDescriptionOutputKey)}
-                                uploaderCaptionReference={t(settings.imageInterpolation.uploaderCaptionReferenceKey)}
-                                uploaderDescriptionReference={t(settings.imageInterpolation.uploaderDescriptionReferenceKey)}
-                                {...commonProps}
-                                appState={currentView.state} 
-                            />
-                        </motion.div>
-                    </Suspense>
-                 );
-            default: // Fallback for any invalid view id in history
-                 return (
-                    <Home 
-                        key="home-fallback"
-                        onSelectApp={handleSelectApp} 
-                        title={renderSmartlyWrappedTitle(t(settings.home.mainTitleKey), settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
-                        subtitle={t(settings.home.subtitleKey)}
-                        apps={settings.apps.map((app: AppConfig) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)}))}
-                    />
-                 );
+        const homeComponent = (
+            <Home 
+                key={`home-${currentView.viewId}`}
+                onSelectApp={handleSelectApp} 
+                title={renderSmartlyWrappedTitle(t(settings.home.mainTitleKey), settings.home.useSmartTitleWrapping, settings.home.smartTitleWrapWords)}
+                subtitle={t(settings.home.subtitleKey)}
+                apps={settings.apps.map((app: AppConfig) => ({...app, title: t(app.titleKey), description: t(app.descriptionKey)}))}
+            />
+        );
+
+        if (currentView.viewId === 'home') {
+            return homeComponent;
         }
+
+        const appInfo = AppComponents[currentView.viewId];
+
+        if (!appInfo) {
+            return homeComponent;
+        }
+
+        const { Component, settingsKey, props } = appInfo;
+        const appSettings = settings[settingsKey];
+        const translatedProps = props(appSettings, t);
+        
+        return (
+            <Suspense fallback={<AppLoadingFallback />}>
+                <motion.div key={currentView.viewId} {...motionProps}>
+                    <Component
+                        {...appSettings}
+                        {...translatedProps}
+                        {...commonProps}
+                        appState={currentView.state}
+                    />
+                </motion.div>
+            </Suspense>
+        );
     };
 
     if (isLoading) {
@@ -451,7 +299,7 @@ function App() {
             <GalleryModal
                 isOpen={isGalleryOpen}
                 onClose={handleCloseGallery}
-                images={sessionGalleryImages}
+                images={imageGallery}
             />
              <InfoModal
                 isOpen={isInfoOpen}

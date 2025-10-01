@@ -2,9 +2,11 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+// FIX: Corrected typo in React import.
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generatePatrioticImage, editImageWithPrompt } from '../services/geminiService';
+import toast from 'react-hot-toast';
+import { generatePatrioticImage, editImageWithPrompt, analyzeAvatarForConcepts } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -22,6 +24,7 @@ import {
     embedJsonInPng,
     getInitialStateForApp,
 } from './uiUtils';
+import { MagicWandIcon } from './icons';
 
 interface AvatarCreatorProps {
     mainTitle: string;
@@ -55,6 +58,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     const { videoTasks, generateVideo } = useVideoGeneration();
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [localPrompt, setLocalPrompt] = useState(appState.options.additionalPrompt);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const hasLoggedGeneration = useRef(false);
 
     useEffect(() => {
@@ -115,29 +119,74 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         onStateChange({ ...appState, selectedIdeas: newSelectedIdeas });
     };
 
-    const handleGenerateClick = async () => {
-        if (!appState.uploadedImage || appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas) return;
-        
+    const executeGeneration = async (ideas: string[]) => {
+        if (!appState.uploadedImage) return;
+        if (ideas.length > maxIdeas && !ideas.includes(t('avatarCreator_randomConcept'))) {
+            toast.error(t('avatarCreator_selectedCount', ideas.length, maxIdeas));
+            return;
+        }
+
         hasLoggedGeneration.current = false;
-        const preGenState = { ...appState };
+        const preGenState = { ...appState, selectedIdeas: ideas };
+        
+        const randomConceptString = t('avatarCreator_randomConcept');
+        
+        let ideasToGenerate = [...ideas];
+        const randomCount = ideasToGenerate.filter(i => i === randomConceptString).length;
+
+        if (randomCount > 0) {
+            setIsAnalyzing(true);
+            try {
+                const allCategories = IDEAS_BY_CATEGORY.filter((c: any) => c.key !== 'random');
+                const suggestedCategories = await analyzeAvatarForConcepts(appState.uploadedImage, allCategories);
+                
+                let ideaPool: string[] = [];
+                if (suggestedCategories.length > 0) {
+                    ideaPool = allCategories
+                        .filter((c: any) => suggestedCategories.includes(c.category))
+                        .flatMap((c: any) => c.ideas);
+                }
+                
+                if (ideaPool.length === 0) {
+                    ideaPool = allCategories.flatMap((c: any) => c.ideas);
+                }
+                
+                const randomIdeas: string[] = [];
+                for (let i = 0; i < randomCount; i++) {
+                    if (ideaPool.length > 0) {
+                         const randomIndex = Math.floor(Math.random() * ideaPool.length);
+                         randomIdeas.push(ideaPool[randomIndex]);
+                         ideaPool.splice(randomIndex, 1);
+                    }
+                }
+                ideasToGenerate = ideasToGenerate.filter(i => i !== randomConceptString).concat(randomIdeas);
+                ideasToGenerate = [...new Set(ideasToGenerate)];
+            } catch (err) {
+                toast.error(t('avatarCreator_analysisError'));
+                setIsAnalyzing(false);
+                return;
+            } finally {
+                setIsAnalyzing(false);
+            }
+        }
+
         const stage : 'generating' = 'generating';
         onStateChange({ ...appState, stage: stage });
         
-        const ideasToGenerate = appState.selectedIdeas;
         const initialGeneratedImages = { ...appState.generatedImages };
         ideasToGenerate.forEach(idea => {
             initialGeneratedImages[idea] = { status: 'pending' };
         });
         
-        onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages });
+        onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate });
 
         const concurrencyLimit = 2;
         const ideasQueue = [...ideasToGenerate];
         
-        let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages };
+        let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
         const settingsToEmbed = {
             viewId: 'avatar-creator',
-            state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
+            state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
         };
 
         const processIdea = async (idea: string) => {
@@ -189,12 +238,28 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         onStateChange({ ...currentAppState, stage: 'results' });
     };
 
+    const handleGenerateClick = async () => {
+        const effectiveIdeas = appState.selectedIdeas.length > 0
+            ? appState.selectedIdeas
+            : [t('avatarCreator_randomConcept')];
+        await executeGeneration(effectiveIdeas);
+    };
+
+    const handleRandomGenerateClick = async () => {
+        await executeGeneration([t('avatarCreator_randomConcept')]);
+    };
+
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         const imageToEditState = appState.generatedImages[idea];
-        if (imageToEditState?.status !== 'done' || !imageToEditState.url) {
+        if (!imageToEditState) {
             return;
         }
 
+        // FIX: The type of `imageToEditState` could be `unknown` if there's a type mismatch. This guard ensures it's a valid object with the correct properties before access.
+        if (typeof imageToEditState !== 'object' || imageToEditState === null || !('status' in imageToEditState) || imageToEditState.status !== 'done' || !('url' in imageToEditState) || !imageToEditState.url) {
+            return;
+        }
+        
         const imageUrlToEdit = imageToEditState.url;
         const preGenState = { ...appState };
         
@@ -235,7 +300,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
     
     const handleChooseOtherIdeas = () => {
-        onStateChange({ ...appState, stage: 'configuring' });
+        onStateChange({ ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [] });
     };
 
     const handleDownloadAll = () => {
@@ -252,19 +317,18 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'vietnamtrongtoi-results.zip',
-            baseOutputFilename: 'vietnamtrongtoi',
+            zipFilename: 'avatar-yeu-nuoc.zip',
+            baseOutputFilename: 'avatar-yeu-nuoc',
         });
     };
 
+    const isLoading = appState.stage === 'generating' || isAnalyzing;
     const getButtonText = () => {
-        if (appState.stage === 'generating') return t('common_creating');
-        if (appState.selectedIdeas.length < minIdeas) return t('avatarCreator_selectAtLeast', minIdeas);
+        if (isAnalyzing) return t('avatarCreator_analyzing');
+        if (isLoading) return t('common_creating');
         return t('avatarCreator_createButton');
     };
-    
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
-    const isLoading = appState.stage === 'generating';
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -302,10 +366,27 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     <div className="w-full max-w-4xl text-center mt-4">
                         <h2 className="base-font font-bold text-2xl text-neutral-200">{t('avatarCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
                         <p className="text-neutral-400 mb-4">{t('avatarCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                        <div className="mb-4">
+                            <button
+                                onClick={handleRandomGenerateClick}
+                                className="btn btn-primary btn-sm"
+                                disabled={isLoading || isAnalyzing}
+                            >
+                                {t('avatarCreator_randomButton')}
+                            </button>
+                        </div>
                         <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
                             {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.map((categoryObj: any) => (
                                 <div key={categoryObj.category}>
-                                    <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10">{categoryObj.category}</h3>
+                                    <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10 flex items-center gap-2">
+                                        {categoryObj.category}
+                                        {categoryObj.key === 'random' && (
+                                            <span className="text-xs font-normal bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <MagicWandIcon className="h-3 w-3" />
+                                                {t('avatarCreator_autoAnalysis')}
+                                            </span>
+                                        )}
+                                    </h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                         {categoryObj.ideas.map((p: string) => {
                                             const isSelected = appState.selectedIdeas.includes(p);
@@ -332,9 +413,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
-                            <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                            <label htmlFor="aspect-ratio-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                             <select
-                                id="aspect-ratio"
+                                id="aspect-ratio-avatar"
                                 value={appState.options.aspectRatio}
                                 onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
                                 className="form-input"
@@ -343,9 +424,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="additional-prompt" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
+                            <label htmlFor="additional-prompt-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
-                                id="additional-prompt"
+                                id="additional-prompt-avatar"
                                 value={localPrompt}
                                 onChange={(e) => setLocalPrompt(e.target.value)}
                                 onBlur={() => {
@@ -381,7 +462,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         <button 
                             onClick={handleGenerateClick} 
                             className="btn btn-primary"
-                            disabled={appState.selectedIdeas.length < minIdeas || appState.selectedIdeas.length > maxIdeas || isLoading}
+                            disabled={(appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('avatarCreator_randomConcept')) || appState.selectedIdeas.length > maxIdeas || isLoading || isAnalyzing}
                         >
                             {getButtonText()}
                         </button>
@@ -398,13 +479,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     hasPartialError={hasPartialError}
                     actions={
                         <>
-                            <button onClick={handleDownloadAll} className="btn btn-primary">
+                            <button onClick={handleDownloadAll} className="btn btn-secondary">
                                 {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
                                 {t('avatarCreator_chooseOtherIdeas')}
                             </button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">
+                            <button onClick={onReset} className="btn btn-secondary">
                                 {t('common_startOver')}
                             </button>
                         </>

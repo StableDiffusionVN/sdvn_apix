@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-// FIX: Import the shared AI client instance.
 import ai from './client';
 import { 
     processApiError,
@@ -84,7 +83,6 @@ export async function generateArchitecturalImage(imageDataUrl: string, options: 
     }
 }
 
-// FIX: Add the missing refineArchitecturePrompt function.
 /**
  * Refines a user's prompt to be more descriptive for architectural image generation.
  * @param userPrompt The user's original prompt.

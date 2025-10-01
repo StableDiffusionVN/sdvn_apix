@@ -29,7 +29,6 @@ async function analyzeStyle(styleImageDataUrl: string): Promise<string> {
     
     try {
         const response = await ai.models.generateContent({
-            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the prohibited 'gemini-pro-vision'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, {text: prompt}] },
         });
@@ -64,7 +63,7 @@ export async function mixImageStyle(contentImageDataUrl: string, styleImageDataU
         const strengthMapping: { [key: string]: string } = {
             'Rất yếu': 'Mức độ ảnh hưởng phong cách (Rất Yếu): Chỉ áp dụng nhẹ nhàng màu sắc và không khí chung, giữ lại gần như toàn bộ chi tiết gốc.',
             'Yếu': 'Mức độ ảnh hưởng phong cách (Yếu): Áp dụng màu sắc và kết cấu cơ bản, giữ lại các chi tiết chính.',
-            'Trung bình': 'Mức độ ảnh hưởng phong cách (Trung bình): Kết hợp hài hòa, vẽ lại các chi tiết bằng phong cách mới nhưng vẫn giữ hình dạng cốt lõi.',
+            'Trung bình': 'Mức độ ảnh hưởng phong cách (Trung bình): Kết hợp hài hòa, vẽ lại các chi tiết bằng phong cách mới nhưng vẫn giữ hình dạng cốt lõõi.',
             'Mạnh': 'Mức độ ảnh hưởng phong cách (Mạnh): Ưu tiên phong cách mới, biến đổi sâu sắc các chi tiết và kết cấu.',
             'Rất mạnh': 'Mức độ ảnh hưởng phong cách (Rất Mạnh): Áp dụng tối đa phong cách mới, vẽ lại toàn bộ cảnh như một tác phẩm mới.',
         };

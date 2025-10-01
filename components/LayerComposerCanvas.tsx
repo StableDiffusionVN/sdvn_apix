@@ -375,87 +375,70 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
 
         } else if (currentInteraction.type === 'resize' && currentInteraction.handle && currentInteraction.initialBoundingBox && currentInteraction.initialLayers) {
             const { initialLayers, handle, initialBoundingBox: bbox } = currentInteraction;
-            
             const dx = currentPointer.x - currentInteraction.initialPointer.x;
             const dy = currentPointer.y - currentInteraction.initialPointer.y;
-            
             const maintainAspectRatio = e.shiftKey;
+            const scaleFromCenter = e.altKey;
 
-            // 1. Calculate the new bounding box without snapping first
-            let newX = bbox.x;
-            let newY = bbox.y;
-            let newWidth = bbox.width;
-            let newHeight = bbox.height;
-            
-            if (handle.includes('l')) { newX += dx; newWidth -= dx; }
-            if (handle.includes('r')) { newWidth += dx; }
-            if (handle.includes('t')) { newY += dy; newHeight -= dy; }
-            if (handle.includes('b')) { newHeight += dy; }
-            
+            let newX = bbox.x, newY = bbox.y, newWidth = bbox.width, newHeight = bbox.height;
+
+            if (scaleFromCenter) {
+                if (handle.includes('l')) { newWidth = bbox.width - 2 * dx; }
+                if (handle.includes('r')) { newWidth = bbox.width + 2 * dx; }
+                if (handle.includes('t')) { newHeight = bbox.height - 2 * dy; }
+                if (handle.includes('b')) { newHeight = bbox.height + 2 * dy; }
+            } else {
+                if (handle.includes('l')) { newWidth = bbox.width - dx; }
+                if (handle.includes('r')) { newWidth = bbox.width + dx; }
+                if (handle.includes('t')) { newHeight = bbox.height - dy; }
+                if (handle.includes('b')) { newHeight = bbox.height + dy; }
+            }
+
             if (maintainAspectRatio && bbox.width > 0 && bbox.height > 0) {
                 const aspectRatio = bbox.width / bbox.height;
-                if (handle.length === 2) { // Corner handles
-                    const newAspectRatio = newWidth / newHeight;
-                    if (newAspectRatio > aspectRatio) {
-                        newHeight = newWidth / aspectRatio;
-                    } else {
-                        newWidth = newHeight * aspectRatio;
-                    }
-                } else if (handle === 't' || handle === 'b') {
-                    newWidth = newHeight * aspectRatio;
-                } else { // 'l' or 'r'
-                    newHeight = newWidth / aspectRatio;
-                }
-
-                if (handle.includes('l')) { newX = (bbox.x + bbox.width) - newWidth; }
-                if (handle.includes('t')) { newY = (bbox.y + bbox.height) - newHeight; }
+                const widthDrivenChange = handle.includes('l') || handle.includes('r');
+                const heightDrivenChange = handle.includes('t') || handle.includes('b');
+                if (widthDrivenChange && !heightDrivenChange) { newHeight = newWidth / aspectRatio; } 
+                else if (heightDrivenChange && !widthDrivenChange) { newWidth = newHeight * aspectRatio; } 
+                else { const newAspectRatio = newHeight > 0 ? newWidth / newHeight : 0; if (newAspectRatio > aspectRatio) { newHeight = newWidth / aspectRatio; } else { newWidth = newHeight * aspectRatio; } }
             }
-            
+
+            if (scaleFromCenter) {
+                const deltaW = newWidth - bbox.width;
+                const deltaH = newHeight - bbox.height;
+                newX = bbox.x - deltaW / 2;
+                newY = bbox.y - deltaH / 2;
+            } else {
+                if (handle.includes('l')) { newX = bbox.x + bbox.width - newWidth; }
+                if (handle.includes('t')) { newY = bbox.y + bbox.height - newHeight; }
+            }
+
             let newBboxForSnapping: Rect = { x: newX, y: newY, width: newWidth, height: newHeight };
-            
-            // 2. Find guides and snap offsets
             let finalGuides: Guide[] = [];
             if (canvasSettings.guides.enabled && !e.altKey) {
                 const otherLayers = layers.filter(l => !selectedLayerIds.includes(l.id) && l.isVisible);
-                let targets: Rect[] = otherLayers.map(l => ({ x: l.x, y: l.y, width: l.width, height: l.height }));
-                if (!isInfiniteCanvas) {
-                    targets.push(
-                        { x: 0, y: 0, width: canvasSettings.width, height: 0 }, // Top Edge
-                        { x: 0, y: canvasSettings.height / 2, width: canvasSettings.width, height: 0 }, // V Center
-                        { x: 0, y: canvasSettings.height, width: canvasSettings.width, height: 0 }, // Bottom Edge
-                        { x: 0, y: 0, width: 0, height: canvasSettings.height }, // Left Edge
-                        { x: canvasSettings.width / 2, y: 0, width: 0, height: canvasSettings.height }, // H Center
-                        { x: canvasSettings.width, y: 0, width: 0, height: canvasSettings.height }  // Right Edge
-                    );
-                }
+                const targets: Rect[] = otherLayers.map(l => ({ x: l.x, y: l.y, width: l.width, height: l.height }));
+                if (!isInfiniteCanvas) { targets.push( { x: 0, y: 0, width: canvasSettings.width, height: 0 }, { x: 0, y: canvasSettings.height / 2, width: canvasSettings.width, height: 0 }, { x: 0, y: canvasSettings.height, width: canvasSettings.width, height: 0 }, { x: 0, y: 0, width: 0, height: canvasSettings.height }, { x: canvasSettings.width / 2, y: 0, width: 0, height: canvasSettings.height }, { x: canvasSettings.width, y: 0, width: 0, height: canvasSettings.height } ); }
                 const { guides, snapOffset } = findGuides(newBboxForSnapping, targets);
                 finalGuides = guides;
-
-                // Adjust the new bounding box based on the snap offset
                 newBboxForSnapping.x += snapOffset.x;
                 newBboxForSnapping.y += snapOffset.y;
             }
             setActiveGuides(finalGuides);
-            
-            // 3. Calculate final scale factors from the (potentially snapped) new bounding box
-            const scaleX = (bbox.width > 0) ? newBboxForSnapping.width / bbox.width : 1;
-            const scaleY = (bbox.height > 0) ? newBboxForSnapping.height / bbox.height : 1;
 
-            // 4. Calculate updates for each layer based on the final scale factors
+            const scaleX = bbox.width > 0 ? newBboxForSnapping.width / bbox.width : 1;
+            const scaleY = bbox.height > 0 ? newBboxForSnapping.height / bbox.height : 1;
             const updates = initialLayers.map(layer => {
                 const relativeX = layer.x - bbox.x;
                 const relativeY = layer.y - bbox.y;
-                
                 const newLayerX = newBboxForSnapping.x + relativeX * scaleX;
                 const newLayerY = newBboxForSnapping.y + relativeY * scaleY;
                 let newLayerWidth = layer.width * scaleX;
                 let newLayerHeight = layer.height * scaleY;
-    
                 if (canvasSettings.grid.snap && !e.altKey && finalGuides.length === 0) {
                     newLayerWidth = snap(newLayerWidth, canvasSettings.grid.size);
                     newLayerHeight = snap(newLayerHeight, canvasSettings.grid.size);
                 }
-    
                 const newProps: Partial<Layer> = { x: newLayerX, y: newLayerY, width: newLayerWidth, height: newLayerHeight };
                 return { id: layer.id, props: newProps };
             });

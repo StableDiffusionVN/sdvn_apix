@@ -4,7 +4,7 @@
 */
 import React, { ChangeEvent, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateFreeImage, editImageWithPrompt, analyzePromptForImageGenerationParams } from '../services/geminiService';
+import { generateFreeImage, editImageWithPrompt, analyzePromptForImageGenerationParams, enhancePrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -21,7 +21,10 @@ import {
     embedJsonInPng,
     useAppControls,
     getInitialStateForApp,
+    Switch,
 } from './uiUtils';
+import toast from 'react-hot-toast';
+import { MagicWandIcon } from './icons';
 
 interface FreeGenerationProps {
     mainTitle: string;
@@ -58,6 +61,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [localPrompt, setLocalPrompt] = useState(appState.options.prompt);
+    const [isEnhancing, setIsEnhancing] = useState(false);
+    const [shouldEnhancePrompt, setShouldEnhancePrompt] = useState(false);
 
     useEffect(() => {
         setLocalPrompt(appState.options.prompt);
@@ -121,28 +126,42 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     };
 
     const handleGenerate = async () => {
-        if (!appState.options.prompt) {
+        if (!appState.options.prompt.trim()) {
             onStateChange({ ...appState, error: "Vui lòng nhập prompt để tạo ảnh." });
             return;
         }
         
-        const preGenState = { ...appState };
-        onStateChange({ ...appState, stage: 'generating', error: null, generatedImages: [] });
+        let finalPrompt = appState.options.prompt;
+        if (shouldEnhancePrompt && !appState.image1) {
+            setIsEnhancing(true);
+            addImagesToGallery([]); // To satisfy the logGeneration call
+            try {
+                const enhanced = await enhancePrompt(appState.options.prompt);
+                finalPrompt = enhanced;
+                // Update local UI state to show the user the enhanced prompt that was used
+                setLocalPrompt(enhanced);
+                // No need to call onStateChange here, as it will be part of the main state update below
+            } catch (err) {
+                toast.error(t('freeGeneration_enhanceError'));
+                // Proceed with the original prompt if enhancement fails
+            } finally {
+                setIsEnhancing(false);
+            }
+        }
+
+        const preGenState = { ...appState, options: { ...appState.options, prompt: finalPrompt } };
+        onStateChange({ ...preGenState, stage: 'generating', error: null, generatedImages: [] });
 
         try {
             let resultUrls: string[];
     
             // Case 1: Text-to-Image (Imagen) with prompt analysis
             if (!appState.image1) {
-                console.log("Analyzing prompt for Free Generation...");
-                const params = await analyzePromptForImageGenerationParams(appState.options.prompt);
-    
-                // Prompt overrides UI if it's not the default.
+                const params = await analyzePromptForImageGenerationParams(finalPrompt);
+                
                 const numImages = params.numberOfImages > 1 ? params.numberOfImages : appState.options.numberOfImages;
                 const aspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : appState.options.aspectRatio;
 
-                console.log(`Generation params: num=${numImages}, ratio=${aspectRatio}, prompt="${params.refinedPrompt}"`);
-                
                 resultUrls = await generateFreeImage(
                     params.refinedPrompt,
                     numImages,
@@ -154,7 +173,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             } else {
                 // Case 2: Image-to-Image (Gemini Image Editing)
                 resultUrls = await generateFreeImage(
-                    appState.options.prompt, 
+                    finalPrompt, 
                     1, // Editing always produces 1 image
                     appState.options.aspectRatio, 
                     appState.image1, 
@@ -165,7 +184,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
 
             const settingsToEmbed = {
                 viewId: 'free-generation',
-                state: { ...appState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
+                state: { ...preGenState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
             };
         
             const urlsWithMetadata = await Promise.all(
@@ -177,7 +196,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             }
 
             onStateChange({
-                ...appState,
+                ...preGenState,
                 stage: 'results',
                 generatedImages: urlsWithMetadata,
                 historicalImages: [...appState.historicalImages, ...urlsWithMetadata],
@@ -185,7 +204,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
             addImagesToGallery(urlsWithMetadata);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-            onStateChange({ ...appState, stage: 'results', error: errorMessage });
+            onStateChange({ ...preGenState, stage: 'results', error: errorMessage });
         }
     };
 
@@ -265,7 +284,12 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         </div>
     );
     
-    const isLoading = appState.stage === 'generating';
+    const isLoading = appState.stage === 'generating' || isEnhancing;
+    const getButtonText = () => {
+        if (isEnhancing) return t('freeGeneration_enhancing');
+        if (appState.stage === 'generating') return t('common_creating');
+        return t('freeGeneration_createButton');
+    };
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -373,18 +397,32 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                             </div>
                         </div>
 
-                        <div className="flex items-center pt-2">
-                            <input
-                                type="checkbox"
-                                id="remove-watermark-free"
-                                checked={appState.options.removeWatermark}
-                                onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
-                                className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
-                                aria-label={t('common_removeWatermark')}
-                            />
-                            <label htmlFor="remove-watermark-free" className="ml-3 block text-sm font-medium text-neutral-300">
-                                {t('common_removeWatermark')}
-                            </label>
+                        <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="remove-watermark-free"
+                                    checked={appState.options.removeWatermark}
+                                    onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
+                                    className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
+                                    aria-label={t('common_removeWatermark')}
+                                />
+                                <label htmlFor="remove-watermark-free" className="ml-3 block text-sm font-medium text-neutral-300">
+                                    {t('common_removeWatermark')}
+                                </label>
+                            </div>
+                            <div className={`flex items-center transition-opacity duration-300 ${appState.image1 ? 'opacity-50' : 'opacity-100'}`}>
+                                <Switch
+                                    id="enhance-prompt-switch"
+                                    checked={shouldEnhancePrompt}
+                                    onChange={setShouldEnhancePrompt}
+                                    disabled={!!appState.image1}
+                                />
+                                <label htmlFor="enhance-prompt-switch" className="ml-3 block text-sm font-medium text-neutral-300 flex items-center gap-1.5">
+                                    <MagicWandIcon className="h-4 w-4 text-yellow-300" />
+                                    {t('freeGeneration_enhancePrompt')}
+                                </label>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-4 pt-4">
@@ -392,7 +430,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 {t('common_deleteImages')}
                             </button> }
                             <button onClick={handleGenerate} className="btn btn-primary" disabled={isLoading || !appState.options.prompt.trim()}>
-                                {isLoading ? t('common_creating') : t('freeGeneration_createButton')}
+                                {getButtonText()}
                             </button>
                         </div>
                     </OptionsPanel>
@@ -409,10 +447,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     actions={(
                         <>
                             {appState.historicalImages.length > 0 && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>
+                                <button onClick={handleDownloadAll} className="btn btn-secondary">{t('common_downloadAll')}</button>
                             )}
                             <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_edit')}</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
+                            <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                         </>
                     )}
                 >
@@ -422,7 +460,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         </motion.div>
                     )}
                     {
-                       isLoading ? 
+                       isLoading && !isEnhancing ? 
                         Array.from({ length: appState.image1 ? 1 : appState.options.numberOfImages }).map((_, index) => (
                              <motion.div
                                 className="w-full md:w-auto flex-shrink-0"

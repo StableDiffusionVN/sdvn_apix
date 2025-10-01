@@ -23,9 +23,9 @@ export interface AppConfig {
     titleKey: string;
     descriptionKey: string;
     icon: string;
+    supportsCanvasPreset?: boolean;
 }
 
-// FIX: Add the missing Settings type definition.
 export interface AppSettings {
     mainTitleKey: string;
     subtitleKey: string;
@@ -56,8 +56,28 @@ export interface Settings {
     imageInterpolation: AppSettings;
 }
 
-export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life';
-export const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'emerald-water', 'life'];
+export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life' | 'violet' | 'hidden-jaguar' | 'wide-matrix';
+export const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'emerald-water', 'life', 'violet', 'hidden-jaguar', 'wide-matrix'];
+
+export interface ThemeInfo {
+    id: Theme;
+    name: string;
+    colors: [string, string]; // [startColor, endColor] for gradient
+}
+
+export const THEME_DETAILS: ThemeInfo[] = [
+    { id: 'sdvn', name: 'SDVN', colors: ['#5858e6', '#151523'] },
+    { id: 'vietnam', name: 'Việt Nam', colors: ['#DA251D', '#a21a14'] },
+    { id: 'black-night', name: 'Black Night', colors: ['#3d3d3d', '#090a0f'] },
+    { id: 'clear-sky', name: 'Clear Sky', colors: ['#005C97', '#363795'] },
+    { id: 'skyline', name: 'Skyline', colors: ['#0052D4', '#6FB1FC'] },
+    { id: 'emerald-water', name: 'Emerald Water', colors: ['#348F50', '#56B4D3'] },
+    { id: 'life', name: 'Life', colors: ['#ADD100', '#7B920A'] },
+    { id: 'violet', name: 'Violet', colors: ['#eaafc8', '#654ea3'] },
+    { id: 'hidden-jaguar', name: 'Hidden Jaguar', colors: ['#f9f047', '#0fd850'] },
+    { id: 'wide-matrix', name: 'Wide Matrix', colors: ['#ff7882', '#0c1db8'] }
+];
+
 
 export interface ImageToEdit {
     url: string | null;
@@ -259,7 +279,7 @@ export interface ToyModelCreatorState {
 
 export interface ImageInterpolationState {
     stage: 'idle' | 'prompting' | 'configuring' | 'generating' | 'results';
-    analysisMode: 'general' | 'detailed';
+    analysisMode: 'general' | 'deep' | 'expert';
     inputImage: string | null;
     outputImage: string | null;
     referenceImage: string | null;
@@ -405,7 +425,7 @@ export interface AppControlContextType {
     currentView: ViewState;
     settings: any;
     theme: Theme;
-    sessionGalleryImages: string[];
+    imageGallery: string[];
     historyIndex: number;
     viewHistory: ViewState[];
     isSearchOpen: boolean;

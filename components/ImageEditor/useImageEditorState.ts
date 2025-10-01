@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
 import { useMotionValue, useMotionValueEvent } from 'framer-motion';
 import { handleFileUpload, type ImageToEdit } from '../uiUtils';
 import { removeImageBackground, editImageWithPrompt } from '../../services/geminiService';
@@ -14,66 +14,9 @@ import {
 import { INITIAL_COLOR_ADJUSTMENTS, COLOR_CHANNELS, HANDLE_SIZE, OVERLAY_PADDING } from './ImageEditor.constants';
 import { 
     rgbToHsl, hslToRgb, isPointInRect, getRatioValue, getHandleAtPoint, 
-    getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective, hexToRgba
+    getCursorForHandle, approximateCubicBezier, getPerspectiveTransform, warpPerspective, hexToRgba,
+    createFeatheredMask
 } from './ImageEditor.utils';
-
-/**
- * Creates a canvas with a feathered (blurred) selection mask.
- * @param selectionPath The Path2D of the selection.
- * @param width The width of the canvas.
- * @param height The height of the canvas.
- * @param featherAmount The blur radius for the feathering effect.
- * @returns An HTMLCanvasElement containing the feathered mask.
- */
-const createFeatheredMask = (
-    selectionPath: Path2D,
-    width: number,
-    height: number,
-    featherAmount: number
-): HTMLCanvasElement => {
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
-    const maskCtx = maskCanvas.getContext('2d');
-
-    if (!maskCtx) return maskCanvas;
-
-    // If no feathering, just draw the sharp mask directly.
-    if (featherAmount <= 0) {
-        maskCtx.fillStyle = 'white';
-        maskCtx.fill(selectionPath);
-        return maskCanvas;
-    }
-
-    // --- NEW LOGIC for smooth edge feathering ---
-    // The padding should be large enough to contain the full blur effect.
-    // A blur radius corresponds to the standard deviation of the Gaussian function.
-    // 3 * radius covers ~99.7% of the effect. Let's use 2x for safety and performance.
-    const padding = Math.ceil(featherAmount * 2);
-
-    // Create a temporary canvas that is larger than the original
-    // to give the blur effect space to render without being clipped at the edges.
-    const sharpCanvas = document.createElement('canvas');
-    sharpCanvas.width = width + padding * 2;
-    sharpCanvas.height = height + padding * 2;
-    const sharpCtx = sharpCanvas.getContext('2d');
-    if (!sharpCtx) return maskCanvas; // Fallback to an empty mask if context fails
-
-    // Draw the selection shape onto the padded canvas, offset by the padding amount.
-    sharpCtx.translate(padding, padding);
-    sharpCtx.fillStyle = 'white';
-    sharpCtx.fill(selectionPath);
-    sharpCtx.translate(-padding, -padding); // Reset transform
-
-    // Now, draw the padded, sharp-edged canvas onto the final mask canvas.
-    // Apply the blur filter *here*. The blur will have space to expand into the padding
-    // and then we crop it back to the original size by drawing with a negative offset.
-    maskCtx.filter = `blur(${featherAmount}px)`;
-    maskCtx.drawImage(sharpCanvas, -padding, -padding);
-    maskCtx.filter = 'none'; // Always clean up the filter.
-    
-    return maskCanvas;
-};
 
 
 export const useImageEditorState = (

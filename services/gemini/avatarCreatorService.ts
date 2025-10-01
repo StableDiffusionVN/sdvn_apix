@@ -2,6 +2,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+import { Type } from "@google/genai";
+import ai from './client';
 import { 
     processApiError, 
     padImageToAspectRatio, 
@@ -103,5 +105,71 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
             console.error("Error during image generation:", processedError);
             throw new Error(`The AI model failed to generate an image. Details: ${errorMessage}`);
         }
+    }
+}
+
+/**
+ * Analyzes a person's photo to suggest suitable concept categories.
+ * @param imageDataUrl The data URL of the image to analyze.
+ * @param categories The list of available categories.
+ * @returns A promise resolving to an array of suggested category names.
+ */
+export async function analyzeAvatarForConcepts(
+    imageDataUrl: string,
+    categories: { category: string; ideas: string[] }[]
+): Promise<string[]> {
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+    const imagePart = { inlineData: { mimeType, data: base64Data } };
+
+    const categoryNames = categories.map(c => c.category).filter(c => c !== 'Tự động' && c !== 'Automatic');
+
+    const prompt = `Phân tích người trong ảnh được cung cấp. Dựa trên giới tính, độ tuổi biểu kiến, biểu cảm (cảm xúc), và bối cảnh chung, hãy chọn ra từ 1 đến 3 danh mục phù hợp nhất từ danh sách sau đây cho một bộ ảnh sáng tạo theo chủ đề yêu nước.
+
+    Các danh mục có sẵn:
+    ${categoryNames.join('\n')}
+
+    Phản hồi của bạn phải là một đối tượng JSON có một khóa duy nhất "suggested_categories" là một mảng chuỗi chứa các danh mục đã chọn. Các chuỗi trong mảng phải khớp chính xác với danh sách được cung cấp.
+    `;
+
+    try {
+        console.log("Analyzing avatar for concept suggestions...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, { text: prompt }] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_categories: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                        },
+                    },
+                    required: ["suggested_categories"],
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const parsed = JSON.parse(jsonText);
+        if (parsed.suggested_categories && Array.isArray(parsed.suggested_categories)) {
+            // Ensure the returned categories are valid
+            const validCategories = parsed.suggested_categories.filter((cat: string) => categoryNames.includes(cat));
+            if (validCategories.length > 0) {
+                return validCategories;
+            }
+        }
+        
+        // Fallback if JSON is empty or invalid
+        console.warn("AI returned no valid categories, using fallback.");
+        const shuffled = categoryNames.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 2);
+
+    } catch (error) {
+        console.error("Error analyzing avatar for concepts:", error);
+        // Fallback: return a few random categories if AI fails.
+        const shuffled = categoryNames.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 2);
     }
 }

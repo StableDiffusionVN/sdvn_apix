@@ -16,7 +16,8 @@ interface BeforeAfterModalProps {
 }
 
 const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) => {
-    const { sessionGalleryImages, removeImageFromGallery, replaceImageInGallery, t } = useAppControls();
+    // FIX: Replaced `sessionGalleryImages` with an aliased `imageGallery` from context to match the provided type.
+    const { imageGallery, removeImageFromGallery, replaceImageInGallery, t } = useAppControls();
     const { openImageEditor } = useImageEditor();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
 
@@ -59,7 +60,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) 
 
     const handleDelete = (indexToDelete: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const urlToDelete = sessionGalleryImages[indexToDelete];
+        const urlToDelete = imageGallery[indexToDelete];
         if (urlToDelete === beforeImage) setBeforeImage(null);
         if (urlToDelete === afterImage) setAfterImage(null);
         removeImageFromGallery(indexToDelete);
@@ -67,7 +68,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) 
 
     const handleEdit = (indexToEdit: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const urlToEdit = sessionGalleryImages[indexToEdit];
+        const urlToEdit = imageGallery[indexToEdit];
         if (isVideo(urlToEdit)) return;
 
         openImageEditor(urlToEdit, (newUrl) => {
@@ -113,7 +114,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) 
                                     </button>
                                 </div>
                                 <div className="flex-grow overflow-y-auto pr-2 -mr-4 before-after-sidebar-grid">
-                                    {sessionGalleryImages.map((img, index) => {
+                                    {imageGallery.map((img, index) => {
                                         const isSelectedBefore = img === beforeImage;
                                         const isSelectedAfter = img === afterImage;
                                         const isSelected = isSelectedBefore || isSelectedAfter;
@@ -195,7 +196,7 @@ const BeforeAfterModal: React.FC<BeforeAfterModalProps> = ({ isOpen, onClose }) 
                     </motion.div>
                 )}
             </AnimatePresence>
-            <Lightbox images={sessionGalleryImages} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
+            <Lightbox images={imageGallery} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
         </>
     , document.body);
 };

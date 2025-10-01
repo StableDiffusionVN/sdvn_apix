@@ -337,10 +337,10 @@ const MixStyle: React.FC<MixStyleProps> = (props) => {
                     actions={(
                         <>
                             {appState.generatedImage && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-primary">Tải về tất cả</button>
+                                <button onClick={handleDownloadAll} className="btn btn-secondary">Tải về tất cả</button>
                             )}
                             <button onClick={handleBackToOptions} className="btn btn-secondary">Chỉnh sửa tùy chọn</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">Bắt đầu lại</button>
+                            <button onClick={onReset} className="btn btn-secondary">Bắt đầu lại</button>
                         </>
                     )}
                 >

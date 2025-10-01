@@ -196,3 +196,35 @@ export async function callGeminiWithRetry(parts: object[]): Promise<GenerateCont
     // If the loop completes without returning, all retries have failed. Throw the last error.
     throw lastError || new Error("Gemini API call failed after all retries without returning a valid image.");
 }
+
+/**
+ * Takes a user's prompt and asks a generative model to expand and enrich it.
+ * @param userPrompt The user's original, potentially simple, prompt.
+ * @returns A promise that resolves to a more descriptive and detailed prompt string.
+ */
+export async function enhancePrompt(userPrompt: string): Promise<string> {
+    const metaPrompt = `Bạn là một chuyên gia viết prompt cho AI tạo ảnh như Imagen. Nhiệm vụ của bạn là lấy một prompt đơn giản từ người dùng và mở rộng nó thành một prompt có độ mô tả cao và hiệu quả để tạo ra một hình ảnh tuyệt đẹp. Hãy thêm các chi tiết phong phú về phong cách, ánh sáng, bố cục, tâm trạng và các kỹ thuật nghệ thuật. Đầu ra PHẢI bằng tiếng Việt.
+
+Prompt của người dùng: "${userPrompt}"
+
+**Đầu ra:** Chỉ xuất ra văn bản prompt đã được tinh chỉnh, không có bất kỳ cụm từ giới thiệu nào.`;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: metaPrompt,
+        });
+
+        const text = response.text;
+        if (text && text.trim()) {
+            return text.trim();
+        }
+        // Fallback if the model returns an empty string
+        return userPrompt;
+    } catch (error) {
+        // Process the error for logging/user feedback but return the original prompt as a safe fallback
+        const processedError = processApiError(error);
+        console.error("Error during prompt enhancement:", processedError);
+        return userPrompt;
+    }
+}

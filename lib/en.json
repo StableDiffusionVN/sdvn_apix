@@ -1,3 +1,0 @@
-{
-  "__deprecated": "This file is no longer in use. Translations have been split into smaller modules inside the /locales/en/ directory. Please see components/uiContexts.tsx for the new loading logic."
-}

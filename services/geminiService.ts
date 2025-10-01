@@ -21,3 +21,4 @@ export * from './gemini/toyModelCreatorService';
 export * from './gemini/imageInterpolationService';
 export * from './gemini/videoGenerationService';
 export * from './gemini/presetService'; // NEW: Export the centralized preset service
+export * from './gemini/chatService'; // NEW: Export the new chat service

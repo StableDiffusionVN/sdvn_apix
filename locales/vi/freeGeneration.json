@@ -24,5 +24,8 @@
   "freeGeneration_regenTitle": "Tinh chỉnh ảnh hoặc Tạo video",
   "freeGeneration_regenDescription": "Thêm yêu cầu để cải thiện ảnh, hoặc dùng nó để tạo video",
   "freeGeneration_regenPlaceholder": "Ví dụ: làm cho màu sắc tươi hơn...",
-  "common_deleteImages": "Xóa ảnh"
+  "common_deleteImages": "Xóa ảnh",
+  "freeGeneration_enhancePrompt": "Nâng cao Prompt",
+  "freeGeneration_enhancing": "Đang nâng cao...",
+  "freeGeneration_enhanceError": "Không thể nâng cao prompt."
 }

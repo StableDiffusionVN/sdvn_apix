@@ -23,36 +23,22 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
     const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
 
     const prompt = `
-        Bạn là một chuyên gia phân tích hệ thống biến đổi hình ảnh. Nhiệm vụ của bạn là phân tích hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và tạo ra một câu lệnh (prompt) **TỔNG QUÁT** và **CÓ HỆ THỐNG** bằng tiếng Việt. Prompt này phải nắm bắt được **bản chất của sự biến đổi** để có thể áp dụng cho các hình ảnh khác.
+        Bạn là một AI chuyên gia. So sánh 'Ảnh 1' (Trước) và 'Ảnh 2' (Sau). Tạo ra một câu lệnh ngắn gọn, mô tả **phương pháp** để biến đổi 'Ảnh 1' thành 'Ảnh 2'.
 
-        **TƯ DUY CỐT LÕI:**
-        - **Không mô tả chi tiết:** Tránh mô tả các chi tiết cụ thể của Ảnh 2. Thay vào đó, hãy xác định các **quy tắc** hoặc **khái niệm** biến đổi.
-        - **Tập trung vào "CÁCH LÀM" chứ không phải "KẾT QUẢ":** Prompt của bạn là một chỉ dẫn về *cách* biến đổi, không phải là một bản mô tả của hình ảnh kết quả.
-        - **Tính ứng dụng cao:** Prompt phải đủ tổng quát để khi áp dụng vào một ảnh tham chiếu khác, nó sẽ tạo ra một sự thay đổi tương tự về mặt phong cách hoặc khái niệm.
+        **YÊU CẦU:**
+        1.  Bắt đầu bằng "Chuyển đổi bức ảnh bằng cách...".
+        2.  Tập trung vào hành động thay đổi chính về phong cách. Ví dụ: "bằng cách áp dụng phong cách tranh màu nước", "bằng cách thay đổi thành tông màu phim cổ điển".
+        3.  Không mô tả chi tiết ảnh. Chỉ mô tả hành động.
 
-        **CÁC KHÍA CẠNH CẦN PHÂN TÍCH (dưới góc độ hệ thống):**
-        1.  **Biến đổi Phong cách (Style Transformation):** Phong cách nghệ thuật tổng thể đã thay đổi như thế nào? (ví dụ: "chuyển thành tranh màu nước", "áp dụng phong cách anime thập niên 90", "biến đổi thành ảnh chụp phim cổ điển").
-        2.  **Biến đổi Màu sắc & Ánh sáng (Color & Light Transformation):** Quy tắc chung về màu sắc và ánh sáng là gì? (ví dụ: "thay đổi bảng màu thành tông màu lạnh và tương phản cao", "chuyển thời gian trong ngày sang hoàng hôn với ánh sáng vàng ấm").
-        3.  **Biến đổi Nội dung (Content Transformation):** Có quy tắc chung nào về việc thêm/bớt/thay đổi đối tượng không? (ví dụ: "thêm các yếu tố huyền ảo như sương mù và ánh sáng lung linh", "thay thế bầu trời bằng một dải ngân hà").
-        4.  **Biến đổi Không khí (Atmosphere Transformation):** Cảm xúc hoặc không khí chung đã thay đổi như thế nào? (ví dụ: "tạo ra một không khí u tối và bí ẩn", "làm cho cảnh vật trở nên vui tươi và rực rỡ").
-        
         **ĐẦU RA (JSON):**
-        - Bắt buộc trả về một đối tượng JSON hợp lệ.
-        - **mainPrompt**: Câu lệnh TỔNG QUÁT bằng tiếng Việt, nắm bắt bản chất của sự biến đổi đã phân tích.
-        - **suggestions**: Một chuỗi văn bản chứa các gợi ý sáng tạo để chỉnh sửa hoặc mở rộng 'mainPrompt'. Mỗi gợi ý bắt đầu bằng một gạch đầu dòng và dấu cách "- ". Cung cấp ít nhất 3 gợi ý về các khía cạnh khác nhau như:
-            - Thay đổi bối cảnh chi tiết.
-            - Điều chỉnh bảng màu hoặc ánh sáng.
-            - Thêm thắt các yếu tố nghệ thuật hoặc cảm xúc (mood).
-        - Ví dụ về chuỗi suggestions: "- Thêm vào các chi tiết máy móc và đèn neon rực rỡ\\n- Sử dụng tông màu xanh dương và tím làm chủ đạo\\n- Tạo không khí u tối, mưa bụi của một đêm trong tương lai"
-
-        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra đối tượng JSON theo yêu cầu.
+        - **mainPrompt**: Câu lệnh mô tả phương pháp biến đổi.
+        - **suggestions**: Một mảng gồm 2 đến 4 chuỗi gợi ý ngắn gọn để làm cho prompt chi tiết hơn.
     `;
     const textPart = { text: prompt };
     
     try {
         console.log("Attempting to analyze image pair for prompt...");
         const response = await ai.models.generateContent({
-            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -61,7 +47,11 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
                     type: Type.OBJECT,
                     properties: {
                         mainPrompt: { type: Type.STRING, description: "Câu lệnh tổng quát mô tả sự biến đổi." },
-                        suggestions: { type: Type.STRING, description: "Các gợi ý để mở rộng prompt, mỗi gợi ý trên một dòng và bắt đầu bằng '- '." },
+                        suggestions: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING },
+                            description: "Một mảng các chuỗi gợi ý để mở rộng prompt." 
+                        },
                     },
                     required: ["mainPrompt", "suggestions"],
                 }
@@ -70,7 +60,12 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
         
         const jsonText = response.text.trim();
         if (jsonText) {
-            return JSON.parse(jsonText);
+            const parsed = JSON.parse(jsonText);
+            const suggestionsString = Array.isArray(parsed.suggestions) ? parsed.suggestions.join('\n') : '';
+            return {
+                mainPrompt: parsed.mainPrompt || '',
+                suggestions: suggestionsString,
+            };
         }
 
         console.error("API did not return text. Response:", response);
@@ -89,7 +84,7 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
  * @param outputImageDataUrl Data URL of the "after" image.
  * @returns A promise resolving to an object with the detailed main prompt and suggestions.
  */
-export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
+export async function analyzeImagePairForPromptDeep(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
     const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
     const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
 
@@ -97,33 +92,24 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
     const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
 
     const prompt = `
-        Bạn là một chuyên gia phân tích hình ảnh. Nhiệm vụ của bạn là so sánh tỉ mỉ hai hình ảnh, 'Trước' (Ảnh 1) và 'Sau' (Ảnh 2), và tạo ra một câu lệnh (prompt) **CHI TIẾT** và **MÔ TẢ** bằng tiếng Việt. Prompt này phải nắm bắt được sự biến đổi hình ảnh cụ thể, cho phép AI tái tạo lại hình ảnh 'Sau' từ một ảnh tham chiếu khác.
+        Bạn là một AI chuyên gia. So sánh 'Ảnh 1' (Trước) và 'Ảnh 2' (Sau). Tạo ra một câu lệnh chi tiết, mô tả **phương pháp** để biến đổi 'Ảnh 1' thành 'Ảnh 2'.
 
-        **TƯ DUY CỐT LÕI:** Tập trung mô tả **KẾT QUẢ (ảnh 'Sau')** trong mối quan hệ với **ảnh 'Trước'**. Hãy cụ thể về những gì đã thay đổi, những gì được thêm vào và thẩm mỹ cuối cùng.
+        **YÊU CẦU:**
+        1.  Bắt đầu bằng "Để chuyển đổi bức ảnh, hãy...".
+        2.  Mô tả cụ thể các hành động thay đổi về:
+            *   **Phong cách:** (ví dụ: "áp dụng phong cách nghệ thuật kỹ thuật số").
+            *   **Nội dung:** (ví dụ: "thêm những đám mây vào bầu trời").
+            *   **Màu sắc & Ánh sáng:** (ví dụ: "điều chỉnh sang tông màu ấm hơn và ánh sáng hoàng hôn").
 
-        **CÁC KHÍA CẠNH CẦN PHÂN TÍCH (chi tiết):**
-        1.  **Biến đổi Phong cách:** Phong cách nghệ thuật chính xác của ảnh 'Sau' là gì? (ví dụ: 'Một bức tranh kỹ thuật số siêu thực với ánh sáng điện ảnh', 'Một bức ảnh polaroid cổ điển từ những năm 1980 với màu sắc bạc và vệt sáng').
-        2.  **Thay đổi Nội dung & Bố cục:** Những đối tượng hoặc yếu tố cụ thể nào đã được thêm, bớt hoặc thay đổi? Bố cục đã thay đổi như thế nào? (ví dụ: 'Chủ thể giờ đang đội vương miện bạc, và các hạt ma thuật phát sáng đang bay lơ lửng xung quanh họ. Nền được thay thế bằng một khu rừng mê hoặc tối tăm.').
-        3.  **Màu sắc & Ánh sáng:** Mô tả chi tiết bảng màu và ánh sáng cuối cùng. (ví dụ: 'Cảnh bị chi phối bởi sự tương phản mạnh giữa màu xanh lam đậm và màu cam rực rỡ. Một luồng sáng chính mạnh mẽ chiếu từ trên cùng bên phải, tạo ra những cái bóng dài và mềm mại.').
-        4.  **Kết cấu & Chi tiết:** Mô tả kết cấu và các chi tiết nhỏ. (ví dụ: 'Kết cấu quần áo của chủ thể giờ là vải canvas thô, và có những vết nứt có thể nhìn thấy trên bức tường đá phía sau họ.').
-        
         **ĐẦU RA (JSON):**
-        - Bắt buộc trả về một đối tượng JSON hợp lệ.
-        - **mainPrompt**: Câu lệnh CHI TIẾT bằng tiếng Việt, nắm bắt bản chất của sự biến đổi đã phân tích.
-        - **suggestions**: Một chuỗi văn bản chứa các gợi ý sáng tạo để chỉnh sửa hoặc mở rộng 'mainPrompt'. Mỗi gợi ý bắt đầu bằng một gạch đầu dòng và dấu cách "- ". Cung cấp ít nhất 3 gợi ý về các khía cạnh khác nhau như:
-            - Thay đổi một chi tiết nhỏ trong nội dung.
-            - Điều chỉnh một khía cạnh của ánh sáng.
-            - Gợi ý một phong cách nghệ thuật tương tự.
-        - Ví dụ về chuỗi suggestions: "- Thay vương miện bạc bằng vương miện vàng\\n- Thay đổi hướng ánh sáng chính sang bên trái\\n- Thử áp dụng phong cách tranh sơn dầu thời Phục hưng"
-
-        Bây giờ, hãy phân tích các hình ảnh được cung cấp và tạo ra đối tượng JSON theo yêu cầu.
+        - **mainPrompt**: Câu lệnh chi tiết mô tả phương pháp.
+        - **suggestions**: Một mảng gồm 2 đến 4 chuỗi gợi ý sáng tạo ngắn gọn để thay đổi hoặc mở rộng prompt.
     `;
     const textPart = { text: prompt };
     
     try {
         console.log("Attempting to analyze image pair for DETAILED prompt...");
         const response = await ai.models.generateContent({
-            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
@@ -132,7 +118,11 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
                     type: Type.OBJECT,
                     properties: {
                         mainPrompt: { type: Type.STRING, description: "Câu lệnh chi tiết mô tả sự biến đổi." },
-                        suggestions: { type: Type.STRING, description: "Các gợi ý để mở rộng prompt, mỗi gợi ý trên một dòng và bắt đầu bằng '- '." },
+                        suggestions: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING },
+                            description: "Một mảng các chuỗi gợi ý sáng tạo để mở rộng prompt."
+                        },
                     },
                     required: ["mainPrompt", "suggestions"],
                 }
@@ -141,7 +131,12 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
         
         const jsonText = response.text.trim();
         if (jsonText) {
-            return JSON.parse(jsonText);
+            const parsed = JSON.parse(jsonText);
+            const suggestionsString = Array.isArray(parsed.suggestions) ? parsed.suggestions.join('\n') : '';
+            return {
+                mainPrompt: parsed.mainPrompt || '',
+                suggestions: suggestionsString,
+            };
         }
 
         console.error("API did not return text. Response:", response);
@@ -150,6 +145,80 @@ export async function analyzeImagePairForPromptDetailed(inputImageDataUrl: strin
     } catch (error) {
         const processedError = processApiError(error);
         console.error("Error during detailed prompt generation from image pair:", processedError);
+        throw processedError;
+    }
+}
+
+/**
+ * Analyzes a pair of images to generate an EXPERT-LEVEL, highly precise prompt for the transformation.
+ * @param inputImageDataUrl Data URL of the "before" image.
+ * @param outputImageDataUrl Data URL of the "after" image.
+ * @returns A promise resolving to an object with the detailed main prompt and suggestions.
+ */
+export async function analyzeImagePairForPromptExpert(inputImageDataUrl: string, outputImageDataUrl: string): Promise<{ mainPrompt: string; suggestions: string; }> {
+    const { mimeType: inputMime, data: inputData } = parseDataUrl(inputImageDataUrl);
+    const { mimeType: outputMime, data: outputData } = parseDataUrl(outputImageDataUrl);
+
+    const inputImagePart = { inlineData: { mimeType: inputMime, data: inputData } };
+    const outputImagePart = { inlineData: { mimeType: outputMime, data: outputData } };
+
+    const prompt = `
+        Bạn là một chuyên gia chỉnh sửa ảnh và kỹ sư prompt bậc thầy. Nhiệm vụ của bạn là viết một bản hướng dẫn chi tiết, một "công thức" kỹ thuật, để biến đổi 'Ảnh 1' (ảnh gốc) thành 'Ảnh 2' (ảnh kết quả).
+
+        **YÊU CẦU CỐT LÕI:**
+        1.  Câu lệnh cuối cùng PHẢI bắt đầu bằng một cụm từ chỉ thị rõ ràng, ví dụ: "Để biến đổi ảnh gốc thành ảnh kết quả, hãy..." hoặc "Thực hiện các bước sau để chuyển đổi ảnh:".
+        2.  **Không mô tả 'Ảnh 1'**. Chỉ tập trung vào các **hành động** và **thay đổi** cần áp dụng lên nó.
+        3.  **Mô tả phương pháp biến đổi** một cách chi tiết, sử dụng thuật ngữ kỹ thuật:
+            *   **Thay đổi về Bố cục & Phối cảnh:** (ví dụ: "thay đổi góc máy thành góc cao", "áp dụng hiệu ứng ống kính mắt cá").
+            *   **Thay đổi về Ánh sáng & Màu sắc:** (ví dụ: "chuyển ánh sáng ban ngày thành ánh sáng hoàng hôn ấm áp", "tăng độ tương phản và khử bão hòa màu xanh lá").
+            *   **Thay đổi về Phong cách & Kết cấu:** (ví dụ: "áp dụng phong cách tranh sơn dầu với nét cọ dày", "thêm hiệu ứng nhiễu hạt phim (film grain) và các vết xước nhẹ").
+            *   **Thay đổi về Nội dung:** (ví dụ: "thêm những đám mây kịch tính vào bầu trời", "thay đổi quần áo của nhân vật thành áo giáp").
+        4.  Kết hợp tất cả các bước thành một câu lệnh mạch lạc, duy nhất.
+
+        **ĐẦU RA (JSON):**
+        - **mainPrompt**: Câu lệnh mô tả phương pháp biến đổi.
+        - **suggestions**: Một mảng gồm 2 đến 4 chuỗi gợi ý kỹ thuật ngắn gọn để tinh chỉnh các thông số trong prompt.
+    `;
+    const textPart = { text: prompt };
+    
+    try {
+        console.log("Attempting to analyze image pair for EXPERT prompt...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [textPart, inputImagePart, outputImagePart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        mainPrompt: { type: Type.STRING, description: "Câu lệnh cực kỳ chi tiết mô tả sự biến đổi." },
+                        suggestions: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING },
+                            description: "Một mảng các chuỗi gợi ý kỹ thuật để tinh chỉnh các thông số trong prompt."
+                        },
+                    },
+                    required: ["mainPrompt", "suggestions"],
+                }
+            }
+        });
+        
+        const jsonText = response.text.trim();
+        if (jsonText) {
+            const parsed = JSON.parse(jsonText);
+            const suggestionsString = Array.isArray(parsed.suggestions) ? parsed.suggestions.join('\n') : '';
+            return {
+                mainPrompt: parsed.mainPrompt || '',
+                suggestions: suggestionsString,
+            };
+        }
+
+        console.error("API did not return text. Response:", response);
+        throw new Error("The AI model did not return a valid JSON response.");
+
+    } catch (error) {
+        const processedError = processApiError(error);
+        console.error("Error during expert prompt generation from image pair:", processedError);
         throw processedError;
     }
 }
@@ -189,7 +258,6 @@ export async function interpolatePrompts(basePrompt: string, userNotes: string):
     try {
         console.log("Attempting to interpolate prompts with prioritization...");
         const response = await ai.models.generateContent({
-            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
@@ -225,7 +293,6 @@ export async function adaptPromptToContext(imageDataUrl: string, basePrompt: str
     try {
         console.log("Attempting to adapt prompt to image context...");
         const response = await ai.models.generateContent({
-            // FIX: Use the recommended model 'gemini-2.5-flash' instead of the deprecated 'gemini-1.5-flash'.
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, textPart] },
         });

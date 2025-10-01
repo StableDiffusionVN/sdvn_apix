@@ -301,9 +301,9 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                     error={appState.error}
                     actions={
                         <>
-                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-secondary">{t('common_downloadAll')}</button>)}
                             <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_edit')}</button>
-                            <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
+                            <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                         </>
                     }>
                     <motion.div

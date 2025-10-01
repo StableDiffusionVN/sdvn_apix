@@ -300,9 +300,9 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
             {(appState.stage === 'generating' || appState.stage === 'results') && (
                 <ResultsView stage={appState.stage} originalImage={appState.modelImage} onOriginalClick={() => appState.modelImage && openLightbox(lightboxImages.indexOf(appState.modelImage))} error={appState.error} isMobile={isMobile} actions={
                     <>
-                        {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-primary">{t('common_downloadAll')}</button>)}
+                        {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-secondary">{t('common_downloadAll')}</button>)}
                         <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_editOptions')}</button>
-                        <button onClick={onReset} className="btn btn-secondary !bg-red-500/20 !border-red-500/80 hover:!bg-red-500 hover:!text-white">{t('common_startOver')}</button>
+                        <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                     </>
                 }>
                     {appState.clothingImage && (

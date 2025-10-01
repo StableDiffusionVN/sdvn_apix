@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls, useImageEditor, combineImages, useLightbox } from './uiUtils';
 import { cn } from '../lib/utils';
@@ -23,7 +23,8 @@ interface SelectedItem {
 const FONT_FAMILIES = [ 'Be Vietnam Pro', 'Asimovian', 'Playwrite AU SA', 'Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS' ];
 
 const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) => {
-    const { sessionGalleryImages, addImagesToGallery, removeImageFromGallery, replaceImageInGallery } = useAppControls();
+    // FIX: Replaced `sessionGalleryImages` with an aliased `imageGallery` from context to match the provided type.
+    const { imageGallery, addImagesToGallery, removeImageFromGallery, replaceImageInGallery } = useAppControls();
     const { openImageEditor } = useImageEditor();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     
@@ -66,7 +67,7 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
     
     const handleDeleteImage = (indexToDelete: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const urlToDelete = sessionGalleryImages[indexToDelete];
+        const urlToDelete = imageGallery[indexToDelete];
         // Remove from selection if it's selected
         setSelectedItems(prev => prev.filter(item => item.url !== urlToDelete));
         // Remove from global gallery
@@ -75,7 +76,7 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
 
     const handleEditImage = (indexToEdit: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const urlToEdit = sessionGalleryImages[indexToEdit];
+        const urlToEdit = imageGallery[indexToEdit];
         if (!urlToEdit || urlToEdit.startsWith('blob:')) {
             alert('Không thể chỉnh sửa video.');
             return;
@@ -161,7 +162,8 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
         const files = e.dataTransfer.files;
         if (!files || files.length === 0) return;
 
-        const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+        // FIX: Add type assertion to resolve 'unknown' type error.
+        const imageFiles = Array.from(files).filter(file => (file as File).type.startsWith('image/'));
         if (imageFiles.length === 0) return;
 
         const readImageAsDataURL = (file: File): Promise<string> => {
@@ -307,9 +309,9 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                             {/* Main Content */}
                             <main className="flex-1 flex flex-col p-6">
                                  <h3 className="base-font font-bold text-xl text-neutral-300 mb-4 flex-shrink-0">Chọn ảnh từ thư viện (Thứ tự chọn = thứ tự ghép)</h3>
-                                 {sessionGalleryImages.length > 0 ? (
+                                 {imageGallery.length > 0 ? (
                                     <div className="gallery-grid">
-                                        {sessionGalleryImages.map((img, index) => {
+                                        {imageGallery.map((img, index) => {
                                             const selectedIndex = selectedItems.findIndex(item => item.url === img);
                                             const isSelected = selectedIndex !== -1;
                                             const isVideo = img.startsWith('blob:');
@@ -372,7 +374,7 @@ const ImageLayoutModal: React.FC<ImageLayoutModalProps> = ({ isOpen, onClose }) 
                     </motion.div>
                 )}
             </AnimatePresence>
-            <Lightbox images={sessionGalleryImages} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
+            <Lightbox images={imageGallery} selectedIndex={lightboxIndex} onClose={closeLightbox} onNavigate={navigateLightbox} />
         </>
     );
 };

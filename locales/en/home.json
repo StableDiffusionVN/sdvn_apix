@@ -1,6 +1,9 @@
 {
   "home_mainTitle": "aPix",
-  "home_subtitle": "Choose an app and start creating",
+  "home_subtitle": "Select an app or upload a json setting to start",
+  "home_uploadJson": "Upload JSON",
+  "home_openCanvas": "Canvas",
+  "home_openEditor": "Image Editor",
   "app_free-generation_title": "Free Generation",
   "app_free-generation_description": "Create new images from text or edit uploaded photos with your own prompts.",
   "app_baby-photo-creator_title": "Baby Photo Creator",
