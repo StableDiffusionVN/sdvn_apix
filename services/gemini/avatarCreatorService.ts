@@ -6,8 +6,6 @@ import { Type } from "@google/genai";
 import ai from './client';
 import { 
     processApiError, 
-    padImageToAspectRatio, 
-    getAspectRatioPromptInstruction, 
     parseDataUrl, 
     callGeminiWithRetry, 
     processGeminiResponse 
@@ -24,9 +22,9 @@ import {
 function getPrimaryPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu chỉnh sửa bổ sung: "${customPrompt}".` : '';
     const watermarkText = removeWatermark ? ' Yêu cầu quan trọng: Kết quả cuối cùng không được chứa bất kỳ watermark, logo, hay chữ ký nào.' : '';
-    const aspectRatioInstruction = getAspectRatioPromptInstruction(aspectRatio, 1).join('\n');
+    const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioInstruction}\nTạo một bức ảnh chụp chân thật và tự nhiên của người trong ảnh gốc, trong bối cảnh "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải thể hiện được niềm tự hào dân tộc Việt Nam một cách sâu sắc. Ảnh phải có chất lượng cao, sắc nét, với tông màu đỏ của quốc kỳ làm chủ đạo nhưng vẫn giữ được sự hài hòa, tự nhiên. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chụp chân thật và tự nhiên của người trong ảnh gốc, trong bối cảnh "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải thể hiện được niềm tự hào dân tộc Việt Nam một cách sâu sắc. Ảnh phải có chất lượng cao, sắc nét, với tông màu đỏ của quốc kỳ làm chủ đạo nhưng vẫn giữ được sự hài hòa, tự nhiên. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
 }
 
 
@@ -41,9 +39,9 @@ function getPrimaryPrompt(idea: string, customPrompt?: string, removeWatermark?:
 function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu bổ sung: "${customPrompt}".` : '';
     const watermarkText = removeWatermark ? ' Yêu cầu thêm: Không có watermark, logo, hay chữ ký trên ảnh.' : '';
-     const aspectRatioInstruction = getAspectRatioPromptInstruction(aspectRatio, 1).join('\n');
+    const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioInstruction}\nTạo một bức ảnh chụp chân dung của người trong ảnh này với chủ đề "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chụp chân dung của người trong ảnh này với chủ đề "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
 }
 
 /**
@@ -57,19 +55,24 @@ function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?
  * @returns A promise that resolves to a base64-encoded image data URL of the generated image.
  */
 export async function generatePatrioticImage(imageDataUrl: string, idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): Promise<string> {
-    const imageToProcess = await padImageToAspectRatio(imageDataUrl, aspectRatio ?? 'Giữ nguyên');
-    const { mimeType, data: base64Data } = parseDataUrl(imageToProcess);
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
 
     const imagePart = {
         inlineData: { mimeType, data: base64Data },
     };
+
+    const config: any = {};
+    const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+    if (aspectRatio && aspectRatio !== 'Giữ nguyên' && validRatios.includes(aspectRatio)) {
+        config.imageConfig = { aspectRatio };
+    }
 
     // --- First attempt with the original prompt ---
     try {
         console.log("Attempting generation with original prompt...");
         const prompt = getPrimaryPrompt(idea, customPrompt, removeWatermark, aspectRatio);
         const textPart = { text: prompt };
-        const response = await callGeminiWithRetry([imagePart, textPart]);
+        const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
@@ -89,7 +92,7 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
                 const fallbackPrompt = getFallbackPrompt(idea, customPrompt, removeWatermark, aspectRatio);
                 console.log(`Attempting generation with fallback prompt for ${idea}...`);
                 const fallbackTextPart = { text: fallbackPrompt };
-                const fallbackResponse = await callGeminiWithRetry([imagePart, fallbackTextPart]);
+                const fallbackResponse = await callGeminiWithRetry([imagePart, fallbackTextPart], config);
                 return processGeminiResponse(fallbackResponse);
             } catch (fallbackError) {
                 console.error("Fallback prompt also failed.", fallbackError);

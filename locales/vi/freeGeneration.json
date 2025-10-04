@@ -1,3 +1,4 @@
+
 {
   "freeGeneration_mainTitle": "Tạo Ảnh Tự Do",
   "freeGeneration_subtitle": "Giải phóng sức sáng tạo của bạn với prompt",
@@ -5,17 +6,16 @@
   "freeGeneration_uploaderDescription1": "Ảnh để chỉnh sửa hoặc làm nguồn cảm hứng",
   "freeGeneration_uploaderCaption2": "Tải ảnh 2 (tùy chọn)",
   "freeGeneration_uploaderDescription2": "Ảnh thứ hai để kết hợp hoặc tham chiếu",
+  "freeGeneration_uploaderCaption3": "Tải ảnh 3 (tùy chọn)",
+  "freeGeneration_uploaderDescription3": "Ảnh bổ sung",
+  "freeGeneration_uploaderCaption4": "Tải ảnh 4 (tùy chọn)",
+  "freeGeneration_uploaderDescription4": "Ảnh bổ sung",
   "freeGeneration_originalImage2Caption": "Ảnh gốc 2",
+  "freeGeneration_originalImage3Caption": "Ảnh gốc 3",
+  "freeGeneration_originalImage4Caption": "Ảnh gốc 4",
   "freeGeneration_resultCaption": "Kết quả {0}",
   "freeGeneration_promptTitle": "Nhập yêu cầu (Prompt)",
-  "freeGeneration_tipsTitle": "Mẹo sử dụng",
-  "freeGeneration_tips": [
-    "Không input ảnh để sử dụng **Imagen**. Prompt sẽ được phân tích thông minh để xác định số lượng, tỉ lệ.",
-    "Input ảnh để sử dụng **Gemini Image** (chỉnh sửa ảnh).",
-    "Trường hợp input nhiều ảnh, nên đặt ảnh chính làm ảnh cuối cùng.",
-    "Ảnh input chính nên được crop đúng tỉ lệ mong muốn của ảnh output."
-  ],
-  "freeGeneration_promptPlaceholder": "Ví dụ: một con mèo phi hành gia đang cưỡi ván trượt trên sao Hỏa, phong cách tranh sơn dầu, tạo 4 ảnh, tỉ lệ 16:9...",
+  "freeGeneration_promptPlaceholder": "Ví dụ: một con mèo phi hành gia dễ thương đang cưỡi ván trượt trên sao Hoả, ảnh siêu thực, chi tiết cao, 4k",
   "freeGeneration_numImagesLabel": "Số lượng ảnh",
   "freeGeneration_numImagesAriaLabel": "Chọn số lượng ảnh",
   "freeGeneration_editModeWarning": "Chế độ sửa ảnh chỉ tạo 1 ảnh/lần.",

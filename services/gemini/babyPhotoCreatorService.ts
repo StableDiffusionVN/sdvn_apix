@@ -5,8 +5,6 @@
 import ai from './client';
 import {
     processApiError,
-    padImageToAspectRatio,
-    getAspectRatioPromptInstruction,
     parseDataUrl,
     callGeminiWithRetry,
     processGeminiResponse
@@ -48,17 +46,17 @@ export async function estimateAgeGroup(imageDataUrl: string): Promise<'newborn' 
 function getPrimaryPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu chỉnh sửa bổ sung: "${customPrompt}".` : '';
     const watermarkText = removeWatermark ? ' Yêu cầu quan trọng: Kết quả cuối cùng không được chứa bất kỳ watermark, logo, hay chữ ký nào.' : '';
-    const aspectRatioInstruction = getAspectRatioPromptInstruction(aspectRatio, 1).join('\n');
+    const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioInstruction}\nTạo một bức ảnh chụp chân thật và tự nhiên của em bé trong ảnh gốc, trong bối cảnh concept "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của em bé trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải có chất lượng cao, sắc nét, như được chụp bởi một nhiếp ảnh gia chuyên nghiệp. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chụp chân thật và tự nhiên của em bé trong ảnh gốc, trong bối cảnh concept "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của em bé trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải có chất lượng cao, sắc nét, như được chụp bởi một nhiếp ảnh gia chuyên nghiệp. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
 }
 
 function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
     const modificationText = customPrompt ? ` Yêu cầu bổ sung: "${customPrompt}".` : '';
     const watermarkText = removeWatermark ? ' Yêu cầu thêm: Không có watermark, logo, hay chữ ký trên ảnh.' : '';
-    const aspectRatioInstruction = getAspectRatioPromptInstruction(aspectRatio, 1).join('\n');
+    const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioInstruction}\nTạo một bức ảnh chụp chân dung của em bé trong ảnh này với chủ đề "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của em bé trong ảnh gốc. Không được thay đổi khuôn mặt.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chụp chân dung của em bé trong ảnh này với chủ đề "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của em bé trong ảnh gốc. Không được thay đổi khuôn mặt.`;
 }
 
 /**
@@ -71,15 +69,20 @@ function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?
  * @returns A promise that resolves to a base64-encoded image data URL of the generated image.
  */
 export async function generateBabyPhoto(imageDataUrl: string, idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): Promise<string> {
-    const imageToProcess = await padImageToAspectRatio(imageDataUrl, aspectRatio ?? 'Giữ nguyên');
-    const { mimeType, data: base64Data } = parseDataUrl(imageToProcess);
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
     const imagePart = { inlineData: { mimeType, data: base64Data } };
+
+    const config: any = {};
+    const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+    if (aspectRatio && aspectRatio !== 'Giữ nguyên' && validRatios.includes(aspectRatio)) {
+        config.imageConfig = { aspectRatio };
+    }
 
     try {
         console.log("Attempting baby photo generation with primary prompt...");
         const prompt = getPrimaryPrompt(idea, customPrompt, removeWatermark, aspectRatio);
         const textPart = { text: prompt };
-        const response = await callGeminiWithRetry([imagePart, textPart]);
+        const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
@@ -95,7 +98,7 @@ export async function generateBabyPhoto(imageDataUrl: string, idea: string, cust
             try {
                 const fallbackPrompt = getFallbackPrompt(idea, customPrompt, removeWatermark, aspectRatio);
                 const fallbackTextPart = { text: fallbackPrompt };
-                const fallbackResponse = await callGeminiWithRetry([imagePart, fallbackTextPart]);
+                const fallbackResponse = await callGeminiWithRetry([imagePart, fallbackTextPart], config);
                 return processGeminiResponse(fallbackResponse);
             } catch (fallbackError) {
                 console.error("Fallback prompt also failed.", fallbackError);

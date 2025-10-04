@@ -31,79 +31,6 @@ export function processApiError(error: unknown): Error {
 }
 
 /**
- * Pads an image with white space to fit a target aspect ratio.
- * @param imageDataUrl The data URL of the source image.
- * @param ratioStr The target aspect ratio as a string (e.g., "16:9").
- * @returns A promise that resolves to the data URL of the padded image.
- */
-export const padImageToAspectRatio = (imageDataUrl: string, ratioStr: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (ratioStr === 'Giữ nguyên') {
-            return resolve(imageDataUrl);
-        }
-        const [ratioWidth, ratioHeight] = ratioStr.split(':').map(Number);
-        if (isNaN(ratioWidth) || isNaN(ratioHeight) || ratioHeight === 0) {
-            return reject(new Error('Invalid aspect ratio string'));
-        }
-        const targetRatio = ratioWidth / ratioHeight;
-
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return reject(new Error('Could not get canvas context'));
-
-            const currentRatio = img.width / img.height;
-            let newWidth, newHeight, xOffset = 0, yOffset = 0;
-
-            if (currentRatio > targetRatio) {
-                newWidth = img.width;
-                newHeight = img.width / targetRatio;
-                yOffset = (newHeight - img.height) / 2;
-            } else {
-                newHeight = img.height;
-                newWidth = img.height * targetRatio;
-                xOffset = (newWidth - img.width) / 2;
-            }
-
-            canvas.width = newWidth;
-            canvas.height = newHeight;
-            
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, newWidth, newHeight);
-            ctx.drawImage(img, xOffset, yOffset, img.width, img.height);
-            
-            resolve(canvas.toDataURL('image/jpeg', 0.95)); 
-        };
-        img.onerror = (err) => {
-            reject(err);
-        };
-        img.src = imageDataUrl;
-    });
-};
-
-/**
- * Generates the prompt instruction for handling aspect ratio changes.
- * @param aspectRatio The target aspect ratio string.
- * @param imageCount The number of input images to correctly pluralize the prompt.
- * @returns An array of prompt strings.
- */
-export const getAspectRatioPromptInstruction = (aspectRatio?: string, imageCount: number = 1): string[] => {
-    if (aspectRatio && aspectRatio !== 'Giữ nguyên') {
-        const imageNoun = imageCount > 1 ? 'Các hình ảnh gốc' : 'Hình ảnh gốc';
-        return [
-            `**YÊU CẦU QUAN TRỌNG NHẤT VỀ BỐ CỤC:**`,
-            `1. Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.`,
-            `2. ${imageNoun} có thể đã được thêm các khoảng trắng (viền trắng) để đạt đúng tỷ lệ.`,
-            `3. Nhiệm vụ của bạn là PHẢI lấp đầy HOÀN TOÀN các khoảng trắng này một cách sáng tạo. Hãy mở rộng bối cảnh, chi tiết, và môi trường xung quanh từ ảnh gốc một cách liền mạch để tạo ra một hình ảnh hoàn chỉnh.`,
-            `4. Kết quả cuối cùng TUYỆT ĐỐI không được có bất kỳ viền trắng nào.`
-        ];
-    }
-    return [];
-};
-
-
-/**
  * Parses a data URL string to extract its mime type and base64 data.
  * @param imageDataUrl The data URL to parse.
  * @returns An object containing the mime type and data.
@@ -139,9 +66,10 @@ export function processGeminiResponse(response: GenerateContentResponse): string
  * A wrapper for the Gemini API call that includes a retry mechanism for internal server errors
  * and for responses that don't contain an image.
  * @param parts An array of parts for the request payload (e.g., image parts, text parts).
+ * @param config Optional configuration object for the generateContent call.
  * @returns The GenerateContentResponse from the API.
  */
-export async function callGeminiWithRetry(parts: object[]): Promise<GenerateContentResponse> {
+export async function callGeminiWithRetry(parts: object[], config: any = {}): Promise<GenerateContentResponse> {
     const maxRetries = 3;
     const initialDelay = 1000;
     let lastError: Error | null = null;
@@ -149,10 +77,11 @@ export async function callGeminiWithRetry(parts: object[]): Promise<GenerateCont
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image-preview',
+                model: 'gemini-2.5-flash-image',
                 contents: { parts },
                 config: {
                     responseModalities: [Modality.IMAGE, Modality.TEXT],
+                    ...config,
                 },
             });
 

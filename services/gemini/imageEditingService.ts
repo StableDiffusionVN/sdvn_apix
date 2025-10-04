@@ -6,8 +6,6 @@ import { Type } from "@google/genai";
 import ai from './client'; // Import the shared client instance
 import { 
     processApiError, 
-    padImageToAspectRatio, 
-    getAspectRatioPromptInstruction, 
     parseDataUrl, 
     callGeminiWithRetry, 
     processGeminiResponse 
@@ -28,27 +26,24 @@ export async function editImageWithPrompt(
     removeWatermark?: boolean
 ): Promise<string> {
     try {
-        const imageToProcess = await padImageToAspectRatio(imageDataUrl, aspectRatio ?? 'Giữ nguyên');
-        const { mimeType, data: base64Data } = parseDataUrl(imageToProcess);
+        const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
         const imagePart = {
             inlineData: { mimeType, data: base64Data },
         };
         
         const hasAspectRatioChange = aspectRatio && aspectRatio !== 'Giữ nguyên';
         
-        const promptParts = [
-            ...getAspectRatioPromptInstruction(aspectRatio, 1),
-        ];
+        const promptParts = [];
 
         if (hasAspectRatioChange) {
             promptParts.push(
-                '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN CAO:**',
-                'Sau khi đã lấp đầy các vùng trắng theo yêu cầu về bố cục ở trên, hãy thực hiện thêm yêu cầu chỉnh sửa sau đây trên nội dung của bức ảnh:',
-                `"${prompt}"`,
-                '**LƯU Ý QUAN TRỌNG:**',
-                '- Kết hợp hài hòa giữa việc mở rộng bối cảnh (lấp viền trắng) và việc thực hiện yêu cầu chỉnh sửa.',
-                '- Giữ nguyên các phần còn lại của bức ảnh không liên quan đến yêu cầu chỉnh sửa và việc mở rộng bối cảnh.',
-                '- Chỉ trả về một hình ảnh duy nhất đã được hoàn thiện.'
+                `**YÊU CẦU ƯU TIÊN SỐ 1 - BỐ CỤC:**`,
+                `1. Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là **${aspectRatio}**.`,
+                `2. Hãy mở rộng bối cảnh, chi tiết, và môi trường xung quanh từ ảnh gốc một cách liền mạch để tạo ra một hình ảnh hoàn chỉnh theo tỷ lệ mới.`,
+                ``,
+                '**YÊU CẦU CHỈNH SỬA ẢNH - ƯU TIÊN SỐ 2:**',
+                'Sau khi đã đáp ứng yêu cầu về bố cục ở trên, hãy thực hiện thêm yêu cầu chỉnh sửa sau đây trên nội dung của bức ảnh:',
+                `"${prompt}"`
             );
         } else {
             promptParts.push(
@@ -68,9 +63,15 @@ export async function editImageWithPrompt(
         
         const fullPrompt = promptParts.join('\n');
         const textPart = { text: fullPrompt };
+        
+        const config: any = {};
+        const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+        if (aspectRatio && aspectRatio !== 'Giữ nguyên' && validRatios.includes(aspectRatio)) {
+            config.imageConfig = { aspectRatio };
+        }
 
-        console.log("Attempting to edit image with prompt...");
-        const response = await callGeminiWithRetry([imagePart, textPart]);
+        console.log("Attempting to edit image with prompt and config:", config);
+        const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
@@ -132,7 +133,7 @@ export async function generateFromMultipleImages(
         
         if (aspectRatio && aspectRatio !== 'Giữ nguyên') {
             promptParts.push(
-                ...getAspectRatioPromptInstruction(aspectRatio, 1)
+                `**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.`
             );
         }
 
@@ -147,8 +148,14 @@ export async function generateFromMultipleImages(
 
         const allParts = [...imageParts, textPart];
 
-        console.log("Attempting to generate image from multiple sources...");
-        const response = await callGeminiWithRetry(allParts);
+        const config: any = {};
+        const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+        if (aspectRatio && aspectRatio !== 'Giữ nguyên' && validRatios.includes(aspectRatio)) {
+            config.imageConfig = { aspectRatio: aspectRatio };
+        }
+
+        console.log("Attempting to generate image from multiple sources with config:", config);
+        const response = await callGeminiWithRetry(allParts, config);
         return processGeminiResponse(response);
 
     } catch (error) {
@@ -208,80 +215,6 @@ export async function refinePrompt(userPrompt: string, imageDataUrls?: string[])
 }
 
 /**
- * Analyzes a user's prompt to extract image generation parameters like count and aspect ratio.
- * @param userPrompt The user's original prompt.
- * @returns A promise resolving to an object with the number of images, aspect ratio, and a refined prompt.
- */
-export async function analyzePromptForImageGenerationParams(
-    userPrompt: string
-): Promise<{ numberOfImages: number; aspectRatio: string; refinedPrompt: string; }> {
-    const metaPrompt = `
-        You are an intelligent prompt analyzer for an image generation AI. Your task is to analyze the user's prompt to extract specific parameters for image generation.
-
-        Analyze the following prompt: "${userPrompt}"
-
-        Instructions:
-        1.  **Number of Images:** Look for requests for a specific number of images (e.g., "create 4 pictures", "tạo 2 ảnh", "make two variations"). If found, extract the number. The number must be between 1 and 4. If not specified, default to 1.
-        2.  **Aspect Ratio:** Look for requests for a specific aspect ratio (e.g., "16:9", "phone wallpaper", "ảnh dọc", "widescreen", "ảnh vuông"). Map common terms to the closest valid ratio. Valid ratios are "1:1", "3:4", "4:3", "9:16", "16:9".
-            - "square", "vuông" -> "1:1"
-            - "portrait", "phone wallpaper", "ảnh dọc", "ảnh cho điện thoại" -> "9:16"
-            - "widescreen", "landscape", "ảnh ngang" -> "16:9"
-            If not specified, default to "1:1".
-        3.  **Refined Prompt:** Return the user's original prompt but with the instructions for number of images and aspect ratio removed. This refined prompt will be sent to the image generation model. It should be clean and focused only on the visual description.
-
-        Return the result as a valid JSON object matching the provided schema.
-    `;
-
-    try {
-        console.log("Analyzing prompt for generation parameters...");
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: metaPrompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        numberOfImages: {
-                            type: Type.INTEGER,
-                            description: "The number of images to generate, from 1 to 4. Default is 1.",
-                        },
-                        aspectRatio: {
-                            type: Type.STRING,
-                            description: "The aspect ratio. Must be one of '1:1', '3:4', '4:3', '9:16', '16:9'. Default is '1:1'.",
-                        },
-                        refinedPrompt: {
-                            type: Type.STRING,
-                            description: "The user's prompt with parameter instructions removed.",
-                        },
-                    },
-                    required: ["numberOfImages", "aspectRatio", "refinedPrompt"],
-                }
-            }
-        });
-
-        const jsonText = response.text.trim();
-        if (jsonText) {
-            const parsed = JSON.parse(jsonText);
-            // Clamp numberOfImages just in case the model returns something out of bounds.
-            parsed.numberOfImages = Math.max(1, Math.min(4, parsed.numberOfImages || 1));
-            return parsed;
-        }
-        
-        throw new Error("AI did not return a valid JSON response for parameter analysis.");
-
-    } catch (error) {
-        console.error("Error during prompt parameter analysis, falling back to defaults:", error);
-        // Fallback to default values and the original prompt if analysis fails.
-        return {
-            numberOfImages: 1,
-            aspectRatio: '1:1',
-            refinedPrompt: userPrompt,
-        };
-    }
-}
-
-/**
  * Refines a base prompt and user notes using an image for context.
  * @param basePrompt The template prompt from a preset.
  * @param userNotes The user's additional input.
@@ -336,4 +269,72 @@ Phân tích (các) "Ảnh đính kèm", "Prompt Gốc", và "Ghi chú của ngư
     console.error("Error during prompt refinement, falling back.", processedError);
     return fallbackPrompt;
   }
+}
+
+/**
+ * Analyzes a user prompt to extract structured image generation parameters.
+ * @param prompt The user's natural language prompt.
+ * @returns A promise that resolves to an object with a refined prompt, aspect ratio, and number of images.
+ */
+export async function analyzePromptForImageGenerationParams(prompt: string): Promise<{ refinedPrompt: string; aspectRatio: string; numberOfImages: number; }> {
+    const metaPrompt = `
+        Analyze the user's prompt for an image generation task. Extract the core subject and refine it into a more descriptive prompt. Also, determine the most likely desired aspect ratio and the number of images requested.
+        - Aspect ratio must be one of: '1:1', '3:4', '4:3', '9:16', '16:9'. Default to '1:1' if not specified.
+        - Number of images must be an integer between 1 and 4. Default to 1 if not specified.
+        - The refined prompt should be a clear, concise, and descriptive version of the user's intent, in Vietnamese.
+
+        User's prompt: "${prompt}"
+    `;
+
+    try {
+        console.log("Analyzing prompt for image generation parameters...");
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: metaPrompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        refinedPrompt: {
+                            type: Type.STRING,
+                            description: "The refined, descriptive prompt for the image generation model."
+                        },
+                        aspectRatio: {
+                            type: Type.STRING,
+                            description: "The aspect ratio, must be one of '1:1', '3:4', '4:3', '9:16', '16:9'."
+                        },
+                        numberOfImages: {
+                            type: Type.INTEGER,
+                            description: "The number of images to generate, from 1 to 4."
+                        }
+                    },
+                    required: ["refinedPrompt", "aspectRatio", "numberOfImages"]
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const parsed = JSON.parse(jsonText);
+
+        // Validate the response
+        const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9'];
+        const aspectRatio = validRatios.includes(parsed.aspectRatio) ? parsed.aspectRatio : '1:1';
+        const numberOfImages = Math.max(1, Math.min(4, parsed.numberOfImages || 1));
+        
+        return {
+            refinedPrompt: parsed.refinedPrompt || prompt,
+            aspectRatio,
+            numberOfImages
+        };
+
+    } catch (error) {
+        console.error("Error analyzing prompt for parameters, using defaults:", error);
+        // Fallback to defaults on any error
+        return {
+            refinedPrompt: prompt,
+            aspectRatio: '1:1',
+            numberOfImages: 1
+        };
+    }
 }

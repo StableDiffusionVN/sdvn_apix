@@ -165,7 +165,11 @@
     "uploaderCaption1Key": "freeGeneration_uploaderCaption1",
     "uploaderDescription1Key": "freeGeneration_uploaderDescription1",
     "uploaderCaption2Key": "freeGeneration_uploaderCaption2",
-    "uploaderDescription2Key": "freeGeneration_uploaderDescription2"
+    "uploaderDescription2Key": "freeGeneration_uploaderDescription2",
+    "uploaderCaption3Key": "freeGeneration_uploaderCaption3",
+    "uploaderDescription3Key": "freeGeneration_uploaderDescription3",
+    "uploaderCaption4Key": "freeGeneration_uploaderCaption4",
+    "uploaderDescription4Key": "freeGeneration_uploaderDescription4"
   },
   "toyModelCreator": {
     "mainTitleKey": "toyModelCreator_mainTitle",

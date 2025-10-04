@@ -223,6 +223,8 @@ export interface FreeGenerationState {
     stage: 'configuring' | 'generating' | 'results';
     image1: string | null;
     image2: string | null;
+    image3: string | null;
+    image4: string | null;
     generatedImages: string[];
     historicalImages: string[];
     options: {
@@ -362,7 +364,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'mix-style':
             return { stage: 'idle', contentImage: null, styleImage: null, generatedImage: null, historicalImages: [], options: { styleStrength: 'Rất mạnh', notes: '', removeWatermark: false }, finalPrompt: null, error: null };
         case 'free-generation':
-            return { stage: 'configuring', image1: null, image2: null, generatedImages: [], historicalImages: [], options: { prompt: '', removeWatermark: false, numberOfImages: 1, aspectRatio: 'Giữ nguyên' }, error: null };
+            return { stage: 'configuring', image1: null, image2: null, image3: null, image4: null, generatedImages: [], historicalImages: [], options: { prompt: '', removeWatermark: false, numberOfImages: 1, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'toy-model-creator':
             return { 
                 stage: 'idle', 

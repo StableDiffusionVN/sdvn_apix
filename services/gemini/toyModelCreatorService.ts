@@ -4,8 +4,6 @@
 */
 import { 
     processApiError, 
-    padImageToAspectRatio, 
-    getAspectRatioPromptInstruction, 
     parseDataUrl, 
     callGeminiWithRetry, 
     processGeminiResponse 
@@ -53,7 +51,7 @@ const buildDesktopModelPrompt = (options: ToyModelOptions): string[] => {
     ];
 
     if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
-        promptParts.push(...getAspectRatioPromptInstruction(options.aspectRatio, 1));
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
     } else {
         promptParts.push('Bức ảnh phải có tỷ lệ khung hình ngang (landscape).');
     }
@@ -93,22 +91,31 @@ const buildDesktopModelPrompt = (options: ToyModelOptions): string[] => {
 };
 
 const buildKeychainPrompt = (options: ToyModelOptions): string[] => {
-    return [
+    const promptParts = [
         `Tạo một bức ảnh chụp sản phẩm chuyên nghiệp, siêu thực, cận cảnh (macro photography).`,
-        ...getAspectRatioPromptInstruction(options.aspectRatio, 1),
+    ];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
+    }
+    promptParts.push(
         `**Đối tượng chính:** Một chiếc móc khoá 3D tinh xảo của chủ thể trong ảnh được cung cấp.`,
         `  - **Chất liệu:** ${options.keychainMaterial || 'Tự động chọn chất liệu phù hợp (nhựa, kim loại, men...)'}.`,
         `  - **Phong cách:** ${options.keychainStyle || 'Tự động chọn phong cách (Chibi, realistic...)'}.`,
         `**Bối cảnh:** Móc khoá được đặt một cách nghệ thuật trên một ${options.deskSurface || 'bề mặt bàn phù hợp (gỗ, đá...)'}.`,
         `  - **Vật dụng đi kèm:** ${options.accompanyingItems || 'Tự động chọn vật dụng đi kèm hoặc không có gì'}.`,
         `**Ánh sáng và không khí:** Ánh sáng dịu nhẹ, làm nổi bật các chi tiết và chất liệu của móc khoá. Phông nền được làm mờ (bokeh) để tập trung vào sản phẩm.`
-    ];
+    );
+    return promptParts;
 };
 
 const buildGachaponPrompt = (options: ToyModelOptions): string[] => {
-    return [
+    const promptParts = [
         `Tạo một bức ảnh chụp sản phẩm theo phong cách Nhật Bản, siêu thực và sống động.`,
-        ...getAspectRatioPromptInstruction(options.aspectRatio, 1),
+    ];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
+    }
+    promptParts.push(
         `**Đối tượng chính:** Một viên nang đồ chơi "Gachapon" bằng nhựa, đang mở hé.`,
         `  - **Màu viên nang:** ${options.capsuleColor || 'Tự động chọn màu phù hợp'}.`,
         `**Bên trong viên nang:** Một mô hình đồ chơi nhỏ (mini-figure) của chủ thể trong ảnh được cung cấp.`,
@@ -116,13 +123,18 @@ const buildGachaponPrompt = (options: ToyModelOptions): string[] => {
         `  - **Nội dung:** ${options.capsuleContents || 'Tự động chọn vật phẩm đi kèm'}.`,
         `**Bối cảnh:** ${options.displayLocation || 'Tự động chọn nơi trưng bày phù hợp'}.`,
         `**Ánh sáng và không khí:** Ánh sáng rực rỡ, vui tươi, làm nổi bật màu sắc. Bối cảnh có độ sâu trường ảnh nông (shallow depth of field).`
-    ];
+    );
+    return promptParts;
 };
 
 const buildMiniaturePrompt = (options: ToyModelOptions): string[] => {
-    return [
+    const promptParts = [
         `Tạo một bức ảnh studio nghệ thuật, siêu thực, chụp một tác phẩm điêu khắc tinh xảo.`,
-        ...getAspectRatioPromptInstruction(options.aspectRatio, 1),
+    ];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
+    }
+    promptParts.push(
         `**Đối tượng chính:** Một bức tượng nhỏ (miniature) của chủ thể trong ảnh được cung cấp, được chế tác tỉ mỉ.`,
         `  - **Chất liệu tượng:** ${options.miniatureMaterial || 'Tự động chọn chất liệu phù hợp (resin, đồng, đá...)'}.`,
         `**Bệ trưng bày:** Bức tượng được đặt trang trọng trên một chiếc đế.`,
@@ -130,7 +142,8 @@ const buildMiniaturePrompt = (options: ToyModelOptions): string[] => {
         `  - **Hình dạng đế:** ${options.baseShape || 'Tự động chọn hình dạng đế phù hợp'}.`,
         `**Bối cảnh:** Phông nền là một màu trơn hoặc gradient tối giản, không làm xao nhãng chủ thể.`,
         `**Ánh sáng:** ${options.lightingStyle || 'Tự động chọn kiểu chiếu sáng phù hợp nhất'}.`
-    ];
+    );
+    return promptParts;
 };
 
 const buildCraftingModelPrompt = (options: ToyModelOptions): string[] => {
@@ -144,7 +157,7 @@ const buildCraftingModelPrompt = (options: ToyModelOptions): string[] => {
     ];
 
     if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
-        promptParts.push(...getAspectRatioPromptInstruction(options.aspectRatio, 1));
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
     }
 
     promptParts.push('\n**CHI TIẾT BỐ CỤC CẢNH:**');
@@ -182,9 +195,11 @@ const buildCraftingModelPrompt = (options: ToyModelOptions): string[] => {
 const buildPokemonModelPrompt = (options: ToyModelOptions): string[] => {
     const promptParts = [
         '**Nhiệm-vụ-cốt-lõi:** Hãy tưởng tượng lại chủ thể trong hình ảnh được cung cấp như một Pokémon hoàn toàn mới. Dựa trên đó, tạo ra một bức ảnh chụp sản phẩm **siêu thực, sống động, và đậm chất điện ảnh (cinematic)**.',
-        ...getAspectRatioPromptInstruction(options.aspectRatio, 1),
-        '\n**BỐ CỤC CẢNH - HOÀNH TRÁNG:**',
     ];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
+        promptParts.push(`**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
+    }
+    promptParts.push('\n**BỐ CỤC CẢNH - HOÀNH TRÁNG:**');
 
     const sceneDetails = [];
     
@@ -233,8 +248,7 @@ export async function generateToyModelImage(
     concept: string, 
     options: ToyModelOptions
 ): Promise<string> {
-    const imageToProcess = await padImageToAspectRatio(imageDataUrl, options.aspectRatio ?? 'Giữ nguyên');
-    const { mimeType, data: base64Data } = parseDataUrl(imageToProcess);
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
     const imagePart = { inlineData: { mimeType, data: base64Data } };
 
     let promptParts: string[];
@@ -279,9 +293,15 @@ export async function generateToyModelImage(
     const prompt = promptParts.join('\n');
     const textPart = { text: prompt };
 
+    const config: any = {};
+    const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên' && validRatios.includes(options.aspectRatio)) {
+        config.imageConfig = { aspectRatio: options.aspectRatio };
+    }
+
     try {
         console.log(`Attempting to generate toy model image for concept [${concept}] with prompt...`, prompt);
-        const response = await callGeminiWithRetry([imagePart, textPart]);
+        const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);

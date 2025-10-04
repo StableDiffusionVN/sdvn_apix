@@ -1,3 +1,4 @@
+
 {
   "freeGeneration_mainTitle": "Free Generation",
   "freeGeneration_subtitle": "Unleash your creativity with prompts",
@@ -5,17 +6,16 @@
   "freeGeneration_uploaderDescription1": "Image to edit or use as inspiration",
   "freeGeneration_uploaderCaption2": "Upload image 2 (optional)",
   "freeGeneration_uploaderDescription2": "Second image to combine or reference",
+  "freeGeneration_uploaderCaption3": "Upload image 3 (optional)",
+  "freeGeneration_uploaderDescription3": "Additional image",
+  "freeGeneration_uploaderCaption4": "Upload image 4 (optional)",
+  "freeGeneration_uploaderDescription4": "Additional image",
   "freeGeneration_originalImage2Caption": "Original Image 2",
+  "freeGeneration_originalImage3Caption": "Original Image 3",
+  "freeGeneration_originalImage4Caption": "Original Image 4",
   "freeGeneration_resultCaption": "Result {0}",
   "freeGeneration_promptTitle": "Enter Prompt",
-  "freeGeneration_tipsTitle": "Usage Tips",
-  "freeGeneration_tips": [
-    "No image input to use **Imagen**. The prompt will be intelligently analyzed for quantity and ratio.",
-    "Input an image to use **Gemini Image** (image editing).",
-    "When inputting multiple images, the main image should be the last one.",
-    "The main input image should be cropped to the desired output aspect ratio."
-  ],
-  "freeGeneration_promptPlaceholder": "e.g., an astronaut cat skateboarding on Mars, oil painting style, create 4 images, 16:9 ratio...",
+  "freeGeneration_promptPlaceholder": "e.g., a cute astronaut cat skateboarding on Mars, hyperrealistic photo, highly detailed, 4k",
   "freeGeneration_numImagesLabel": "Number of Images",
   "freeGeneration_numImagesAriaLabel": "Select number of images",
   "freeGeneration_editModeWarning": "Edit mode only creates 1 image at a time.",

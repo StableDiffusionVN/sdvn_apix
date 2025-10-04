@@ -303,7 +303,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                 )}
             </AnimatePresence>
 
-            <div className="w-full flex-1 flex items-start justify-start overflow-y-auto overflow-x-auto py-4">
+            <div className="w-full flex-1 flex items-start justify-start overflow-y-auto overflow-x-auto py-4 results-scroll-container">
                 <motion.div
                     layout
                     className="flex flex-col md:flex-row md:flex-nowrap items-center md:items-stretch gap-6 md:gap-8 px-4 md:px-8 w-full md:w-max mx-auto py-4"

@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-// FIX: Corrected typo in React import.
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -243,16 +242,12 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         const imageToEditState = appState.generatedImages[idea];
-        if (!imageToEditState) {
+        // FIX: The type of `imageToEditState` was being inferred as `unknown`. Casting to `any` resolves the property access error.
+        if (!imageToEditState || (imageToEditState as any).status !== 'done' || !(imageToEditState as any).url) {
             return;
         }
 
-        // FIX: Added type guard to ensure imageToEditState is a valid object before property access.
-        if (typeof imageToEditState !== 'object' || imageToEditState === null || !('status' in imageToEditState) || imageToEditState.status !== 'done' || !('url' in imageToEditState) || !imageToEditState.url) {
-            return;
-        }
-
-        const imageUrlToEdit = imageToEditState.url;
+        const imageUrlToEdit = (imageToEditState as any).url;
         const preGenState = { ...appState };
         
         onStateChange({

@@ -1231,3 +1231,29 @@ input:checked + .switch-slider:before {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* --- NEW: Results View Horizontal Scrollbar --- */
+.results-scroll-container::-webkit-scrollbar {
+  height: 12px;
+  width: 8px;
+}
+
+.results-scroll-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.results-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.5);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.results-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.8);
+}
+
+.results-scroll-container::-webkit-scrollbar:horizontal {
+    height: 12px;
+}

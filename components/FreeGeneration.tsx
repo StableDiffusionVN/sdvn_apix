@@ -4,7 +4,7 @@
 */
 import React, { ChangeEvent, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateFreeImage, editImageWithPrompt, analyzePromptForImageGenerationParams, enhancePrompt } from '../services/geminiService';
+import { generateFreeImage, editImageWithPrompt, enhancePrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -35,6 +35,10 @@ interface FreeGenerationProps {
     uploaderDescription1: string;
     uploaderCaption2: string;
     uploaderDescription2: string;
+    uploaderCaption3: string;
+    uploaderDescription3: string;
+    uploaderCaption4: string;
+    uploaderDescription4: string;
     addImagesToGallery: (images: string[]) => void;
     appState: FreeGenerationState;
     onStateChange: (newState: FreeGenerationState) => void;
@@ -44,12 +48,14 @@ interface FreeGenerationProps {
 }
 
 const NUMBER_OF_IMAGES_OPTIONS = ['1', '2', '3', '4'] as const;
-const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '4:5', '9:16', '1:2', '3:2', '5:4', '16:9', '2:1'];
+const ASPECT_RATIO_OPTIONS = ['Giữ nguyên', '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
 
 const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     const { 
         uploaderCaption1, uploaderDescription1,
         uploaderCaption2, uploaderDescription2,
+        uploaderCaption3, uploaderDescription3,
+        uploaderCaption4, uploaderDescription4,
         addImagesToGallery,
         appState, onStateChange, onReset,
         logGeneration,
@@ -68,26 +74,13 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         setLocalPrompt(appState.options.prompt);
     }, [appState.options.prompt]);
 
-    const lightboxImages = [appState.image1, appState.image2, ...appState.historicalImages].filter((img): img is string => !!img);
+    const lightboxImages = [appState.image1, appState.image2, appState.image3, appState.image4, ...appState.historicalImages].filter((img): img is string => !!img);
 
-    const handleImage1Upload = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (imageKey: 'image1' | 'image2' | 'image3' | 'image4') => (e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, (imageDataUrl) => {
             onStateChange({
                 ...appState,
-                image1: imageDataUrl,
-                generatedImages: [],
-                historicalImages: [],
-                error: null,
-            });
-            addImagesToGallery([imageDataUrl]);
-        });
-    };
-
-    const handleImage2Upload = (e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, (imageDataUrl) => {
-             onStateChange({
-                ...appState,
-                image2: imageDataUrl,
+                [imageKey]: imageDataUrl,
                 generatedImages: [],
                 historicalImages: [],
                 error: null,
@@ -96,12 +89,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         });
     };
     
-    const handleSaveImage1 = (newUrl: string) => {
-        onStateChange({ ...appState, image1: newUrl });
-        addImagesToGallery([newUrl]);
-    };
-    const handleSaveImage2 = (newUrl: string) => {
-        onStateChange({ ...appState, image2: newUrl });
+    const handleSaveImage = (imageKey: 'image1' | 'image2' | 'image3' | 'image4') => (newUrl: string) => {
+        onStateChange({ ...appState, [imageKey]: newUrl });
         addImagesToGallery([newUrl]);
     };
 
@@ -153,34 +142,16 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         onStateChange({ ...preGenState, stage: 'generating', error: null, generatedImages: [] });
 
         try {
-            let resultUrls: string[];
-    
-            // Case 1: Text-to-Image (Imagen) with prompt analysis
-            if (!appState.image1) {
-                const params = await analyzePromptForImageGenerationParams(finalPrompt);
-                
-                const numImages = params.numberOfImages > 1 ? params.numberOfImages : appState.options.numberOfImages;
-                const aspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : appState.options.aspectRatio;
-
-                resultUrls = await generateFreeImage(
-                    params.refinedPrompt,
-                    numImages,
-                    aspectRatio,
-                    undefined,
-                    undefined,
-                    appState.options.removeWatermark
-                );
-            } else {
-                // Case 2: Image-to-Image (Gemini Image Editing)
-                resultUrls = await generateFreeImage(
-                    finalPrompt, 
-                    1, // Editing always produces 1 image
-                    appState.options.aspectRatio, 
-                    appState.image1, 
-                    appState.image2, 
-                    appState.options.removeWatermark
-                );
-            }
+            const resultUrls = await generateFreeImage(
+                finalPrompt,
+                appState.options.numberOfImages,
+                appState.options.aspectRatio,
+                appState.image1,
+                appState.image2,
+                appState.image3,
+                appState.image4,
+                appState.options.removeWatermark
+            );
 
             const settingsToEmbed = {
                 viewId: 'free-generation',
@@ -218,7 +189,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
-            const resultUrl = await editImageWithPrompt(url, prompt);
+            const resultUrl = await editImageWithPrompt(url, prompt, undefined, appState.options.removeWatermark);
             const settingsToEmbed = {
                 viewId: 'free-generation',
                 state: { ...appState, stage: 'configuring', generatedImages: [], historicalImages: [], error: null },
@@ -248,12 +219,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
     
     const handleDownloadAll = () => {
         const inputImages: ImageForZip[] = [];
-        if (appState.image1) {
-            inputImages.push({ url: appState.image1, filename: 'anh-goc-1', folder: 'input' });
-        }
-        if (appState.image2) {
-            inputImages.push({ url: appState.image2, filename: 'anh-goc-2', folder: 'input' });
-        }
+        if (appState.image1) inputImages.push({ url: appState.image1, filename: 'anh-goc-1', folder: 'input' });
+        if (appState.image2) inputImages.push({ url: appState.image2, filename: 'anh-goc-2', folder: 'input' });
+        if (appState.image3) inputImages.push({ url: appState.image3, filename: 'anh-goc-3', folder: 'input' });
+        if (appState.image4) inputImages.push({ url: appState.image4, filename: 'anh-goc-4', folder: 'input' });
         
         processAndDownloadAll({
             inputImages,
@@ -264,7 +233,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         });
     };
 
-    const Uploader = ({ id, onUpload, caption, description, currentImage, placeholderType }: any) => (
+    const Uploader = ({ id, onUpload, onImageChange, caption, description, currentImage, placeholderType }: any) => (
         <div className="flex flex-col items-center gap-4">
             <label htmlFor={id} className="cursor-pointer group transform hover:scale-105 transition-transform duration-300">
                  <ActionablePolaroidCard
@@ -274,7 +243,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                     mediaUrl={currentImage || undefined}
                     placeholderType={placeholderType}
                     onClick={currentImage ? () => openLightbox(lightboxImages.indexOf(currentImage)) : undefined}
-                    onImageChange={id === 'free-gen-upload-1' ? handleSaveImage1 : handleSaveImage2}
+                    onImageChange={onImageChange}
                 />
             </label>
             <input id={id} type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={onUpload} />
@@ -290,6 +259,8 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         if (appState.stage === 'generating') return t('common_creating');
         return t('freeGeneration_createButton');
     };
+
+    const anyImageUploaded = appState.image1 || appState.image2 || appState.image3 || appState.image4;
 
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
@@ -310,46 +281,64 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-6 md:gap-8 w-full md:w-max mx-auto px-4">
                             <Uploader 
                                 id="free-gen-upload-1"
-                                onUpload={handleImage1Upload}
+                                onUpload={handleImageUpload('image1')}
+                                onImageChange={handleSaveImage('image1')}
                                 caption={uploaderCaption1}
                                 description={uploaderDescription1}
                                 currentImage={appState.image1}
                                 placeholderType="magic"
                             />
                             <AnimatePresence>
-                            {appState.image1 && (
-                                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                                    <Uploader 
-                                        id="free-gen-upload-2"
-                                        onUpload={handleImage2Upload}
-                                        caption={uploaderCaption2}
-                                        description={uploaderDescription2}
-                                        currentImage={appState.image2}
-                                        placeholderType="magic"
-                                    />
-                                </motion.div>
-                            )}
+                                {appState.image1 && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                                        <Uploader 
+                                            id="free-gen-upload-2"
+                                            onUpload={handleImageUpload('image2')}
+                                            onImageChange={handleSaveImage('image2')}
+                                            caption={uploaderCaption2}
+                                            description={uploaderDescription2}
+                                            currentImage={appState.image2}
+                                            placeholderType="magic"
+                                        />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                             <AnimatePresence>
+                                {appState.image2 && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                                        <Uploader 
+                                            id="free-gen-upload-3"
+                                            onUpload={handleImageUpload('image3')}
+                                            onImageChange={handleSaveImage('image3')}
+                                            caption={uploaderCaption3}
+                                            description={uploaderDescription3}
+                                            currentImage={appState.image3}
+                                            placeholderType="magic"
+                                        />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                             <AnimatePresence>
+                                {appState.image3 && (
+                                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                                        <Uploader 
+                                            id="free-gen-upload-4"
+                                            onUpload={handleImageUpload('image4')}
+                                            onImageChange={handleSaveImage('image4')}
+                                            caption={uploaderCaption4}
+                                            description={uploaderDescription4}
+                                            currentImage={appState.image4}
+                                            placeholderType="magic"
+                                        />
+                                    </motion.div>
+                                )}
                             </AnimatePresence>
                         </div>
                     </div>
-                     
+                         
                     <OptionsPanel>
                         <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('freeGeneration_promptTitle')}</h2>
                         
-                        <div className="bg-yellow-900/30 border border-yellow-400/50 rounded-lg p-3 my-4 text-sm text-neutral-300 space-y-1">
-                            <div className="flex items-center gap-2 font-bold text-yellow-300">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                <span>{t('freeGeneration_tipsTitle')}</span>
-                            </div>
-                            <ul className="list-disc list-inside pl-2 space-y-1 base-font">
-                                {t('freeGeneration_tips').map((tip: string, index: number) => (
-                                    <li key={index} dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-                                ))}
-                            </ul>
-                        </div>
-
                         <div>
                             <textarea
                                 id="prompt"
@@ -367,7 +356,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className={`transition-opacity duration-300 ${appState.image1 ? 'opacity-50' : 'opacity-100'}`}>
+                            <div>
                                 <label htmlFor="number-of-images" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">
                                     {t('freeGeneration_numImagesLabel')}
                                 </label>
@@ -376,12 +365,10 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                     value={appState.options.numberOfImages}
                                     onChange={(e) => handleOptionChange('numberOfImages', parseInt(e.target.value, 10))}
                                     className="form-input"
-                                    disabled={!!appState.image1}
                                     aria-label={t('freeGeneration_numImagesAriaLabel')}
                                 >
                                     {NUMBER_OF_IMAGES_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
-                                {appState.image1 && <p className="text-xs text-neutral-400 mt-1">{t('freeGeneration_editModeWarning')}</p>}
                             </div>
                              <div>
                                 <label htmlFor="aspect-ratio" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
@@ -393,7 +380,6 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                                 >
                                     {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
-                                {!appState.image1 && <p className="text-xs text-neutral-400 mt-1">{t('freeGeneration_aspectRatioNote')}</p>}
                             </div>
                         </div>
 
@@ -426,7 +412,7 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                         </div>
 
                         <div className="flex items-center justify-end gap-4 pt-4">
-                             { (appState.image1 || appState.image2) && <button onClick={() => { onStateChange({...appState, image1: null, image2: null}) }} className="btn btn-secondary">
+                             { anyImageUploaded && <button onClick={() => { onStateChange({...appState, image1: null, image2: null, image3: null, image4: null}) }} className="btn btn-secondary">
                                 {t('common_deleteImages')}
                             </button> }
                             <button onClick={handleGenerate} className="btn btn-primary" disabled={isLoading || !appState.options.prompt.trim()}>
@@ -456,12 +442,22 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
                 >
                     {appState.image2 && (
                         <motion.div key="image2-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
-                            <ActionablePolaroidCard type="multi-input" caption={t('freeGeneration_originalImage2Caption')} status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onImageChange={handleSaveImage2} />
+                            <ActionablePolaroidCard type="multi-input" caption={t('freeGeneration_originalImage2Caption')} status="done" mediaUrl={appState.image2} isMobile={isMobile} onClick={() => appState.image2 && openLightbox(lightboxImages.indexOf(appState.image2))} onImageChange={handleSaveImage('image2')} />
+                        </motion.div>
+                    )}
+                    {appState.image3 && (
+                        <motion.div key="image3-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
+                            <ActionablePolaroidCard type="multi-input" caption={t('freeGeneration_originalImage3Caption')} status="done" mediaUrl={appState.image3} isMobile={isMobile} onClick={() => appState.image3 && openLightbox(lightboxImages.indexOf(appState.image3))} onImageChange={handleSaveImage('image3')} />
+                        </motion.div>
+                    )}
+                    {appState.image4 && (
+                        <motion.div key="image4-result" className="w-full md:w-auto flex-shrink-0" whileHover={{ scale: 1.05, zIndex: 10 }} transition={{ duration: 0.2 }}>
+                            <ActionablePolaroidCard type="multi-input" caption={t('freeGeneration_originalImage4Caption')} status="done" mediaUrl={appState.image4} isMobile={isMobile} onClick={() => appState.image4 && openLightbox(lightboxImages.indexOf(appState.image4))} onImageChange={handleSaveImage('image4')} />
                         </motion.div>
                     )}
                     {
                        isLoading && !isEnhancing ? 
-                        Array.from({ length: appState.image1 ? 1 : appState.options.numberOfImages }).map((_, index) => (
+                        Array.from({ length: appState.options.numberOfImages }).map((_, index) => (
                              <motion.div
                                 className="w-full md:w-auto flex-shrink-0"
                                 key={`pending-${index}`}

@@ -10,7 +10,6 @@ import {
     editImageWithPrompt, 
     generateFromMultipleImages, 
     refineArchitecturePrompt, 
-    analyzePromptForImageGenerationParams,
     generateFreeImage,
     refineImageAndPrompt
 } from '../../services/geminiService';
@@ -196,32 +195,6 @@ const captureLayer = async (layer: Layer): Promise<string> => {
     return canvas.toDataURL('image/png');
 };
 
-const findClosestImagenAspectRatio = (width: number, height: number): '1:1' | '3:4' | '4:3' | '9:16' | '16:9' => {
-    if (width <= 0 || height <= 0) return '1:1';
-    const targetRatio = width / height;
-    const supportedRatios: Record<'1:1' | '3:4' | '4:3' | '9:16' | '16:9', number> = {
-        '1:1': 1.0,
-        '9:16': 9 / 16,
-        '16:9': 16 / 9,
-        '3:4': 3 / 4,
-        '4:3': 4 / 3,
-    };
-
-    let closestMatch: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '1:1';
-    let minDiff = Infinity;
-
-    for (const ratioStr in supportedRatios) {
-        const key = ratioStr as keyof typeof supportedRatios;
-        const ratioVal = supportedRatios[key];
-        const diff = Math.abs(targetRatio - ratioVal);
-        if (diff < minDiff) {
-            minDiff = diff;
-            closestMatch = key;
-        }
-    }
-    return closestMatch;
-};
-
 const parseMultiPrompt = (prompt: string): string[] => {
     const match = prompt.match(/^(.*?)\{(.*?)\}(.*)$/s);
     if (match) {
@@ -276,6 +249,9 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
     const [loadedPreset, setLoadedPreset] = useState<any | null>(null);
     const [activeCanvasTool, setActiveCanvasTool] = useState<CanvasTool>('select');
     const [shapeFillColor, setShapeFillColor] = useState<string>('#FFFFFF');
+    const [aiNumberOfImages, setAiNumberOfImages] = useState(1);
+    const [aiAspectRatio, setAiAspectRatio] = useState('Giữ nguyên');
+    const [removeWatermark, setRemoveWatermark] = useState(false);
     const appStateRef = useRef({ layers, history, historyIndex, canvasInitialized, canvasSettings, panX: 0, panY: 0, scale: 1, });
     
     useEffect(() => {
@@ -469,7 +445,6 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         const { canvasSettings: loadedSettings, layers: loadedLayers } = jsonData;
         const defaultGridSettings = { visible: false, snap: false, size: 50, color: '#cccccc' };
         const defaultGuideSettings = { enabled: true, color: '#ff4d4d' };
-        // FIX: Add fallback empty objects to prevent spreading undefined if 'grid' or 'guides' are missing from the loaded settings.
         setCanvasSettings({ ...loadedSettings, grid: { ...defaultGridSettings, ...(loadedSettings.grid || {}) }, guides: { ...defaultGuideSettings, ...(loadedSettings.guides || {}) } }); 
         setLayers(loadedLayers); setHistory([loadedLayers]); setHistoryIndex(0); setCanvasInitialized(true); setIsInfiniteCanvas(loadedSettings.isInfinite ?? false);
         panX.set(0); panY.set(0); scale.set(1);
@@ -581,7 +556,8 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         let newLayersState = [...layers]; const newDuplicatedLayers: Layer[] = []; const newSelectedIds: string[] = [];
         const topMostLayerInSelection = selectedLayers[0]; const topMostSelectedIndex = layers.findIndex(l => l.id === topMostLayerInSelection.id);
         [...selectedLayers].reverse().forEach(layerToDup => {
-            const newLayer: Layer = { ...layerToDup, id: Math.random().toString(36).substring(2, 9), x: layerToDup.x, y: layerToDup.y };
+            // FIX: Replaced spread operator with Object.assign to resolve a "Spread types may only be created from object types" error that occurred due to a subtle type inference issue.
+            const newLayer: Layer = Object.assign({}, layerToDup, { id: Math.random().toString(36).substring(2, 9), x: layerToDup.x, y: layerToDup.y });
             newLayersState.splice(topMostSelectedIndex, 0, newLayer); newDuplicatedLayers.unshift(newLayer); newSelectedIds.push(newLayer.id);
         });
         setLayers(newLayersState); setSelectedLayerIds(newSelectedIds);
@@ -637,7 +613,7 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         try {
             const bbox = getBoundingBoxForLayers(selectedLayers); if (!bbox) throw new Error("Could not calculate bounding box.");
             const mergedImageUrl = await captureCanvas(selectedLayers, bbox, null);
-            const newLayer: Layer = { id: Math.random().toString(36).substring(2, 9), type: 'image', url: mergedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none', };
+            const newLayer: Layer = { id: Math.random().toString(36).substring(2, 9), type: 'image', url: mergedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none', textAlign: undefined, color: undefined, lineHeight: undefined, };
             const topMostLayerIndex = layers.findIndex(l => l.id === selectedLayerIds[0]); const newLayers = layers.filter(l => !selectedLayerIds.includes(l.id));
             newLayers.splice(topMostLayerIndex, 0, newLayer); setLayers(newLayers); setSelectedLayerIds([newLayer.id]);
             const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newLayers); setHistory(newHistory); setHistoryIndex(newHistory.length - 1); interactionStartHistoryState.current = null;
@@ -646,57 +622,147 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
     }, [selectedLayers, layers, selectedLayerIds, beginInteraction, history, historyIndex, t]);
     
     const handleGenerateAILayer = useCallback(async () => {
-        const controller = new AbortController(); generationController.current = controller; const { signal } = controller;
-        setIsLogVisible(true); setRunningJobCount(prev => prev + 1); setError(null);
-        if (aiProcessLog.length > 0) { addLog('---', 'info'); }
+        const controller = new AbortController();
+        generationController.current = controller;
+        const { signal } = controller;
+    
+        setIsLogVisible(true);
+        setRunningJobCount(prev => prev + 1);
+        setError(null);
+        if (aiProcessLog.length > 0) {
+            addLog('---', 'info');
+        }
         addLog(`${t('layerComposer_ai_log_start')} (${new Date().toLocaleTimeString()})`, 'info');
-        const promptsToGenerate = parseMultiPrompt(aiPrompt); const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
-        const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate; const currentPreset = presets.find(pr => pr.id === aiPreset);
-        if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) { setRunningJobCount(prev => Math.max(0, prev - 1)); setIsLogVisible(false); return; }
+    
+        const promptsToGenerate = parseMultiPrompt(aiPrompt);
+        const isPromptEmpty = promptsToGenerate.every(p => !p.trim());
+        const finalPrompts = isPromptEmpty ? [''] : promptsToGenerate;
+    
+        const currentPreset = presets.find(pr => pr.id === aiPreset);
+    
+        if (isPromptEmpty && (!currentPreset || currentPreset.id === 'default')) {
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+            setIsLogVisible(false);
+            return;
+        }
+    
         try {
-            if (finalPrompts.length > 1) { addLog(`Detected ${finalPrompts.length} prompt variations. Generating all...`, 'info'); }
-            const hasLayerContext = selectedLayers.length > 0; const referenceBounds = hasLayerContext ? getBoundingBoxForLayers(selectedLayers) : null;
-            const imageUrls = hasLayerContext ? await Promise.all(selectedLayers.map(l => captureLayer(l))) : []; if (signal.aborted) return;
-            const generationPromises = finalPrompts.map(async (userPromptChunk) => {
+            if (finalPrompts.length > 1) {
+                addLog(`Detected ${finalPrompts.length} prompt variations. Generating all...`, 'info');
+            }
+            
+            let allResults: string[] = [];
+            const hasLayerContext = selectedLayers.length > 0;
+            const referenceBounds = hasLayerContext ? getBoundingBoxForLayers(selectedLayers) : null;
+            
+            for (const userPromptChunk of finalPrompts) {
+                if (signal.aborted) throw new Error("Cancelled");
+                
                 if (!currentPreset) throw new Error("Selected preset not found.");
-                if (currentPreset.requiresImageContext && !hasLayerContext) { throw new Error(`Preset "${currentPreset.name[language as keyof typeof currentPreset.name]}" requires at least one image layer to be selected.`); }
+                if (currentPreset.requiresImageContext && !hasLayerContext) {
+                    throw new Error(`Preset "${currentPreset.name[language as keyof typeof currentPreset.name]}" requires at least one image layer to be selected.`);
+                }
                 const template = currentPreset.promptTemplate[language as keyof typeof currentPreset.promptTemplate] || currentPreset.promptTemplate['en'];
+                
                 let finalPrompt = '';
+    
                 if (currentPreset.refine && hasLayerContext) {
                     addLog(t('layerComposer_ai_log_refining'), 'spinner');
-                    if (currentPreset.id === 'architecture') { finalPrompt = await refineArchitecturePrompt(template, userPromptChunk, imageUrls); }
-                    else { finalPrompt = await refineImageAndPrompt(template, userPromptChunk, imageUrls); }
+                    const tempImageUrls = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+                    if (currentPreset.id === 'architecture') {
+                        finalPrompt = await refineArchitecturePrompt(template, userPromptChunk, tempImageUrls);
+                    } else {
+                        finalPrompt = await refineImageAndPrompt(template, userPromptChunk, tempImageUrls);
+                    }
                     if (signal.aborted) throw new Error("Cancelled");
-                } else { finalPrompt = template.replace('{{userPrompt}}', userPromptChunk).trim(); }
-                if (signal.aborted) throw new Error("Cancelled");
-                addLog(t('layerComposer_ai_log_finalPrompt'), 'info'); addLog(finalPrompt, 'prompt');
-                if (!hasLayerContext) {
-                    const params = await analyzePromptForImageGenerationParams(finalPrompt); if (signal.aborted) throw new Error("Cancelled");
-                    const canvasAspectRatioStr = findClosestImagenAspectRatio(canvasSettings.width, canvasSettings.height); const finalAspectRatio = params.aspectRatio !== '1:1' ? params.aspectRatio : canvasAspectRatioStr;
-                    const finalNumImages = finalPrompts.length > 1 ? 1 : params.numberOfImages;
-                    return generateFreeImage(params.refinedPrompt, finalNumImages, finalAspectRatio as any);
                 } else {
-                    const isBatchMode = !isSimpleImageMode && selectedLayers.length > 1;
-                    if (isBatchMode) { return Promise.all(imageUrls.map(url => editImageWithPrompt(url, finalPrompt))); }
-                    else { const resultUrl = await generateFromMultipleImages(imageUrls, finalPrompt); return [resultUrl]; }
+                    addLog(t('layerComposer_ai_log_noRefine'), 'info');
+                    finalPrompt = template.replace('{{userPrompt}}', userPromptChunk).trim();
                 }
-            });
-            addLog(t('layerComposer_ai_log_generating'), 'spinner'); const results = (await Promise.all(generationPromises)).flat(); if (signal.aborted) return;
-            if (results.length === 0) throw new Error(t('layerComposer_ai_log_noImagesGenerated'));
-            addLog(t('layerComposer_ai_log_generatedCount', results.length), 'info');
-            const imageLoadPromises = results.map(url => new Promise<HTMLImageElement>((resolve, reject) => { const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => resolve(img); img.onerror = reject; img.src = url; }));
-            const loadedImages = await Promise.all(imageLoadPromises); if (signal.aborted) return;
+    
+                if (signal.aborted) throw new Error("Cancelled");
+                addLog(t('layerComposer_ai_log_finalPrompt'), 'info');
+                addLog(finalPrompt, 'prompt');
+                
+                let results: string[] = [];
+                if (hasLayerContext) {
+                    const isBatchMode = !isSimpleImageMode && selectedLayers.length > 1;
+                    if (isBatchMode) {
+                        addLog(t('layerComposer_ai_log_capturingLayers', selectedLayers.length), 'info');
+                        const generationPromises = selectedLayers.map(async (layer) => {
+                            const layerUrl = await captureLayer(layer);
+                            if (signal.aborted) return [];
+                            
+                            const imagePromises = Array.from({ length: aiNumberOfImages }).map(() =>
+                                editImageWithPrompt(layerUrl, finalPrompt, aiAspectRatio, removeWatermark)
+                            );
+                            
+                            const imageUrls = await Promise.all(imagePromises);
+                            return imageUrls;
+                        });
+                        
+                        const resultsArrays = await Promise.all(generationPromises);
+                        if (signal.aborted) throw new Error("Cancelled");
+                        results = resultsArrays.flat();
+                    } else { 
+                        addLog(t('layerComposer_ai_log_capturingLayers', selectedLayers.length), 'info');
+                        const imageUrlsToCombine = await Promise.all(selectedLayers.map(l => captureLayer(l)));
+                        if (signal.aborted) throw new Error("Cancelled");
+                        
+                        const generationPromises = Array.from({ length: aiNumberOfImages }).map(() =>
+                            generateFromMultipleImages(imageUrlsToCombine, finalPrompt, aiAspectRatio, removeWatermark)
+                        );
+                        
+                        const generatedUrls = await Promise.all(generationPromises);
+                        if (signal.aborted) throw new Error("Cancelled");
+                        results = generatedUrls;
+                    }
+                } else { 
+                    if (signal.aborted) throw new Error("Cancelled");
+                    const finalNumImages = finalPrompts.length > 1 ? 1 : aiNumberOfImages;
+                    const resultUrls = await generateFreeImage(finalPrompt, finalNumImages, aiAspectRatio, undefined, undefined, undefined, undefined, removeWatermark);
+                    results.push(...resultUrls);
+                }
+                allResults.push(...results);
+            }
+            
+            if (allResults.length === 0) {
+                throw new Error(t('layerComposer_ai_log_noImagesGenerated'));
+            }
+            addLog(t('layerComposer_ai_log_generatedCount', allResults.length), 'info');
+            addLog(t('layerComposer_ai_log_loadingResults'), 'info');
+    
+            const imageLoadPromises = allResults.map(url => new Promise<HTMLImageElement>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            }));
+            const loadedImages = await Promise.all(imageLoadPromises);
+            if (signal.aborted) return;
+            
             addLog(t('layerComposer_ai_log_addingLayers', loadedImages.length), 'info');
-            const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined; addImagesAsLayers(loadedImages, position);
+            const position = referenceBounds ? { x: referenceBounds.x + referenceBounds.width + 20, y: referenceBounds.y } : undefined;
+            addImagesAsLayers(loadedImages, position);
             addLog(t('layerComposer_ai_log_success'), 'success');
+    
         } catch (err) {
-            if (signal.aborted || (err instanceof Error && err.message === 'Cancelled')) { console.log("Generation process was cancelled."); }
-            else { const errorMessage = err instanceof Error ? err.message : "Unknown error."; setError(errorMessage); addLog(t('layerComposer_ai_log_error', errorMessage), 'error'); }
+            if (signal.aborted || (err instanceof Error && err.message === 'Cancelled')) {
+                console.log("Generation process was cancelled.");
+            } else {
+                const errorMessage = err instanceof Error ? err.message : "Unknown error.";
+                setError(errorMessage);
+                addLog(t('layerComposer_ai_log_error', errorMessage), 'error');
+            }
         } finally {
-            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner')); setRunningJobCount(prev => Math.max(0, prev - 1));
-            if (generationController.current === controller) { generationController.current = null; }
+            setAiProcessLog(prev => prev.filter(l => l.type !== 'spinner'));
+            setRunningJobCount(prev => Math.max(0, prev - 1));
+            if (generationController.current === controller) {
+                generationController.current = null;
+            }
         }
-    }, [aiPrompt, selectedLayers, presets, aiPreset, isSimpleImageMode, language, canvasSettings, t, addLog, aiProcessLog.length]);
+    }, [aiPrompt, aiPreset, isSimpleImageMode, selectedLayers, aiNumberOfImages, aiAspectRatio, removeWatermark, presets, language, t, addLog, aiProcessLog.length, addImagesAsLayers, captureLayer]);
     
     const handleCancelGeneration = useCallback(() => { if (generationController.current) { generationController.current.abort(); addLog(`${t('layerComposer_ai_cancel')}...`, 'error'); } }, [t, addLog]);
 
@@ -752,7 +818,7 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         try {
             const bbox = getBoundingBoxForLayers([layerToBake]); if (!bbox) throw new Error("Could not calculate layer bounds.");
             const bakedImageUrl = await captureCanvas([layerToBake], bbox, null);
-            const newLayer: Layer = { id: Math.random().toString(36).substring(2, 9), type: 'image', url: bakedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: layerToBake.isVisible, isLocked: false, text: undefined, fontFamily: undefined, fontSize: undefined, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none', textAlign: undefined, color: undefined, lineHeight: undefined, };
+            const newLayer: Layer = { id: Math.random().toString(36).substring(2, 9), type: 'image', url: bakedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: layerToBake.isVisible, isLocked: false, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none', textAlign: undefined, color: undefined, lineHeight: undefined, };
             const oldLayers = layers; const oldHistoryIndex = historyIndex;
             const newLayers = oldLayers.map(l => l.id === layerToBake.id ? newLayer : l);
             setLayers(newLayers); setSelectedLayerIds([newLayer.id]);
@@ -893,6 +959,7 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         exportSelectedLayer: handleExportSelectedLayers, onFilesDrop: handleFilesDrop, onMultiLayerAction: handleMultiLayerAction,
         onDuplicateForDrag: handleDuplicateForDrag, handleMergeLayers, openImageEditor, deleteSelectedLayers, duplicateSelectedLayers,
         handleExportSelectedLayers, handleBakeSelectedLayer, captureLayer, addLayer, deleteLayer, duplicateLayer, handleCreateNew, handleUploadClick,
-        handleFileSelected, handleStartScreenDragOver, handleStartScreenDragLeave, handleStartScreenDrop, isStartScreenDraggingOver
+        handleFileSelected, handleStartScreenDragOver, handleStartScreenDragLeave, handleStartScreenDrop, isStartScreenDraggingOver,
+        aiNumberOfImages, setAiNumberOfImages, aiAspectRatio, setAiAspectRatio, removeWatermark, setRemoveWatermark
     };
-};
+}

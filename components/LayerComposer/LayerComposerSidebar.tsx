@@ -74,6 +74,10 @@ interface LayerComposerSidebarProps {
     setShapeFillColor: (color: string) => void;
     generationHistory: GenerationHistoryEntry[];
     onOpenChatbot: () => void;
+    aiNumberOfImages: number;
+    setAiNumberOfImages: (num: number) => void;
+    aiAspectRatio: string;
+    setAiAspectRatio: (ratio: string) => void;
 }
 
 const AccordionHeader: React.FC<{ title: string; isOpen: boolean; onClick: () => void; children?: React.ReactNode; rightContent?: React.ReactNode; }> = ({ title, isOpen, onClick, rightContent }) => {
@@ -324,13 +328,16 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
         loadedPreset, setLoadedPreset, onPresetFileLoad, onGenerateFromPreset, selectedLayersForPreset,
         onResizeSelectedLayers,
         activeCanvasTool, shapeFillColor, setShapeFillColor, generationHistory,
-        onOpenChatbot
+        onOpenChatbot,
+        aiNumberOfImages, setAiNumberOfImages, aiAspectRatio, setAiAspectRatio
     } = props;
     const { t, language } = useAppControls();
     const [openSection, setOpenSection] = useState<'ai' | 'preset' | 'canvas' | 'layers' | null>('ai');
     const [activeTab, setActiveTab] = useState<'properties' | 'text'>('properties');
     const selectedLayer = selectedLayers[0];
     const isGenerating = runningJobCount > 0;
+    const hasImageInput = selectedLayers.length > 0;
+    const ASPECT_RATIO_OPTIONS: string[] = t('aspectRatioOptions');
 
     useEffect(() => {
         if (selectedLayer) {
@@ -405,6 +412,35 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                             }
                                         }}
                                     />
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label htmlFor="ai-num-images" className="block text-sm font-medium text-neutral-300 mb-1">
+                                                {t('freeGeneration_numImagesLabel')}
+                                            </label>
+                                            <select
+                                                id="ai-num-images"
+                                                value={aiNumberOfImages}
+                                                onChange={(e) => setAiNumberOfImages(Number(e.target.value))}
+                                                className="form-input !p-2 !text-sm w-full"
+                                            >
+                                                {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="ai-aspect-ratio" className="block text-sm font-medium text-neutral-300 mb-1">
+                                                {t('common_aspectRatio')}
+                                            </label>
+                                            <select
+                                                id="ai-aspect-ratio"
+                                                value={aiAspectRatio}
+                                                onChange={(e) => setAiAspectRatio(e.target.value)}
+                                                className="form-input !p-2 !text-sm w-full"
+                                            >
+                                                {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                     
                                     <div className="pt-3 border-t border-neutral-700/50">
                                         <div className="flex items-center justify-center gap-3">
@@ -437,10 +473,10 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         <button 
                                             onClick={onGenerateAILayer} 
                                             className="btn btn-primary btn-sm flex-grow" 
-                                            disabled={aiPreset === 'default' && !aiPrompt.trim()}
+                                            disabled={isGenerating || (aiPreset === 'default' && !aiPrompt.trim())}
                                             title={t('layerComposer_ai_generate_tooltip')}
                                         >
-                                            {t('layerComposer_ai_generate')}
+                                            {isGenerating ? t('layerComposer_ai_generating_count', runningJobCount) : t('layerComposer_ai_generate')}
                                         </button>
                                     </div>
                                     <div className="space-y-2">

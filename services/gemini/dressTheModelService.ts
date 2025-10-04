@@ -4,7 +4,6 @@
 */
 import { 
     processApiError, 
-    padImageToAspectRatio,
     parseDataUrl, 
     callGeminiWithRetry, 
     processGeminiResponse 
@@ -31,8 +30,7 @@ export async function generateDressedModelImage(
     clothingImageDataUrl: string, 
     options: DressModelOptions
 ): Promise<string> {
-    const modelImageToProcess = await padImageToAspectRatio(modelImageDataUrl, options.aspectRatio ?? 'Giữ nguyên');
-    const { mimeType: modelMime, data: modelData } = parseDataUrl(modelImageToProcess);
+    const { mimeType: modelMime, data: modelData } = parseDataUrl(modelImageDataUrl);
     const { mimeType: clothingMime, data: clothingData } = parseDataUrl(clothingImageDataUrl);
 
     const modelImagePart = { inlineData: { mimeType: modelMime, data: modelData } };
@@ -40,12 +38,9 @@ export async function generateDressedModelImage(
 
     const promptParts = [];
 
-    // Aspect Ratio instruction first and more specific
     if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
         promptParts.push(
-            `**YÊU CẦU ƯU TIÊN SỐ 1 - TỶ LỆ KHUNG HÌNH:**`,
-            `1. Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là **${options.aspectRatio}**.`,
-            `2. **Quan trọng:** Ảnh 2 (người mẫu) đã được thêm nền trắng để đạt đúng tỷ lệ này. Nhiệm vụ của bạn là lấp đầy phần nền trắng đó một cách sáng tạo, mở rộng bối cảnh theo các tùy chọn bên dưới. Điều này KHÔNG có nghĩa là thay đổi người mẫu, mà là xây dựng môi trường xung quanh họ.`,
+            `**YÊU CẦU QUAN TRỌNG VỀ BỐ CỤC:** Kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}. Nếu cần, hãy mở rộng bối cảnh một cách tự nhiên để lấp đầy khung hình.`,
             ``
         );
     }
@@ -53,7 +48,7 @@ export async function generateDressedModelImage(
     promptParts.push(
         'Tôi cung cấp cho bạn 2 tấm ảnh:',
         '- Ảnh 1: Một trang phục.',
-        '- Ảnh 2: Một người mẫu (có thể đã được thêm nền trắng).',
+        '- Ảnh 2: Một người mẫu.',
         'Nhiệm vụ của bạn là tạo ra một bức ảnh MỚI, trong đó người mẫu từ Ảnh 2 đang mặc trang phục từ Ảnh 1.',
         '',
         '**YÊU CẦU CỰC KỲ QUAN TRỌNG:**',
@@ -96,9 +91,15 @@ export async function generateDressedModelImage(
     const prompt = promptParts.join('\n');
     const textPart = { text: prompt };
 
+    const config: any = {};
+    const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
+    if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên' && validRatios.includes(options.aspectRatio)) {
+        config.imageConfig = { aspectRatio: options.aspectRatio };
+    }
+
     try {
         console.log("Attempting to generate dressed model image with dynamic prompt...");
-        const response = await callGeminiWithRetry([clothingImagePart, modelImagePart, textPart]);
+        const response = await callGeminiWithRetry([clothingImagePart, modelImagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
         const processedError = processApiError(error);
