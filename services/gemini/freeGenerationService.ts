@@ -58,7 +58,6 @@ export async function generateFreeImage(
                 config.imageConfig = { aspectRatio: finalAspectRatio };
             }
 
-            console.log(`Generating image ${i + 1}/${numberOfImages} with config:`, config);
             const response = await callGeminiWithRetry(parts, config);
             results.push(processGeminiResponse(response));
         }

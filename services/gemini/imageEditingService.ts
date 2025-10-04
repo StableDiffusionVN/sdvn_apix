@@ -70,7 +70,6 @@ export async function editImageWithPrompt(
             config.imageConfig = { aspectRatio };
         }
 
-        console.log("Attempting to edit image with prompt and config:", config);
         const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
     } catch (error) {
