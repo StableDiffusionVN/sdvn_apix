@@ -21,7 +21,8 @@ interface ImageEditorModalProps {
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit, onClose }) => {
     const { 
         imageGallery,
-        t
+        t,
+        settings,
     } = useAppControls();
 
     const canvasViewRef = useRef<HTMLDivElement>(null);
@@ -180,7 +181,9 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                     <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
                                         <button onClick={() => fileInputRef.current?.click()} className="btn btn-primary btn-sm">{t('imageEditor_uploadButton')}</button>
                                         <button onClick={() => setIsGalleryPickerOpen(true)} className="btn btn-secondary btn-sm" disabled={imageGallery.length === 0}>{t('imageEditor_galleryButton')}</button>
-                                        <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">{t('imageEditor_webcamButton')}</button>
+                                        {settings?.enableWebcam && (
+                                            <button onClick={() => setIsWebcamModalOpen(true)} className="btn btn-secondary btn-sm">{t('imageEditor_webcamButton')}</button>
+                                        )}
                                         <button onClick={handleCreateBlank} className="btn btn-secondary btn-sm">{t('imageEditor_createButton')}</button>
                                     </div>
                                     <AnimatePresence>

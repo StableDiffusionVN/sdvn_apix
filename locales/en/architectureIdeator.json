@@ -1,3 +1,4 @@
+
 {
   "architectureIdeator_mainTitle": "Architecture Ideator",
   "architectureIdeator_subtitle": "Turn your sketches into reality",
@@ -19,6 +20,9 @@
   "architectureIdeator_regenTitle": "Refine Architectural Image",
   "architectureIdeator_regenDescription": "Add notes to improve the image",
   "architectureIdeator_regenPlaceholder": "e.g., add a swimming pool, wooden materials, night lighting...",
+  "architectureIdeator_styleReferenceCaption": "Style Reference Image",
+  "architectureIdeator_styleReferenceDescription": "Upload a reference image (optional) for the AI to automatically analyze and apply its style.",
+  "architectureIdeator_styleReferenceActive": "Using style from reference image. Options below are disabled.",
   "architectureIdeator_contextOptions": [
     "Auto",
     { "group": "Urban", "options": ["Modern city", "Industrial zone", "Cyberpunk city", "Victorian London", "Brazilian favela"] },

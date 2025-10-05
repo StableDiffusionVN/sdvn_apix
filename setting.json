@@ -1,4 +1,5 @@
 {
+  "enableWebcam": false,
   "enableImageMetadata": false,
   "home": {
     "mainTitleKey": "home_mainTitle",
@@ -22,31 +23,10 @@
       "supportsCanvasPreset": true
     },
     {
-      "id": "toy-model-creator",
-      "titleKey": "app_toy-model-creator_title",
-      "descriptionKey": "app_toy-model-creator_description",
-      "icon": "🤖",
-      "supportsCanvasPreset": true
-    },
-    {
-      "id": "avatar-creator",
-      "titleKey": "app_avatar-creator_title",
-      "descriptionKey": "app_avatar-creator_description",
-      "icon": "🇻🇳",
-      "supportsCanvasPreset": true
-    },
-    {
       "id": "architecture-ideator",
       "titleKey": "app_architecture-ideator_title",
       "descriptionKey": "app_architecture-ideator_description",
       "icon": "🏛️",
-      "supportsCanvasPreset": true
-    },
-    {
-      "id": "baby-photo-creator",
-      "titleKey": "app_baby-photo-creator_title",
-      "descriptionKey": "app_baby-photo-creator_description",
-      "icon": "👶",
       "supportsCanvasPreset": true
     },
     {
@@ -64,13 +44,6 @@
       "supportsCanvasPreset": true
     },
     {
-      "id": "image-to-real",
-      "titleKey": "app_image-to-real_title",
-      "descriptionKey": "app_image-to-real_description",
-      "icon": "✨",
-      "supportsCanvasPreset": true
-    },
-    {
       "id": "swap-style",
       "titleKey": "app_swap-style_title",
       "descriptionKey": "app_swap-style_description",
@@ -78,10 +51,31 @@
       "supportsCanvasPreset": true
     },
     {
-      "id": "mix-style",
-      "titleKey": "app_mix-style_title",
-      "descriptionKey": "app_mix-style_description",
-      "icon": "🎭",
+      "id": "toy-model-creator",
+      "titleKey": "app_toy-model-creator_title",
+      "descriptionKey": "app_toy-model-creator_description",
+      "icon": "🤖",
+      "supportsCanvasPreset": true
+    },
+    {
+      "id": "avatar-creator",
+      "titleKey": "app_avatar-creator_title",
+      "descriptionKey": "app_avatar-creator_description",
+      "icon": "🇻🇳",
+      "supportsCanvasPreset": true
+    },
+    {
+      "id": "mid-autumn-creator",
+      "titleKey": "app_mid-autumn-creator_title",
+      "descriptionKey": "app_mid-autumn-creator_description",
+      "icon": "🌕",
+      "supportsCanvasPreset": true
+    },
+    {
+      "id": "baby-photo-creator",
+      "titleKey": "app_baby-photo-creator_title",
+      "descriptionKey": "app_baby-photo-creator_description",
+      "icon": "👶",
       "supportsCanvasPreset": true
     }
   ],
@@ -101,9 +95,19 @@
     "minIdeas": 1,
     "maxIdeas": 6,
     "useSmartTitleWrapping": true,
-    "smartTitleWrapWords": 3,
+    "smartTitleWrapWords": 2,
     "uploaderCaptionKey": "babyPhotoCreator_uploaderCaption",
     "uploaderDescriptionKey": "babyPhotoCreator_uploaderDescription"
+  },
+  "midAutumnCreator": {
+    "mainTitleKey": "midAutumnCreator_mainTitle",
+    "subtitleKey": "midAutumnCreator_subtitle",
+    "minIdeas": 1,
+    "maxIdeas": 6,
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaptionKey": "midAutumnCreator_uploaderCaption",
+    "uploaderDescriptionKey": "midAutumnCreator_uploaderDescription"
   },
   "architectureIdeator": {
     "mainTitleKey": "architectureIdeator_mainTitle",
@@ -131,31 +135,15 @@
     "uploaderCaptionKey": "photoRestoration_uploaderCaption",
     "uploaderDescriptionKey": "photoRestoration_uploaderDescription"
   },
-  "imageToReal": {
-    "mainTitleKey": "imageToReal_mainTitle",
-    "subtitleKey": "imageToReal_subtitle",
-    "useSmartTitleWrapping": true,
-    "smartTitleWrapWords": 3,
-    "uploaderCaptionKey": "imageToReal_uploaderCaption",
-    "uploaderDescriptionKey": "imageToReal_uploaderDescription"
-  },
   "swapStyle": {
     "mainTitleKey": "swapStyle_mainTitle",
     "subtitleKey": "swapStyle_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 3,
-    "uploaderCaptionKey": "swapStyle_uploaderCaption",
-    "uploaderDescriptionKey": "swapStyle_uploaderDescription"
-  },
-  "mixStyle": {
-    "mainTitleKey": "mixStyle_mainTitle",
-    "subtitleKey": "mixStyle_subtitle",
-    "useSmartTitleWrapping": true,
-    "smartTitleWrapWords": 3,
-    "uploaderCaptionContentKey": "mixStyle_uploaderCaptionContent",
-    "uploaderDescriptionContentKey": "mixStyle_uploaderDescriptionContent",
-    "uploaderCaptionStyleKey": "mixStyle_uploaderCaptionStyle",
-    "uploaderDescriptionStyleKey": "mixStyle_uploaderDescriptionStyle"
+    "uploaderCaptionContentKey": "swapStyle_uploaderCaptionContent",
+    "uploaderDescriptionContentKey": "swapStyle_uploaderDescriptionContent",
+    "uploaderCaptionStyleKey": "swapStyle_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "swapStyle_uploaderDescriptionStyle"
   },
   "freeGeneration": {
     "mainTitleKey": "freeGeneration_mainTitle",
@@ -175,7 +163,7 @@
     "mainTitleKey": "toyModelCreator_mainTitle",
     "subtitleKey": "toyModelCreator_subtitle",
     "useSmartTitleWrapping": true,
-    "smartTitleWrapWords": 2,
+    "smartTitleWrapWords": 1,
     "uploaderCaptionKey": "toyModelCreator_uploaderCaption",
     "uploaderDescriptionKey": "toyModelCreator_uploaderDescription"
   },

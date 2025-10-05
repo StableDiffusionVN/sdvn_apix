@@ -276,6 +276,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 'architectureIdeator',
                 'avatarCreator',
                 'babyPhotoCreator',
+                'midAutumnCreator',
                 'dressTheModel',
                 'freeGeneration',
                 'imageInterpolation',

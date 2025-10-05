@@ -1,6 +1,6 @@
 
 {
-  "avatarCreator_mainTitle": "Patriotic Avatar Creator",
+  "avatarCreator_mainTitle": "Patriotic Image Creator",
   "avatarCreator_subtitle": "Choose a photo and ideas to start",
   "avatarCreator_uploaderCaption": "Upload your photo",
   "avatarCreator_uploaderDescription": "Click the frame to upload a photo and start creating",
@@ -16,7 +16,7 @@
   "avatarCreator_analyzing": "Analyzing...",
   "avatarCreator_analysisError": "Could not analyze the image. Please try again.",
   "avatarCreator_autoAnalysis": "Auto by Photo",
-  "avatarCreator_randomButton": "Random",
+  "avatarCreator_randomButton": "Randomize",
   "avatarCreator_ideasByCategory": [
     {
         "category": "Proud Moments",

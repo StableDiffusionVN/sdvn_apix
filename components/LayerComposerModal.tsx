@@ -6,10 +6,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLayerComposerState } from './LayerComposer/useLayerComposerState';
-import { GalleryPicker, WebcamCaptureModal } from './uiUtils';
+import { GalleryPicker, WebcamCaptureModal, useAppControls } from './uiUtils';
 import { LayerComposerSidebar } from './LayerComposer/LayerComposerSidebar';
 import { LayerComposerCanvas } from './LayerComposer/LayerComposerCanvas';
-import { StartScreen } from './LayerComposer/StartScreen';
 import { AIProcessLogger } from './LayerComposer/AIProcessLogger';
 import { AIChatbot } from './LayerComposer/AIChatbot';
 import { CloudUploadIcon } from './icons';
@@ -19,6 +18,25 @@ interface LayerComposerModalProps {
     onClose: () => void;
     onHide: () => void;
 }
+
+// Wrapper component to conditionally render webcam button
+const CustomStartScreen: React.FC<{ state: any }> = ({ state }) => {
+    const { t, settings } = useAppControls();
+    return (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-neutral-900/50 rounded-lg p-8">
+            <h3 className="text-2xl font-bold text-yellow-400 base-font">{t('layerComposer_title')}</h3>
+            <p className="text-neutral-400 text-center max-w-sm">Tạo canvas mới, tải lên ảnh hoặc kéo thả file .json để bắt đầu.</p>
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
+                <button onClick={state.handleCreateNew} className="btn btn-primary btn-sm">{t('imageEditor_createButton')}</button>
+                <button onClick={() => state.setIsGalleryOpen(true)} className="btn btn-secondary btn-sm" disabled={state.imageGallery.length === 0}>{t('imageEditor_galleryButton')}</button>
+                <button onClick={state.handleUploadClick} className="btn btn-secondary btn-sm">{t('imageEditor_uploadButton')}</button>
+                {settings?.enableWebcam && (
+                    <button onClick={() => state.setIsWebcamOpen(true)} className="btn btn-secondary btn-sm">{t('imageEditor_webcamButton')}</button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, onClose, onHide }) => {
     const state = useLayerComposerState({ isOpen, onClose, onHide });
@@ -59,13 +77,7 @@ export const LayerComposerModal: React.FC<LayerComposerModalProps> = ({ isOpen, 
                                 multiple
                                 onChange={state.handleFileSelected}
                             />
-                            <StartScreen
-                                onCreateNew={state.handleCreateNew}
-                                onOpenGallery={() => state.setIsGalleryOpen(true)}
-                                onUpload={state.handleUploadClick}
-                                onOpenWebcam={() => state.setIsWebcamOpen(true)}
-                                hasGalleryImages={state.imageGallery.length > 0}
-                            />
+                            <CustomStartScreen state={state} />
                             <AnimatePresence>
                                 {state.isStartScreenDraggingOver && (
                                     <motion.div

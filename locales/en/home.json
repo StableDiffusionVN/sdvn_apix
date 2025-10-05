@@ -1,3 +1,4 @@
+
 {
   "home_mainTitle": "aPix",
   "home_subtitle": "Select an app or upload a json setting to start",
@@ -8,11 +9,13 @@
   "app_free-generation_description": "Create new images from text or edit uploaded photos with your own prompts.",
   "app_baby-photo-creator_title": "Baby Photo Creator",
   "app_baby-photo-creator_description": "Turn your baby's photos into artistic creations with cute and unique concepts.",
+  "app_mid-autumn-creator_title": "Mid-Autumn Creator",
+  "app_mid-autumn-creator_description": "Turn your photos into artistic works filled with the Mid-Autumn Festival atmosphere.",
   "app_image-interpolation_title": "Image Interpolation",
   "app_image-interpolation_description": "Analyze an image pair to create a prompt, then apply that prompt to a reference image.",
-  "app_toy-model-creator_title": "Toy Model Creator",
-  "app_toy-model-creator_description": "Turn an object in your photo into a toy model placed on a desk.",
-  "app_avatar-creator_title": "Patriotic Avatar Creator",
+  "app_toy-model-creator_title": "Figure Creator",
+  "app_toy-model-creator_description": "Turn an object in your photo into a figure model placed on a desk.",
+  "app_avatar-creator_title": "Patriotic Image Creator",
   "app_avatar-creator_description": "Turn your portrait into a work of art that expresses national pride.",
   "app_architecture-ideator_title": "Architecture Ideator",
   "app_architecture-ideator_description": "Turn architectural sketches (hand-drawn, 3D) into realistic, vivid photos.",
@@ -23,7 +26,5 @@
   "app_image-to-real_title": "Convert to Realistic Photo",
   "app_image-to-real_description": "Turn drawings, cartoons, or any style into a photorealistic image.",
   "app_swap-style_title": "Swap Image Style",
-  "app_swap-style_description": "Transform your photo into hundreds of unique artistic styles.",
-  "app_mix-style_title": "Mix Image Styles",
-  "app_mix-style_description": "Combine the content of one photo with the artistic style of another."
+  "app_swap-style_description": "Transform your photo using hundreds of artistic styles or by blending it with the style of another image."
 }

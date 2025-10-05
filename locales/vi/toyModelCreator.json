@@ -1,11 +1,12 @@
+
 {
-  "toyModelCreator_mainTitle": "Tạo Mô Hình Đồ Chơi",
+  "toyModelCreator_mainTitle": "Tạo Mô Hình Figure",
   "toyModelCreator_subtitle": "Tải lên ảnh một nhân vật hoặc vật thể để bắt đầu",
   "toyModelCreator_uploaderCaption": "Tải ảnh gốc",
   "toyModelCreator_uploaderDescription": "Nhấn vào khung ảnh để tải lên ảnh nhân vật, vật thể...",
   "toyModelCreator_optionsTitle": "Tùy chỉnh mô hình",
   "toyModelCreator_conceptLabel": "Concept",
-  "toyModelCreator_notesPlaceholder": "Ví dụ: mô hình làm bằng gỗ, hộp đồ chơi có hiệu ứng...",
+  "toyModelCreator_notesPlaceholder": "Ví dụ: mô hình làm bằng gỗ, hộp figure có hiệu ứng...",
   "toyModelCreator_createButton": "Tạo mô hình",
   "toyModelCreator_regenTitle": "Tinh chỉnh mô hình",
   "toyModelCreator_regenPlaceholder": "Ví dụ: thêm hiệu ứng ánh sáng neon, ...",
@@ -16,7 +17,7 @@
       "options": {
         "computerType": "Loại máy tính",
         "softwareType": "Phần mềm trên màn hình",
-        "boxType": "Loại hộp đồ chơi",
+        "boxType": "Loại hộp Figure",
         "background": "Phông nền"
       },
       "choices": {

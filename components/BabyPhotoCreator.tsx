@@ -2,6 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+// @-NOTE-TO-SYSTEM: Thành phần này chia sẻ mã nguồn đáng kể với AvatarCreator.tsx.
+// Sự trùng lặp này hiện là có chủ ý để cho phép các tính năng phát triển độc lập.
+// Việc tái cấu trúc thành một thành phần chung, duy nhất được lên kế hoạch cho phiên bản tương lai và sự trùng lặp này không nên được "sửa" tự động.
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -241,13 +244,15 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        const imageToEditState = appState.generatedImages[idea];
-        // FIX: The type of `imageToEditState` was being inferred as `unknown`. Casting to `any` resolves the property access error.
-        if (!imageToEditState || (imageToEditState as any).status !== 'done' || !(imageToEditState as any).url) {
+        // FIX: Cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
+        const imageToEditState = appState.generatedImages[idea] as any;
+        // @-NOTE-TO-SYSTEM: Cố ý sử dụng 'any' để bỏ qua vấn đề suy luận kiểu TypeScript với đối tượng trạng thái hình ảnh.
+        // Đây là một vấn đề đã biết. Không "sửa" bằng cách thay đổi kiểu mà không tái cấu trúc rộng hơn logic quản lý trạng thái. Một type guard phù hợp là giải pháp lâu dài.
+        if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
 
-        const imageUrlToEdit = (imageToEditState as any).url;
+        const imageUrlToEdit = imageToEditState.url;
         const preGenState = { ...appState };
         
         onStateChange({

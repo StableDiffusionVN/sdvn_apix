@@ -4,7 +4,7 @@
 */
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAppControls, Switch, type GenerationHistoryEntry } from '../uiUtils';
+import { useAppControls, Switch, type GenerationHistoryEntry, getInitialStateForApp } from '../uiUtils';
 import { type Layer, type CanvasSettings, type CanvasTool, type AIPreset } from './LayerComposer.types';
 import { LayerList } from './LayerList';
 import { TextLayerControls } from './TextLayerControls';
@@ -101,6 +101,8 @@ const PresetControls: React.FC<PresetControlsProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [showHistoryPicker, setShowHistoryPicker] = useState(false);
+    const [showSamplePicker, setShowSamplePicker] = useState(false);
+    const { settings } = useAppControls();
     const isGenerating = runningJobCount > 0;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,19 +174,72 @@ const PresetControls: React.FC<PresetControlsProps> = ({
         );
     }
 
+    if (showSamplePicker) {
+        const sampleApps = settings?.apps.filter((app: any) => app.supportsCanvasPreset) || [];
+        return (
+            <div className="p-3">
+                <div className="flex justify-between items-center mb-2">
+                    <h5 className="font-semibold text-neutral-300">{t('layerComposer_preset_sampleTitle')}</h5>
+                    <button onClick={() => setShowSamplePicker(false)} className="text-xs text-neutral-400 hover:text-white">{t('layerComposer_preset_historyBack')}</button>
+                </div>
+                {sampleApps.length > 0 ? (
+                    <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        {sampleApps.map((app: any) => (
+                            <li
+                                key={app.id}
+                                onClick={() => {
+                                    const initialState = getInitialStateForApp(app.id);
+                                    setLoadedPreset({ viewId: app.id, state: initialState });
+                                    setShowSamplePicker(false);
+                                }}
+                                className="flex items-center gap-3 p-2 bg-neutral-900/50 rounded-lg cursor-pointer hover:bg-neutral-700/80 transition-colors"
+                            >
+                                <span className="text-2xl">{app.icon}</span>
+                                <div className="flex-grow min-w-0">
+                                    <p className="font-bold text-sm text-yellow-400 truncate">{t(app.titleKey)}</p>
+                                    <p className="text-xs text-neutral-400 line-clamp-2">{t(app.descriptionKey)}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-xs text-neutral-500 text-center py-4">{t('layerComposer_preset_noSamples')}</p>
+                )}
+            </div>
+        );
+    }
+
     const imageInputMap: Record<string, string[]> = {
-        'architecture-ideator': ['Ảnh phác thảo'],
+        'architecture-ideator': ['Ảnh phác thảo', 'Ảnh tham chiếu style'],
         'avatar-creator': ['Ảnh chân dung'],
+        'baby-photo-creator': ['Ảnh của bé'],
+        'mid-autumn-creator': ['Ảnh gốc'],
         'dress-the-model': ['Ảnh người mẫu', 'Ảnh trang phục'],
         'photo-restoration': ['Ảnh cũ'],
         'image-to-real': ['Ảnh gốc'],
-        'swap-style': ['Ảnh gốc'],
+        'swap-style': ['Ảnh nội dung', 'Ảnh tham chiếu style'],
         'mix-style': ['Ảnh nội dung', 'Ảnh phong cách'],
         'toy-model-creator': ['Ảnh gốc'],
-        'free-generation': ['Ảnh 1', 'Ảnh 2'],
+        'free-generation': ['Ảnh 1', 'Ảnh 2', 'Ảnh 3', 'Ảnh 4'],
         'image-interpolation': ['Ảnh Tham chiếu']
     };
+    
+    const imageKeyMap: Record<string, string[]> = {
+        'architecture-ideator': ['uploadedImage', 'styleReferenceImage'],
+        'avatar-creator': ['uploadedImage'],
+        'baby-photo-creator': ['uploadedImage'],
+        'mid-autumn-creator': ['uploadedImage'],
+        'dress-the-model': ['modelImage', 'clothingImage'],
+        'photo-restoration': ['uploadedImage'],
+        'image-to-real': ['uploadedImage'],
+        'swap-style': ['contentImage', 'styleImage'],
+        'mix-style': ['contentImage', 'styleImage'],
+        'toy-model-creator': ['uploadedImage'],
+        'free-generation': ['image1', 'image2', 'image3', 'image4'],
+        'image-interpolation': ['referenceImage']
+    };
 
+    const imageKeys = loadedPreset ? imageKeyMap[loadedPreset.viewId] || [] : [];
     const requiredImages = loadedPreset ? imageInputMap[loadedPreset.viewId] || [] : [];
     
     if (!loadedPreset) {
@@ -199,16 +254,21 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                 onDrop={handleDrop}
             >
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json,.png" className="hidden" />
-                 <div className="flex gap-2">
-                    <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm flex-1">
-                        {t('layerComposer_preset_uploadButton')}
-                    </button>
-                    <button 
-                        onClick={() => setShowHistoryPicker(true)} 
-                        className="btn btn-secondary btn-sm flex-1" 
-                        disabled={generationHistory.length === 0}
-                    >
-                        {t('layerComposer_preset_loadHistory')}
+                 <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                        <button onClick={() => fileInputRef.current?.click()} className="btn btn-secondary btn-sm flex-1">
+                            {t('layerComposer_preset_uploadButton')}
+                        </button>
+                        <button 
+                            onClick={() => setShowHistoryPicker(true)} 
+                            className="btn btn-secondary btn-sm flex-1" 
+                            disabled={generationHistory.length === 0}
+                        >
+                            {t('layerComposer_preset_loadHistory')}
+                        </button>
+                    </div>
+                    <button onClick={() => setShowSamplePicker(true)} className="btn btn-secondary btn-sm w-full">
+                        {t('layerComposer_preset_sampleButton')}
                     </button>
                 </div>
                 <p className="text-xs text-neutral-500 text-center mt-2">
@@ -224,17 +284,41 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                 <p className="text-sm font-bold text-yellow-400">Preset: {t(`app_${loadedPreset.viewId}_title`)}</p>
                 <button onClick={() => setLoadedPreset(null)} className="text-xs text-neutral-400 hover:text-white">Xóa</button>
             </div>
-
-            {requiredImages.map((label, index) => (
-                <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md">
-                    <span className="font-semibold text-neutral-300">{label}: </span>
-                    {selectedLayersForPreset[index] ? (
-                        <span className="text-green-400">Đã gán Layer "{selectedLayersForPreset[index].text || `Image ID ${selectedLayersForPreset[index].id.substring(0,4)}`}"</span>
-                    ) : (
-                        <span className="text-yellow-400">Sẽ dùng ảnh từ preset</span>
-                    )}
-                </div>
-            ))}
+            
+            <div className="space-y-2">
+                {requiredImages.map((label, index) => {
+                    const assignedLayer = selectedLayersForPreset[index];
+                    const imageKey = imageKeys[index];
+                    const presetImage = loadedPreset?.state?.[imageKey];
+                    const imageUrl = assignedLayer?.url || presetImage;
+    
+                    return (
+                        <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md flex items-center gap-3">
+                            {imageUrl ? (
+                                <img src={imageUrl} alt={label} className="w-10 h-10 object-cover rounded-sm flex-shrink-0 bg-neutral-700" />
+                            ) : (
+                                <div className="w-10 h-10 flex-shrink-0 bg-neutral-700 rounded-sm flex items-center justify-center text-neutral-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                            )}
+                            <div className="flex-grow min-w-0">
+                                <span className="font-semibold text-neutral-300 block">{label}</span>
+                                {assignedLayer ? (
+                                    <span className="text-green-400 text-xs truncate block">
+                                        Đã gán: {assignedLayer.text || `Layer #${assignedLayer.id.substring(0,4)}`}
+                                    </span>
+                                ) : presetImage ? (
+                                    <span className="text-yellow-400 text-xs truncate block">Sử dụng ảnh từ preset</span>
+                                ) : (
+                                    <span className="text-neutral-500 text-xs truncate block">Không bắt buộc / Trống</span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
             
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {Object.entries(loadedPreset.state.options).map(([key, value]) => {
@@ -251,13 +335,29 @@ const PresetControls: React.FC<PresetControlsProps> = ({
                             </div>
                         );
                     }
-                    if (typeof value === 'string' || typeof value === 'number') {
+                    if (typeof value === 'string') {
+                        const isLongString = value.includes('\n') || value.length > 50;
+                        return (
+                             <div key={key}>
+                                <label htmlFor={`preset-${key}`} className="block text-sm font-medium text-neutral-300 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
+                                <textarea
+                                    id={`preset-${key}`}
+                                    value={value}
+                                    onChange={(e) => handleOptionChange(key, e.target.value)}
+                                    className="form-input !p-1.5 !text-sm resize-y"
+                                    rows={isLongString ? 3 : 1}
+                                    disabled={isGenerating}
+                                />
+                            </div>
+                        )
+                    }
+                     if (typeof value === 'number') {
                         return (
                              <div key={key}>
                                 <label htmlFor={`preset-${key}`} className="block text-sm font-medium text-neutral-300 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
                                 <input
                                     id={`preset-${key}`}
-                                    type={typeof value === 'number' ? 'number' : 'text'}
+                                    type="number"
                                     value={String(value)}
                                     onChange={(e) => handleOptionChange(key, e.target.value)}
                                     className="form-input !p-1.5 !text-sm"

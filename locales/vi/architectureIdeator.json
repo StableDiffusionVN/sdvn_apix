@@ -1,3 +1,4 @@
+
 {
   "architectureIdeator_mainTitle": "Lên ý tưởng kiến trúc",
   "architectureIdeator_subtitle": "Biến phác thảo của bạn thành hiện thực",
@@ -19,6 +20,9 @@
   "architectureIdeator_regenTitle": "Tinh chỉnh ảnh kiến trúc",
   "architectureIdeator_regenDescription": "Thêm ghi chú để cải thiện ảnh",
   "architectureIdeator_regenPlaceholder": "Ví dụ: thêm hồ bơi, vật liệu bằng gỗ, ánh sáng ban đêm...",
+  "architectureIdeator_styleReferenceCaption": "Ảnh tham chiếu phong cách",
+  "architectureIdeator_styleReferenceDescription": "Tải lên ảnh tham chiếu (tùy chọn) để AI tự động phân tích và áp dụng phong cách.",
+  "architectureIdeator_styleReferenceActive": "Đang sử dụng phong cách từ ảnh tham chiếu. Các tùy chọn bên dưới đã bị vô hiệu hóa.",
   "architectureIdeator_contextOptions": [
     "Tự động",
     { "group": "Đô thị", "options": ["Đô thị hiện đại (Modern city)", "Khu công nghiệp (Industrial zone)", "Thành phố tương lai (Cyberpunk city)", "Đường phố London thời Victoria (Victorian London)", "Khu nhà ổ chuột Brazil (Brazilian favela)"] },

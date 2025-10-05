@@ -43,14 +43,15 @@ export interface Settings {
     };
     apps: AppConfig[];
     enableImageMetadata: boolean;
+    // FIX: Add missing enableWebcam property to the Settings interface.
+    enableWebcam: boolean;
     architectureIdeator: AppSettings;
     avatarCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
     babyPhotoCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
+    midAutumnCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
     dressTheModel: AppSettings;
     photoRestoration: AppSettings;
-    imageToReal: AppSettings;
     swapStyle: AppSettings;
-    mixStyle: AppSettings;
     freeGeneration: AppSettings;
     toyModelCreator: AppSettings;
     imageInterpolation: AppSettings;
@@ -92,6 +93,7 @@ export type HomeState = { stage: 'home' };
 export interface ArchitectureIdeatorState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     uploadedImage: string | null;
+    styleReferenceImage: string | null;
     generatedImage: string | null;
     historicalImages: string[];
     options: {
@@ -143,6 +145,8 @@ export interface BabyPhotoCreatorState {
     error: string | null;
 }
 
+export interface MidAutumnCreatorState extends AvatarCreatorState {}
+
 export interface DressTheModelState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     modelImage: string | null;
@@ -177,22 +181,10 @@ export interface PhotoRestorationState {
     error: string | null;
 }
 
-export interface ImageToRealState {
-    stage: 'idle' | 'configuring' | 'generating' | 'results';
-    uploadedImage: string | null;
-    generatedImage: string | null;
-    historicalImages: string[];
-    options: {
-        faithfulness: string;
-        notes: string;
-        removeWatermark: boolean;
-    };
-    error: string | null;
-}
-
 export interface SwapStyleState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
-    uploadedImage: string | null;
+    contentImage: string | null;
+    styleImage: string | null;
     generatedImage: string | null;
     historicalImages: string[];
     options: {
@@ -200,22 +192,24 @@ export interface SwapStyleState {
         styleStrength: string;
         notes: string;
         removeWatermark: boolean;
+        convertToReal: boolean;
     };
     error: string | null;
 }
 
+// FIX: Add missing MixStyleState type definition.
 export interface MixStyleState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     contentImage: string | null;
     styleImage: string | null;
     generatedImage: string | null;
     historicalImages: string[];
+    finalPrompt: string | null;
     options: {
         styleStrength: string;
         notes: string;
         removeWatermark: boolean;
     };
-    finalPrompt: string | null;
     error: string | null;
 }
 
@@ -232,6 +226,20 @@ export interface FreeGenerationState {
         removeWatermark: boolean;
         numberOfImages: number;
         aspectRatio: string;
+    };
+    error: string | null;
+}
+
+// FIX: Add missing ImageToRealState type definition to resolve import error.
+export interface ImageToRealState {
+    stage: 'idle' | 'configuring' | 'generating' | 'results';
+    uploadedImage: string | null;
+    generatedImage: string | null;
+    historicalImages: string[];
+    options: {
+        faithfulness: string;
+        notes: string;
+        removeWatermark: boolean;
     };
     error: string | null;
 }
@@ -300,17 +308,19 @@ export interface ImageInterpolationState {
 
 
 // Union type for all possible app states
+// FIX: Add MixStyleState and ImageToRealState to the AnyAppState union type.
 export type AnyAppState =
   | HomeState
   | ArchitectureIdeatorState
   | AvatarCreatorState
   | BabyPhotoCreatorState
+  | MidAutumnCreatorState
   | DressTheModelState
   | PhotoRestorationState
-  | ImageToRealState
   | SwapStyleState
   | MixStyleState
   | FreeGenerationState
+  | ImageToRealState
   | ToyModelCreatorState
   | ImageInterpolationState;
 
@@ -319,28 +329,31 @@ export type HomeView = { viewId: 'home'; state: HomeState };
 export type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
 export type AvatarCreatorView = { viewId: 'avatar-creator'; state: AvatarCreatorState };
 export type BabyPhotoCreatorView = { viewId: 'baby-photo-creator'; state: BabyPhotoCreatorState };
+export type MidAutumnCreatorView = { viewId: 'mid-autumn-creator'; state: MidAutumnCreatorState };
 export type DressTheModelView = { viewId: 'dress-the-model'; state: DressTheModelState };
 export type PhotoRestorationView = { viewId: 'photo-restoration'; state: PhotoRestorationState };
-export type ImageToRealView = { viewId: 'image-to-real'; state: ImageToRealState };
 export type SwapStyleView = { viewId: 'swap-style'; state: SwapStyleState };
-export type MixStyleView = { viewId: 'mix-style'; state: MixStyleState };
 export type FreeGenerationView = { viewId: 'free-generation'; state: FreeGenerationState };
 export type ToyModelCreatorView = { viewId: 'toy-model-creator'; state: ToyModelCreatorState };
 export type ImageInterpolationView = { viewId: 'image-interpolation'; state: ImageInterpolationState };
+// FIX: Add missing ImageToRealView type definition.
+export type ImageToRealView = { viewId: 'image-to-real'; state: ImageToRealState };
+
 
 export type ViewState =
   | HomeView
   | ArchitectureIdeatorView
   | AvatarCreatorView
   | BabyPhotoCreatorView
+  | MidAutumnCreatorView
   | DressTheModelView
   | PhotoRestorationView
-  | ImageToRealView
   | SwapStyleView
-  | MixStyleView
   | FreeGenerationView
   | ToyModelCreatorView
-  | ImageInterpolationView;
+  | ImageInterpolationView
+  // FIX: Add missing ImageToRealView to union type.
+  | ImageToRealView;
 
 // Helper function to get initial state for an app
 export const getInitialStateForApp = (viewId: string): AnyAppState => {
@@ -348,23 +361,24 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'home':
             return { stage: 'home' };
         case 'architecture-ideator':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { context: '', style: '', color: '', lighting: '', notes: '', removeWatermark: false }, error: null };
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImage: null, historicalImages: [], options: { context: '', style: '', color: '', lighting: '', notes: '', removeWatermark: false }, error: null };
         case 'avatar-creator':
             return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'baby-photo-creator':
+            return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+        case 'mid-autumn-creator':
             return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'dress-the-model':
             return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: '', pose: '', style: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'photo-restoration':
             return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { type: 'Chân dung', gender: 'Tự động', age: '', nationality: '', notes: '', removeWatermark: false, removeStains: true }, error: null };
-        case 'image-to-real':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { faithfulness: 'Tự động', notes: '', removeWatermark: false }, error: null };
         case 'swap-style':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { style: '', styleStrength: 'Rất mạnh', notes: '', removeWatermark: false }, error: null };
-        case 'mix-style':
-            return { stage: 'idle', contentImage: null, styleImage: null, generatedImage: null, historicalImages: [], options: { styleStrength: 'Rất mạnh', notes: '', removeWatermark: false }, finalPrompt: null, error: null };
+            return { stage: 'idle', contentImage: null, styleImage: null, generatedImage: null, historicalImages: [], options: { style: '', styleStrength: 'Rất mạnh', notes: '', removeWatermark: false, convertToReal: false }, error: null };
         case 'free-generation':
             return { stage: 'configuring', image1: null, image2: null, image3: null, image4: null, generatedImages: [], historicalImages: [], options: { prompt: '', removeWatermark: false, numberOfImages: 1, aspectRatio: 'Giữ nguyên' }, error: null };
+        // FIX: Add missing 'image-to-real' case to factory function.
+        case 'image-to-real':
+            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { faithfulness: 'Tự động', notes: '', removeWatermark: false }, error: null };
         case 'toy-model-creator':
             return { 
                 stage: 'idle', 

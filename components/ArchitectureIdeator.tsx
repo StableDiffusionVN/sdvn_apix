@@ -57,7 +57,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         setLocalNotes(appState.options.notes);
     }, [appState.options.notes]);
     
-    const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
+    const lightboxImages = [appState.uploadedImage, appState.styleReferenceImage, ...appState.historicalImages].filter((img): img is string => !!img);
     
     const handleImageSelectedForUploader = (imageDataUrl: string) => {
         onStateChange({
@@ -70,6 +70,15 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         });
         addImagesToGallery([imageDataUrl]);
     };
+    
+    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            styleReferenceImage: imageDataUrl,
+        });
+        addImagesToGallery([imageDataUrl]);
+    };
+
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, handleImageSelectedForUploader);
@@ -92,11 +101,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
-            // No need to transform options, the service handles '' and 'Tự động' correctly
-            const resultUrl = await generateArchitecturalImage(appState.uploadedImage, appState.options);
+            const resultUrl = await generateArchitecturalImage(appState.uploadedImage, appState.options, appState.styleReferenceImage);
             const settingsToEmbed = { 
                 viewId: 'architecture-ideator', 
-                // Embed the state that led to this result, but clear the results themselves.
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
@@ -124,7 +131,6 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
              const settingsToEmbed = { 
                 viewId: 'architecture-ideator', 
-                // Embed the state that led to this result, but clear the results themselves.
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
@@ -166,6 +172,13 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 folder: 'input',
             });
         }
+        if (appState.styleReferenceImage) {
+            inputImages.push({
+                url: appState.styleReferenceImage,
+                filename: 'anh-tham-chieu-style',
+                folder: 'input',
+            });
+        }
         
         processAndDownloadAll({
             inputImages,
@@ -197,55 +210,96 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 )}
 
                 {appState.stage === 'configuring' && appState.uploadedImage && (
-                    <AppOptionsLayout>
-                        <div className="flex-shrink-0">
-                            <ActionablePolaroidCard
-                                type="sketch-input"
-                                mediaUrl={appState.uploadedImage}
-                                caption={t('architectureIdeator_sketchCaption')}
-                                status="done"
-                                onClick={() => openLightbox(0)}
-                                onImageChange={handleUploadedImageChange}
-                            />
+                    <motion.div
+                        className="flex flex-col items-center gap-8 w-full max-w-6xl py-6 overflow-y-auto"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <div className="flex flex-col md:flex-row items-start justify-center gap-8">
+                             <div className="w-full md:w-auto">
+                                <ActionablePolaroidCard
+                                    type="sketch-input"
+                                    mediaUrl={appState.uploadedImage}
+                                    caption={t('architectureIdeator_sketchCaption')}
+                                    status="done"
+                                    onClick={() => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))}
+                                    onImageChange={handleUploadedImageChange}
+                                />
+                            </div>
+                            <div className="w-full md:w-auto">
+                                <ActionablePolaroidCard
+                                    type="style-input"
+                                    mediaUrl={appState.styleReferenceImage ?? undefined}
+                                    caption={t('architectureIdeator_styleReferenceCaption')}
+                                    placeholderType='style'
+                                    status='done'
+                                    onImageChange={handleStyleReferenceImageChange}
+                                    onClick={appState.styleReferenceImage ? () => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!)) : undefined}
+                                />
+                                <p className="mt-4 text-center text-sm text-neutral-400 max-w-xs mx-auto">{t('architectureIdeator_styleReferenceDescription')}</p>
+                            </div>
                         </div>
 
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('architectureIdeator_optionsTitle')}</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <SearchableSelect
-                                    id="context"
-                                    label={t('architectureIdeator_contextLabel')}
-                                    options={t('architectureIdeator_contextOptions')}
-                                    value={appState.options.context}
-                                    onChange={(value) => handleOptionChange('context', value)}
-                                    placeholder={t('architectureIdeator_contextPlaceholder')}
-                                />
-                                <SearchableSelect
-                                    id="style"
-                                    label={t('architectureIdeator_styleLabel')}
-                                    options={t('architectureIdeator_styleOptions')}
-                                    value={appState.options.style}
-                                    onChange={(value) => handleOptionChange('style', value)}
-                                    placeholder={t('architectureIdeator_stylePlaceholder')}
-                                />
-                                <SearchableSelect
-                                    id="color"
-                                    label={t('architectureIdeator_colorLabel')}
-                                    options={t('architectureIdeator_colorOptions')}
-                                    value={appState.options.color}
-                                    onChange={(value) => handleOptionChange('color', value)}
-                                    placeholder={t('architectureIdeator_colorPlaceholder')}
-                                />
-                                <SearchableSelect
-                                    id="lighting"
-                                    label={t('architectureIdeator_lightingLabel')}
-                                    options={t('architectureIdeator_lightingOptions')}
-                                    value={appState.options.lighting}
-                                    onChange={(value) => handleOptionChange('lighting', value)}
-                                    placeholder={t('architectureIdeator_lightingPlaceholder')}
-                                />
-                            </div>
-                            <div>
+                            <AnimatePresence mode="wait">
+                                {!appState.styleReferenceImage ? (
+                                    <motion.div
+                                        key="options"
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                            <SearchableSelect
+                                                id="context"
+                                                label={t('architectureIdeator_contextLabel')}
+                                                options={t('architectureIdeator_contextOptions')}
+                                                value={appState.options.context}
+                                                onChange={(value) => handleOptionChange('context', value)}
+                                                placeholder={t('architectureIdeator_contextPlaceholder')}
+                                            />
+                                            <SearchableSelect
+                                                id="style"
+                                                label={t('architectureIdeator_styleLabel')}
+                                                options={t('architectureIdeator_styleOptions')}
+                                                value={appState.options.style}
+                                                onChange={(value) => handleOptionChange('style', value)}
+                                                placeholder={t('architectureIdeator_stylePlaceholder')}
+                                            />
+                                            <SearchableSelect
+                                                id="color"
+                                                label={t('architectureIdeator_colorLabel')}
+                                                options={t('architectureIdeator_colorOptions')}
+                                                value={appState.options.color}
+                                                onChange={(value) => handleOptionChange('color', value)}
+                                                placeholder={t('architectureIdeator_colorPlaceholder')}
+                                            />
+                                            <SearchableSelect
+                                                id="lighting"
+                                                label={t('architectureIdeator_lightingLabel')}
+                                                options={t('architectureIdeator_lightingOptions')}
+                                                value={appState.options.lighting}
+                                                onChange={(value) => handleOptionChange('lighting', value)}
+                                                placeholder={t('architectureIdeator_lightingPlaceholder')}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                     <motion.div
+                                        key="style-ref-active"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="text-center p-3 bg-neutral-700/50 rounded-lg my-2"
+                                    >
+                                        <p className="text-sm text-yellow-300">{t('architectureIdeator_styleReferenceActive')}</p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            <div className="pt-2">
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('architectureIdeator_notesLabel')}</label>
                                 <textarea
                                     id="notes"
@@ -287,8 +341,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                 </button>
                             </div>
                         </OptionsPanel>
-
-                    </AppOptionsLayout>
+                    </motion.div>
                 )}
             </div>
 
@@ -296,7 +349,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 <ResultsView
                     stage={appState.stage}
                     originalImage={appState.uploadedImage}
-                    onOriginalClick={() => openLightbox(0)}
+                    onOriginalClick={() => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))}
                     error={appState.error}
                     actions={
                         <>
@@ -314,6 +367,23 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         </>
                     }
                 >
+                    {appState.styleReferenceImage && (
+                        <motion.div
+                            key="style-ref-result"
+                            className="w-full md:w-auto flex-shrink-0"
+                             initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                        >
+                             <ActionablePolaroidCard
+                                type="display"
+                                caption={t('architectureIdeator_styleReferenceCaption')}
+                                mediaUrl={appState.styleReferenceImage}
+                                status="done"
+                                onClick={() => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!))}
+                            />
+                        </motion.div>
+                    )}
                     <motion.div
                         className="w-full md:w-auto flex-shrink-0"
                         key="generated-architecture"

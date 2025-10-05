@@ -35,11 +35,10 @@ import { LoadingSpinnerIcon } from './components/icons';
 const ArchitectureIdeator = lazy(() => import('./components/ArchitectureIdeator'));
 const AvatarCreator = lazy(() => import('./components/AvatarCreator'));
 const BabyPhotoCreator = lazy(() => import('./components/BabyPhotoCreator'));
+const MidAutumnCreator = lazy(() => import('./components/MidAutumnCreator'));
 const DressTheModel = lazy(() => import('./components/DressTheModel'));
 const PhotoRestoration = lazy(() => import('./components/PhotoRestoration'));
-const ImageToReal = lazy(() => import('./components/ImageToReal'));
 const SwapStyle = lazy(() => import('./components/SwapStyle'));
-const MixStyle = lazy(() => import('./components/MixStyle'));
 const FreeGeneration = lazy(() => import('./components/FreeGeneration'));
 const ToyModelCreator = lazy(() => import('./components/ToyModelCreator'));
 const ImageInterpolation = lazy(() => import('./components/ImageInterpolation'));
@@ -55,11 +54,10 @@ const AppComponents: Record<string, any> = {
     'architecture-ideator': { Component: ArchitectureIdeator, settingsKey: 'architectureIdeator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
     'avatar-creator': { Component: AvatarCreator, settingsKey: 'avatarCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
     'baby-photo-creator': { Component: BabyPhotoCreator, settingsKey: 'babyPhotoCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'mid-autumn-creator': { Component: MidAutumnCreator, settingsKey: 'midAutumnCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
     'dress-the-model': { Component: DressTheModel, settingsKey: 'dressTheModel', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionModel: t(s.uploaderCaptionModelKey), uploaderDescriptionModel: t(s.uploaderDescriptionModelKey), uploaderCaptionClothing: t(s.uploaderCaptionClothingKey), uploaderDescriptionClothing: t(s.uploaderDescriptionClothingKey) }) },
     'photo-restoration': { Component: PhotoRestoration, settingsKey: 'photoRestoration', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'image-to-real': { Component: ImageToReal, settingsKey: 'imageToReal', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'swap-style': { Component: SwapStyle, settingsKey: 'swapStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'mix-style': { Component: MixStyle, settingsKey: 'mixStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionContent: t(s.uploaderCaptionContentKey), uploaderDescriptionContent: t(s.uploaderDescriptionContentKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'swap-style': { Component: SwapStyle, settingsKey: 'swapStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionContent: t(s.uploaderCaptionContentKey), uploaderDescriptionContent: t(s.uploaderDescriptionContentKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
     'free-generation': { Component: FreeGeneration, settingsKey: 'freeGeneration', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption1: t(s.uploaderCaption1Key), uploaderDescription1: t(s.uploaderDescription1Key), uploaderCaption2: t(s.uploaderCaption2Key), uploaderDescription2: t(s.uploaderDescription2Key), uploaderCaption3: t(s.uploaderCaption3Key), uploaderDescription3: t(s.uploaderDescription3Key), uploaderCaption4: t(s.uploaderCaption4Key), uploaderDescription4: t(s.uploaderDescription4Key) }) },
     'toy-model-creator': { Component: ToyModelCreator, settingsKey: 'toyModelCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
     'image-interpolation': { Component: ImageInterpolation, settingsKey: 'imageInterpolation', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionInput: t(s.uploaderCaptionInputKey), uploaderDescriptionInput: t(s.uploaderDescriptionInputKey), uploaderCaptionOutput: t(s.uploaderCaptionOutputKey), uploaderDescriptionOutput: t(s.uploaderDescriptionOutputKey), uploaderCaptionReference: t(s.uploaderCaptionReferenceKey), uploaderDescriptionReference: t(s.uploaderDescriptionReferenceKey) }) },
@@ -87,6 +85,7 @@ function App() {
         handleGoBack,
         handleCloseSearch,
         handleCloseGallery,
+        handleOpenInfo,
         handleCloseInfo,
         handleCloseHistoryPanel,
         closeImageLayoutModal,
@@ -98,6 +97,15 @@ function App() {
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
     const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
+
+    useEffect(() => {
+        const hasSeenInfoModal = localStorage.getItem('aPix_hasSeenInfoModal');
+        if (!hasSeenInfoModal) {
+            handleOpenInfo();
+            localStorage.setItem('aPix_hasSeenInfoModal', 'true');
+        }
+    }, []); // Empty dependency array ensures this runs only once on mount
+
 
     useEffect(() => {
         const isAnyModalOpen = isSearchOpen || 

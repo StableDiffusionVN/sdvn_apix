@@ -1,11 +1,12 @@
+
 {
-  "toyModelCreator_mainTitle": "Toy Model Creator",
+  "toyModelCreator_mainTitle": "Figure Creator",
   "toyModelCreator_subtitle": "Upload a photo of a character or object to start",
   "toyModelCreator_uploaderCaption": "Upload original image",
   "toyModelCreator_uploaderDescription": "Click the frame to upload a photo of a character, object...",
   "toyModelCreator_optionsTitle": "Customize Model",
   "toyModelCreator_conceptLabel": "Concept",
-  "toyModelCreator_notesPlaceholder": "e.g., model made of wood, toy box with effects...",
+  "toyModelCreator_notesPlaceholder": "e.g., model made of wood, figure box with effects...",
   "toyModelCreator_createButton": "Create Model",
   "toyModelCreator_regenTitle": "Refine Model",
   "toyModelCreator_regenPlaceholder": "e.g., add neon light effects, ...",
@@ -16,7 +17,7 @@
       "options": {
         "computerType": "Computer Type",
         "softwareType": "Software on Screen",
-        "boxType": "Toy Box Type",
+        "boxType": "Figure Box Type",
         "background": "Background"
       },
       "choices": {

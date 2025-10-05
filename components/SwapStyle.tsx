@@ -2,9 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { ChangeEvent, useCallback, useRef, useEffect, useState } from 'react';
+import React, { ChangeEvent, useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { swapImageStyle, editImageWithPrompt } from '../services/geminiService';
+// FIX: Import 'editImageWithPrompt' to resolve 'Cannot find name' error.
+import { swapImageStyle, mixImageStyle, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -23,6 +24,8 @@ import {
     useAppControls,
     embedJsonInPng,
     getInitialStateForApp,
+    SearchableSelect,
+    Switch,
 } from './uiUtils';
 
 interface SwapStyleProps {
@@ -30,8 +33,10 @@ interface SwapStyleProps {
     subtitle: string;
     useSmartTitleWrapping: boolean;
     smartTitleWrapWords: number;
-    uploaderCaption: string;
-    uploaderDescription: string;
+    uploaderCaptionContent: string;
+    uploaderDescriptionContent: string;
+    uploaderCaptionStyle: string;
+    uploaderDescriptionStyle: string;
     addImagesToGallery: (images: string[]) => void;
     appState: SwapStyleState;
     onStateChange: (newState: SwapStyleState) => void;
@@ -42,7 +47,7 @@ interface SwapStyleProps {
 
 const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const { 
-        uploaderCaption, uploaderDescription, addImagesToGallery,
+        uploaderCaptionContent, uploaderDescriptionContent, uploaderCaptionStyle, uploaderDescriptionStyle, addImagesToGallery,
         appState, onStateChange, onReset,
         logGeneration,
         ...headerProps
@@ -51,56 +56,48 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
     const { t, settings } = useAppControls();
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
-    
-    // State for searchable style dropdown
-    const [styleSearch, setStyleSearch] = React.useState('');
-    const [isStyleDropdownOpen, setStyleDropdownOpen] = React.useState(false);
-    const styleDropdownRef = useRef<HTMLDivElement>(null);
     const [localNotes, setLocalNotes] = useState(appState.options.notes);
+    
+    const { convertToReal } = appState.options;
+
+    const STYLE_STRENGTH_LEVELS = t('style_strengthLevels');
+    const FAITHFULNESS_LEVELS = ['Rất yếu', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'];
+
+    const bilingualStyles: { en: string; vi: string }[] = Array.isArray(t('styles')) ? t('styles') : [];
+    
+    const formattedStyleOptions = useMemo(() => 
+        bilingualStyles.map(style => `${style.en} (${style.vi})`), 
+    [bilingualStyles]);
+
+    const handleStyleChange = (formattedValue: string) => {
+        const selectedStyle = bilingualStyles.find(s => `${s.en} (${s.vi})` === formattedValue);
+        // Save the English value for the API, as models are better trained on it.
+        handleOptionChange('style', selectedStyle ? selectedStyle.en : formattedValue.split(' (')[0]);
+    };
+
+    const displayValue = useMemo(() => {
+        const selectedStyle = bilingualStyles.find(s => s.en === appState.options.style);
+        return selectedStyle ? `${selectedStyle.en} (${selectedStyle.vi})` : appState.options.style;
+    }, [appState.options.style, bilingualStyles]);
+
+
+    const lightboxImages = [appState.contentImage, appState.styleImage, ...appState.historicalImages].filter((img): img is string => !!img);
 
     useEffect(() => {
         setLocalNotes(appState.options.notes);
     }, [appState.options.notes]);
     
-    const STYLE_OPTIONS_LIST = t('styles');
-    const STYLE_STRENGTH_LEVELS = t('style_strengthLevels');
-
-    const lightboxImages = [appState.uploadedImage, ...appState.historicalImages].filter((img): img is string => !!img);
-
-    const filteredStyles = STYLE_OPTIONS_LIST.filter((style: string) => 
-        style.toLowerCase().includes(styleSearch.toLowerCase())
-    );
-
-    useEffect(() => {
-        // Initialize search with the current state value
-        setStyleSearch(appState.options.style);
-    }, [appState.options.style]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (styleDropdownRef.current && !styleDropdownRef.current.contains(event.target as Node)) {
-                setStyleDropdownOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-    
-    const handleImageSelectedForUploader = (imageDataUrl: string) => {
+    const handleContentImageSelected = (imageDataUrl: string) => {
         onStateChange({
             ...appState,
             stage: 'configuring',
-            uploadedImage: imageDataUrl,
+            contentImage: imageDataUrl,
             generatedImage: null,
             historicalImages: [],
             error: null,
         });
         addImagesToGallery([imageDataUrl]);
     };
-
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, handleImageSelectedForUploader);
-    }, [appState, onStateChange]);
     
     const handleOptionChange = (field: keyof SwapStyleState['options'], value: string | boolean) => {
         onStateChange({
@@ -109,20 +106,24 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         });
     };
 
-    const handleStyleSelect = (style: string) => {
-        handleOptionChange('style', style);
-        setStyleSearch(style);
-        setStyleDropdownOpen(false);
-    };
-
     const executeInitialGeneration = async () => {
-        if (!appState.uploadedImage) return;
+        if (!appState.contentImage) return;
 
         const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
-            const resultUrl = await swapImageStyle(appState.uploadedImage, appState.options);
+            let resultUrl: string;
+
+            if (appState.options.convertToReal) {
+                resultUrl = await swapImageStyle(appState.contentImage, appState.options);
+            } else if (appState.styleImage) {
+                const { resultUrl: mixedUrl } = await mixImageStyle(appState.contentImage, appState.styleImage, appState.options);
+                resultUrl = mixedUrl;
+            } else {
+                resultUrl = await swapImageStyle(appState.contentImage, appState.options);
+            }
+
             const settingsToEmbed = {
                 viewId: 'swap-style',
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
@@ -169,8 +170,13 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         }
     };
 
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
+    const handleContentImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, contentImage: newUrl });
+        addImagesToGallery([newUrl]);
+    };
+
+    const handleStyleImageChange = (newUrl: string) => {
+        onStateChange({ ...appState, styleImage: newUrl });
         addImagesToGallery([newUrl]);
     };
 
@@ -186,8 +192,11 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
 
     const handleDownloadAll = () => {
         const inputImages: ImageForZip[] = [];
-        if (appState.uploadedImage) {
-            inputImages.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
+        if (appState.contentImage) {
+            inputImages.push({ url: appState.contentImage, filename: 'anh-goc', folder: 'input' });
+        }
+        if (appState.styleImage) {
+            inputImages.push({ url: appState.styleImage, filename: 'anh-style-tham-chieu', folder: 'input' });
         }
         
         processAndDownloadAll({
@@ -210,58 +219,122 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
             <div className="flex flex-col items-center justify-center w-full flex-1">
                 {appState.stage === 'idle' && (
                     <ImageUploader
-                        onImageChange={handleImageSelectedForUploader}
-                        uploaderCaption={uploaderCaption}
-                        uploaderDescription={uploaderDescription}
+                        onImageChange={handleContentImageSelected}
+                        uploaderCaption={uploaderCaptionContent}
+                        uploaderDescription={uploaderDescriptionContent}
                         placeholderType="magic"
                     />
                 )}
 
-                {appState.stage === 'configuring' && appState.uploadedImage && (
+                {appState.stage === 'configuring' && appState.contentImage && (
                     <AppOptionsLayout>
-                        <div className="flex-shrink-0">
-                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption={t('common_originalImage')} status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange}/>
+                         <div className="flex flex-col md:flex-row items-start justify-center gap-8">
+                            <ActionablePolaroidCard
+                                type="content-input"
+                                mediaUrl={appState.contentImage}
+                                caption={t('swapStyle_contentCaption')}
+                                status="done"
+                                onClick={() => openLightbox(lightboxImages.indexOf(appState.contentImage!))}
+                                onImageChange={handleContentImageChange}
+                            />
+                            <AnimatePresence>
+                                {!convertToReal && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="flex flex-col items-center gap-4"
+                                    >
+                                        <ActionablePolaroidCard
+                                            type="style-input"
+                                            mediaUrl={appState.styleImage ?? undefined}
+                                            caption={uploaderCaptionStyle}
+                                            placeholderType='style'
+                                            status='done'
+                                            onImageChange={handleStyleImageChange}
+                                            onClick={appState.styleImage ? () => openLightbox(lightboxImages.indexOf(appState.styleImage!)) : undefined}
+                                        />
+                                        <p className="base-font font-bold text-neutral-300 text-center max-w-xs text-md">
+                                            {uploaderDescriptionStyle}
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
+
                         <OptionsPanel>
                             <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('common_options')}</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Searchable Style Dropdown */}
-                                <div ref={styleDropdownRef} className="searchable-dropdown-container">
-                                    <label htmlFor="style" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('swapStyle_styleLabel')}</label>
-                                    <input
-                                        type="text"
-                                        id="style-search"
-                                        value={styleSearch}
-                                        onChange={(e) => {
-                                            setStyleSearch(e.target.value);
-                                            setStyleDropdownOpen(true);
-                                        }}
-                                        onFocus={() => {
-                                            setStyleDropdownOpen(true);
-                                        }}
-                                        onBlur={() => handleOptionChange('style', styleSearch)}
-                                        className="form-input"
-                                        placeholder={t('swapStyle_stylePlaceholder')}
-                                    />
-                                    {isStyleDropdownOpen && (
-                                        <ul className="searchable-dropdown-list">
-                                            {filteredStyles.length > 0 ? filteredStyles.map((style: string) => (
-                                                <li key={style} onMouseDown={() => handleStyleSelect(style)} className="searchable-dropdown-item">
-                                                    {style}
-                                                </li>
-                                            )) : (
-                                                <li className="searchable-dropdown-item !cursor-default">{t('common_notFound')}</li>
-                                            )}
-                                        </ul>
-                                    )}
-                                </div>
+                            
+                            <div className="flex items-center pt-2">
+                                <Switch
+                                    id="convert-to-real-switch"
+                                    checked={convertToReal}
+                                    onChange={(checked) => handleOptionChange('convertToReal', checked)}
+                                />
+                                <label htmlFor="convert-to-real-switch" className="ml-3 block text-sm font-medium text-neutral-200">
+                                    Chuyển sang ảnh thật
+                                </label>
+                            </div>
+                            
+                             <AnimatePresence>
+                                {convertToReal && (
+                                    <motion.div
+                                        key="convert-to-real-note"
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <p className="text-xs text-yellow-300/90 mt-1 p-2 bg-yellow-400/10 rounded-md">
+                                            {t('swapStyle_convertToRealNote')}
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            
+                             <AnimatePresence mode="wait">
+                                {!convertToReal && !appState.styleImage ? (
+                                    <motion.div
+                                        key="style-select"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <div className="pt-2">
+                                            <SearchableSelect
+                                                id="style-search"
+                                                label={t('swapStyle_styleLabel')}
+                                                options={formattedStyleOptions}
+                                                value={displayValue}
+                                                onChange={handleStyleChange}
+                                                placeholder={t('swapStyle_stylePlaceholder')}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                ) : !convertToReal && appState.styleImage ? (
+                                    <motion.div
+                                        key="style-ref-active"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="text-center p-3 bg-neutral-700/50 rounded-lg my-2"
+                                    >
+                                        <p className="text-sm text-yellow-300">{t('swapStyle_styleReferenceActive')}</p>
+                                    </motion.div>
+                                ) : null}
+                            </AnimatePresence>
+
+                            <div className="pt-2">
                                 <Slider
-                                    label={t('swapStyle_strengthLabel')}
-                                    options={STYLE_STRENGTH_LEVELS}
+                                    label={convertToReal ? "Mức độ giữ nét" : t('swapStyle_strengthLabel')}
+                                    options={convertToReal ? FAITHFULNESS_LEVELS : STYLE_STRENGTH_LEVELS}
                                     value={appState.options.styleStrength}
                                     onChange={(value) => handleOptionChange('styleStrength', value)}
                                 />
                             </div>
+                           
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotes')}</label>
                                 <textarea
@@ -296,8 +369,8 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
             {(appState.stage === 'generating' || appState.stage === 'results') && (
                 <ResultsView
                     stage={appState.stage}
-                    originalImage={appState.uploadedImage}
-                    onOriginalClick={() => openLightbox(0)}
+                    originalImage={appState.contentImage}
+                    onOriginalClick={() => appState.contentImage && openLightbox(lightboxImages.indexOf(appState.contentImage))}
                     error={appState.error}
                     actions={
                         <>
@@ -306,6 +379,23 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                             <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                         </>
                     }>
+                     {appState.styleImage && !convertToReal && (
+                        <motion.div
+                            key="style-ref-result"
+                            className="w-full md:w-auto flex-shrink-0"
+                             initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                        >
+                             <ActionablePolaroidCard
+                                type="display"
+                                caption={uploaderCaptionStyle}
+                                mediaUrl={appState.styleImage}
+                                status="done"
+                                onClick={() => openLightbox(lightboxImages.indexOf(appState.styleImage!))}
+                            />
+                        </motion.div>
+                    )}
                     <motion.div
                         className="w-full md:w-auto flex-shrink-0"
                         key="generated-swap"
@@ -314,7 +404,12 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}>
                         <ActionablePolaroidCard
                             type="output"
-                            caption={appState.options.style || t('swapStyle_autoStyleCaption')} status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
+                            caption={
+                                appState.options.convertToReal 
+                                    ? t('swapStyle_realPhotoCaption')
+                                    : (appState.styleImage ? t('common_result') : (appState.options.style || t('swapStyle_autoStyleCaption')))
+                            } 
+                            status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined} error={appState.error ?? undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}

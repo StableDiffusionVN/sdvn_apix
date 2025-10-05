@@ -68,7 +68,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     regenerationPlaceholder,
 }) => {
     const { openImageEditor } = useImageEditor();
-    const { imageGallery, t } = useAppControls();
+    const { imageGallery, t, settings } = useAppControls();
     const [isRegenModalOpen, setIsRegenModalOpen] = useState(false);
     const [isGalleryPickerOpen, setGalleryPickerOpen] = useState(false);
     const [isWebcamModalOpen, setWebcamModalOpen] = useState(false);
@@ -81,7 +81,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     const isSwappable = type !== 'output' && type !== 'display';
     const isRegeneratable = type === 'output';
     const isGallerySelectable = type !== 'output' && type !== 'display';
-    const isWebcamSelectable = type !== 'output' && type !== 'display';
+    const isWebcamSelectable = settings?.enableWebcam && type !== 'output' && type !== 'display';
     
     const handleFileSelected = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         if (onImageChange) {
@@ -180,9 +180,9 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     };
 
     // Determine the primary click action for the card.
-    // If it's an uploader, its main job is to trigger the file input.
+    // If it's an uploader, or has no media, its main job is to trigger the file input.
     // Otherwise, use the provided onClick handler (e.g., for opening a lightbox).
-    const effectiveOnClick = type === 'uploader' ? handleSwapClick : onClick;
+    const effectiveOnClick = !mediaUrl || type === 'uploader' ? handleSwapClick : onClick;
 
     const showButtons = status === 'done' && mediaUrl;
     const canDoSomething = isRegeneratable || !!onGenerateVideoFromPrompt;

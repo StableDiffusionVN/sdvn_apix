@@ -2,13 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-// @-NOTE-TO-SYSTEM: Thành phần này chia sẻ mã nguồn đáng kể với BabyPhotoCreator.tsx.
-// Sự trùng lặp này hiện là có chủ ý để cho phép các tính năng phát triển độc lập.
-// Việc tái cấu trúc thành một thành phần chung, duy nhất được lên kế hoạch cho phiên bản tương lai và sự trùng lặp này không nên được "sửa" tự động.
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { generatePatrioticImage, editImageWithPrompt, analyzeAvatarForConcepts } from '../services/geminiService';
+import { generateMidAutumnImage, analyzeForConcepts } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -17,18 +14,18 @@ import {
     ImageUploader,
     ResultsView,
     ImageForZip,
-    type AvatarCreatorState,
+    type MidAutumnCreatorState,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
     useAppControls,
     embedJsonInPng,
-    getInitialStateForApp,
 } from './uiUtils';
 import { MagicWandIcon } from './icons';
+import { editImageWithPrompt } from '../services/gemini/imageEditingService';
 
-interface AvatarCreatorProps {
+interface MidAutumnCreatorProps {
     mainTitle: string;
     subtitle: string;
     minIdeas: number;
@@ -38,14 +35,14 @@ interface AvatarCreatorProps {
     uploaderCaption: string;
     uploaderDescription: string;
     addImagesToGallery: (images: string[]) => void;
-    appState: AvatarCreatorState;
-    onStateChange: (newState: AvatarCreatorState) => void;
+    appState: MidAutumnCreatorState;
+    onStateChange: (newState: MidAutumnCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
     logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
-const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
+const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
     const { 
         minIdeas, maxIdeas, 
         uploaderCaption, uploaderDescription,
@@ -67,7 +64,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         setLocalPrompt(appState.options.additionalPrompt);
     }, [appState.options.additionalPrompt]);
     
-    const IDEAS_BY_CATEGORY = t('avatarCreator_ideasByCategory');
+    const IDEAS_BY_CATEGORY = t('midAutumnCreator_ideasByCategory');
     const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
 
     const outputLightboxImages = appState.selectedIdeas
@@ -99,7 +96,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         addImagesToGallery([newUrl]);
     };
 
-    const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {
+    const handleOptionChange = (field: keyof MidAutumnCreatorState['options'], value: string | boolean) => {
         onStateChange({
             ...appState,
             options: { ...appState.options, [field]: value },
@@ -115,7 +112,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         } else if (selectedIdeas.length < maxIdeas) {
             newSelectedIdeas = [...selectedIdeas, idea];
         } else {
-            return; // Max reached, do nothing
+            toast.error(t('midAutumnCreator_maxIdeasError', maxIdeas));
+            return;
         }
 
         onStateChange({ ...appState, selectedIdeas: newSelectedIdeas });
@@ -123,15 +121,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
     const executeGeneration = async (ideas: string[]) => {
         if (!appState.uploadedImage) return;
-        if (ideas.length > maxIdeas && !ideas.includes(t('avatarCreator_randomConcept'))) {
-            toast.error(t('avatarCreator_selectedCount', ideas.length, maxIdeas));
+        if (ideas.length > maxIdeas && !ideas.includes(t('midAutumnCreator_randomConcept'))) {
+            toast.error(t('midAutumnCreator_maxIdeasError', maxIdeas));
             return;
         }
 
         hasLoggedGeneration.current = false;
         const preGenState = { ...appState, selectedIdeas: ideas };
         
-        const randomConceptString = t('avatarCreator_randomConcept');
+        const randomConceptString = t('midAutumnCreator_randomConcept');
         
         let ideasToGenerate = [...ideas];
         const randomCount = ideasToGenerate.filter(i => i === randomConceptString).length;
@@ -140,7 +138,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             setIsAnalyzing(true);
             try {
                 const allCategories = IDEAS_BY_CATEGORY.filter((c: any) => c.key !== 'random');
-                const suggestedCategories = await analyzeAvatarForConcepts(appState.uploadedImage, allCategories);
+                const suggestedCategories = await analyzeForConcepts(appState.uploadedImage, allCategories);
                 
                 let ideaPool: string[] = [];
                 if (suggestedCategories.length > 0) {
@@ -164,7 +162,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 ideasToGenerate = ideasToGenerate.filter(i => i !== randomConceptString).concat(randomIdeas);
                 ideasToGenerate = [...new Set(ideasToGenerate)];
             } catch (err) {
-                toast.error(t('avatarCreator_analysisError'));
+                toast.error(t('midAutumnCreator_analysisError'));
                 setIsAnalyzing(false);
                 return;
             } finally {
@@ -185,19 +183,19 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const concurrencyLimit = 2;
         const ideasQueue = [...ideasToGenerate];
         
-        let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
+        let currentAppState: MidAutumnCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
         const settingsToEmbed = {
-            viewId: 'avatar-creator',
+            viewId: 'mid-autumn-creator',
             state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
         };
 
         const processIdea = async (idea: string) => {
             try {
-                const resultUrl = await generatePatrioticImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
+                const resultUrl = await generateMidAutumnImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
                 const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
                 
                 if (!hasLoggedGeneration.current) {
-                    logGeneration('avatar-creator', preGenState, urlWithMetadata);
+                    logGeneration('mid-autumn-creator', preGenState, urlWithMetadata);
                     hasLoggedGeneration.current = true;
                 }
 
@@ -243,19 +241,17 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     const handleGenerateClick = async () => {
         const effectiveIdeas = appState.selectedIdeas.length > 0
             ? appState.selectedIdeas
-            : [t('avatarCreator_randomConcept')];
+            : [t('midAutumnCreator_randomConcept')];
         await executeGeneration(effectiveIdeas);
     };
 
     const handleRandomGenerateClick = async () => {
-        await executeGeneration([t('avatarCreator_randomConcept')]);
+        await executeGeneration([t('midAutumnCreator_randomConcept')]);
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         // FIX: Cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
         const imageToEditState = appState.generatedImages[idea] as any;
-        // @-NOTE-TO-SYSTEM: Cố ý sử dụng 'any' để bỏ qua vấn đề suy luận kiểu TypeScript với đối tượng trạng thái hình ảnh.
-        // Đây là một vấn đề đã biết. Không "sửa" bằng cách thay đổi kiểu mà không tái cấu trúc rộng hơn logic quản lý trạng thái. Một type guard phù hợp là giải pháp lâu dài.
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
@@ -271,11 +267,11 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         try {
             const resultUrl = await editImageWithPrompt(imageUrlToEdit, customPrompt);
             const settingsToEmbed = {
-                viewId: 'avatar-creator',
+                viewId: 'mid-autumn-creator',
                 state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
-            logGeneration('avatar-creator', preGenState, urlWithMetadata);
+            logGeneration('mid-autumn-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
@@ -317,16 +313,16 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'avatar-yeu-nuoc.zip',
-            baseOutputFilename: 'avatar-yeu-nuoc',
+            zipFilename: 'anh-trung-thu.zip',
+            baseOutputFilename: 'anh-trung-thu',
         });
     };
 
     const isLoading = appState.stage === 'generating' || isAnalyzing;
     const getButtonText = () => {
-        if (isAnalyzing) return t('avatarCreator_analyzing');
+        if (isAnalyzing) return t('midAutumnCreator_analyzing');
         if (isLoading) return t('common_creating');
-        return t('avatarCreator_createButton');
+        return t('midAutumnCreator_createButton');
     };
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
 
@@ -357,22 +353,22 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     <ActionablePolaroidCard
                         type="photo-input"
                         mediaUrl={appState.uploadedImage}
-                        caption={t('avatarCreator_yourImageCaption')}
+                        caption={t('midAutumnCreator_yourImageCaption')}
                         status="done"
                         onClick={() => openLightbox(0)}
                         onImageChange={handleUploadedImageChange}
                     />
 
                     <div className="w-full max-w-4xl text-center mt-4">
-                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('avatarCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
-                        <p className="text-neutral-400 mb-4">{t('avatarCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('midAutumnCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
+                        <p className="text-neutral-400 mb-4">{t('midAutumnCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
                         <div className="mb-4">
                             <button
                                 onClick={handleRandomGenerateClick}
                                 className="btn btn-primary btn-sm"
                                 disabled={isLoading || isAnalyzing}
                             >
-                                {t('avatarCreator_randomButton')}
+                                {t('midAutumnCreator_randomButton')}
                             </button>
                         </div>
                         <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
@@ -380,12 +376,6 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 <div key={categoryObj.category}>
                                     <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10 flex items-center gap-2">
                                         {categoryObj.category}
-                                        {categoryObj.key === 'random' && (
-                                            <span className="text-xs font-normal bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                <MagicWandIcon className="h-3 w-3" />
-                                                {t('avatarCreator_autoAnalysis')}
-                                            </span>
-                                        )}
                                     </h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                         {categoryObj.ideas.map((p: string) => {
@@ -413,9 +403,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
-                            <label htmlFor="aspect-ratio-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                            <label htmlFor="aspect-ratio-mid-autumn" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                             <select
-                                id="aspect-ratio-avatar"
+                                id="aspect-ratio-mid-autumn"
                                 value={appState.options.aspectRatio}
                                 onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
                                 className="form-input"
@@ -424,9 +414,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="additional-prompt-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
+                            <label htmlFor="additional-prompt-mid-autumn" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
-                                id="additional-prompt-avatar"
+                                id="additional-prompt-mid-autumn"
                                 value={localPrompt}
                                 onChange={(e) => setLocalPrompt(e.target.value)}
                                 onBlur={() => {
@@ -434,7 +424,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                         handleOptionChange('additionalPrompt', localPrompt);
                                     }
                                 }}
-                                placeholder={t('avatarCreator_notesPlaceholder')}
+                                placeholder={t('midAutumnCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}
                                 aria-label="Ghi chú bổ sung cho ảnh"
@@ -443,13 +433,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         <div className="flex items-center pt-2">
                             <input
                                 type="checkbox"
-                                id="remove-watermark-avatar"
+                                id="remove-watermark-mid-autumn"
                                 checked={appState.options.removeWatermark}
                                 onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                 className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
                                 aria-label={t('common_removeWatermark')}
                             />
-                            <label htmlFor="remove-watermark-avatar" className="ml-3 block text-sm font-medium text-neutral-300">
+                            <label htmlFor="remove-watermark-mid-autumn" className="ml-3 block text-sm font-medium text-neutral-300">
                                 {t('common_removeWatermark')}
                             </label>
                         </div>
@@ -462,7 +452,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         <button 
                             onClick={handleGenerateClick} 
                             className="btn btn-primary"
-                            disabled={(appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('avatarCreator_randomConcept')) || appState.selectedIdeas.length > maxIdeas || isLoading || isAnalyzing}
+                            disabled={(appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('midAutumnCreator_randomConcept')) || appState.selectedIdeas.length > maxIdeas || isLoading || isAnalyzing}
                         >
                             {getButtonText()}
                         </button>
@@ -483,7 +473,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
-                                {t('avatarCreator_chooseOtherIdeas')}
+                                {t('midAutumnCreator_chooseOtherIdeas')}
                             </button>
                             <button onClick={onReset} className="btn btn-secondary">
                                 {t('common_startOver')}
@@ -519,7 +509,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
                                     regenerationTitle={t('common_regenTitle')}
                                     regenerationDescription={t('common_regenDescription')}
-                                    regenerationPlaceholder={t('avatarCreator_regenPlaceholder')}
+                                    regenerationPlaceholder={t('midAutumnCreator_regenPlaceholder')}
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -562,4 +552,4 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     );
 };
 
-export default AvatarCreator;
+export default MidAutumnCreator;

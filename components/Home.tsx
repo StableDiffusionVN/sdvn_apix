@@ -58,11 +58,8 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
   }, [openEmptyImageEditor, addImagesToGallery]);
 
 
-  // Handle layout for app cards: center single card, left-align multiple cards.
-  const appListContainerClasses =
-    displayedApps.length > 1
-      ? 'grid w-full max-w-screen-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4'
-      : 'flex w-full max-w-xl justify-center';
+  // Use flexbox to center app cards in each row.
+  const appListContainerClasses = 'flex flex-wrap items-stretch justify-center w-full max-w-screen-2xl gap-6';
 
   const renderAppTitle = (title: string) => {
     // Replace newline characters with a space for single-line display on home cards

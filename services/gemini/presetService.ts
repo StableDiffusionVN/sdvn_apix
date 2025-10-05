@@ -5,15 +5,16 @@
 import { generateArchitecturalImage } from './architectureIdeatorService';
 import { generatePatrioticImage, analyzeAvatarForConcepts } from './avatarCreatorService';
 import { generateBabyPhoto, estimateAgeGroup } from './babyPhotoCreatorService';
+import { generateMidAutumnImage, analyzeForConcepts as analyzeMidAutumnConcepts } from './midAutumnCreatorService';
 import { generateDressedModelImage } from './dressTheModelService';
 import { restoreOldPhoto } from './photoRestorationService';
-import { convertImageToRealistic } from './imageToRealService';
 import { swapImageStyle } from './swapStyleService';
-import { mixImageStyle } from './mixStyleService';
 import { generateFreeImage } from './freeGenerationService';
 import { generateToyModelImage } from './toyModelCreatorService';
 import { interpolatePrompts, adaptPromptToContext } from './imageInterpolationService';
 import { editImageWithPrompt } from './imageEditingService';
+// FIX: Import 'mixImageStyle' to resolve 'Cannot find name' error.
+import { mixImageStyle } from './mixStyleService';
 
 type PresetData = {
     viewId: string;
@@ -24,6 +25,7 @@ type GeneratorFunction = (...args: any[]) => Promise<any>;
 
 interface PresetConfig {
     imageKeys: string[];
+    requiredImageCount?: number;
     generator: GeneratorFunction | ((imageUrls: (string | undefined)[], presetData: PresetData) => Promise<string[]>);
 }
 
@@ -50,16 +52,25 @@ const BABY_PHOTO_IDEAS_BY_CATEGORY = [
     { "category": "5-10 tuổi", "key": "child", "ideas": [ "Thám tử lừng danh", "Nhà khoa học điên rồ", "Điệp viên 007 nhí", "Nhà thám hiểm Ai Cập cổ đại", "Lập trình viên nhí", "Nhà làm phim Hollywood", "Ca sĩ trên sân khấu lớn", "Vận động viên trượt ván", "Cầu thủ bóng đá chuyên nghiệp", "Họa sĩ đường phố (graffiti)", "Nhà thiết kế thời trang", "Du hành xuyên thời gian", "Chơi cờ vua với người máy", "Nhà vô địch game e-sport", "Lớp học phép thuật Harry Potter", "Học làm bánh", "Nhà báo nhí", "Kỹ sư robot", "Chăm sóc vườn thú", "Leo núi", "Bé làm DJ", "Tham gia ban nhạc rock", "Vận động viên bóng rổ", "Nhà văn nhí", "Giáo viên tí hon", "Thám tử không gian", "Nhà thực vật học trong rừng Amazon", "Điệp viên công nghệ cao", "Nhà khảo cổ học tìm kiếm thành phố Atlantis", "CEO của một công ty khởi nghiệp", "Nhà làm phim tài liệu về động vật hoang dã", "Nhà soạn nhạc cho phim", "Vận động viên parkour", "Cầu thủ bóng rổ đường phố", "Họa sĩ vẽ truyện tranh manga", "Nhà thiết kế ô tô tương lai", "Người canh giữ ngọn hải đăng", "Chơi trong một ban nhạc jazz", "Nhà vô địch cờ vây", "Học viên tại học viện Ninja", "Đầu bếp sao Michelin", "Người dẫn chương trình TV", "Kỹ sư xây dựng cầu", "Chăm sóc một khu bảo tồn biển", "Vận động viên leo núi trong nhà", "Bé làm đạo diễn sân khấu", "Tham gia một ban nhạc indie", "Vận động viên đấu kiếm", "Nhà văn viết tiểu thuyết giả tưởng", "Người huấn luyện rồng" ] }
 ];
 
+const MID_AUTUMN_IDEAS_BY_CATEGORY = [
+    { "category": "Truyền thống & Cổ tích", "ideas": [ "Rước đèn ông sao", "Bên cạnh Chị Hằng", "Cùng chú Cuội trông trăng", "Múa Lân Sư Rồng", "Áo dài và đèn lồng", "Phá cỗ trông trăng", "Làm bánh Trung Thu", "Thả đèn hoa đăng", "Trang phục cổ trang", "Bên cây đa cổ thụ" ] },
+    { "category": "Hiện đại & Sáng tạo", "ideas": [ "Check-in phố đèn lồng", "Selfie với siêu trăng", "Đèn lồng neon cyberpunk", "Cosplay Chị Hằng hiện đại", "Tiệc BBQ ngoài trời", "Dã ngoại dưới trăng", "Chụp ảnh bokeh đèn lồng", "Phong cách light painting", "Tạo dáng với mặt trăng", "Trang phục lấp lánh" ] },
+    { "category": "Hoạt động & Vui chơi", "ideas": [ "Xem múa lân", "Chơi các trò chơi dân gian", "Làm đèn lồng thủ công", "Ngắm trăng bằng kính thiên văn", "Sum vầy bên gia đình", "Kể chuyện sự tích Trung Thu", "Tặng quà cho trẻ em", "Múa hát đêm hội trăng rằm", "Chơi cờ dưới trăng", "Cùng bạn bè đi dạo" ] },
+    { "category": "Giả tưởng & Kỳ ảo", "ideas": [ "Bay lên cung trăng", "Gặp gỡ Thỏ Ngọc", "Lạc vào xứ sở đèn lồng", "Cưỡi cá chép hóa rồng", "Nhận quà từ Chị Hằng", "Phiêu lưu trong truyện cổ tích", "Hóa thân thành nhân vật thần thoại", "Bữa tiệc trên cung trăng", "Khám phá khu rừng bí ẩn", "Trò chuyện với các vì sao" ] }
+];
+
 
 // This config map is the single source of truth for preset generation logic.
 // To add a new preset-compatible app, add its configuration here.
 const presetConfig: Record<string, PresetConfig> = {
     'architecture-ideator': {
-        imageKeys: ['uploadedImage'],
-        generator: (images, preset) => generateArchitecturalImage(images[0]!, preset.state.options),
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
+        requiredImageCount: 1,
+        generator: (images, preset) => generateArchitecturalImage(images[0]!, preset.state.options, images[1]),
     },
     'avatar-creator': {
         imageKeys: ['uploadedImage'],
+        requiredImageCount: 1,
         generator: async (images, preset) => {
             const ideas = preset.state.selectedIdeas;
             if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
@@ -106,6 +117,7 @@ const presetConfig: Record<string, PresetConfig> = {
     },
     'baby-photo-creator': {
         imageKeys: ['uploadedImage'],
+        requiredImageCount: 1,
         generator: async (images, preset) => {
             const ideas = preset.state.selectedIdeas;
             if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
@@ -142,31 +154,95 @@ const presetConfig: Record<string, PresetConfig> = {
             return Promise.all(promises);
         },
     },
+    'mid-autumn-creator': {
+        imageKeys: ['uploadedImage'],
+        requiredImageCount: 1,
+        generator: async (images, preset) => {
+            const ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
+            const imageUrl = images[0]!;
+
+            const randomConceptString = "Ngẫu nhiên";
+            let finalIdeas = [...ideas];
+
+            if (finalIdeas.includes(randomConceptString)) {
+                console.log("Preset contains 'Random' for Mid-Autumn Creator, resolving...");
+                const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
+
+                const suggestedCategories = await analyzeMidAutumnConcepts(imageUrl, MID_AUTUMN_IDEAS_BY_CATEGORY as any);
+                
+                let ideaPool: string[] = [];
+                if (suggestedCategories.length > 0) {
+                    ideaPool = MID_AUTUMN_IDEAS_BY_CATEGORY
+                        .filter(c => suggestedCategories.includes(c.category))
+                        .flatMap(c => c.ideas);
+                }
+                
+                if (ideaPool.length === 0) {
+                    ideaPool = MID_AUTUMN_IDEAS_BY_CATEGORY.flatMap(c => c.ideas);
+                }
+                
+                const randomIdeas: string[] = [];
+                for (let i = 0; i < randomCount; i++) {
+                    if (ideaPool.length > 0) {
+                         const randomIndex = Math.floor(Math.random() * ideaPool.length);
+                         randomIdeas.push(ideaPool[randomIndex]);
+                         ideaPool.splice(randomIndex, 1);
+                    }
+                }
+                finalIdeas = finalIdeas.filter(i => i !== randomConceptString).concat(randomIdeas);
+                finalIdeas = [...new Set(finalIdeas)];
+                console.log("Resolved 'Random' to concrete Mid-Autumn ideas:", finalIdeas);
+            }
+            
+            const promises = finalIdeas.map((idea: string) => 
+                generateMidAutumnImage(imageUrl, idea, preset.state.options.additionalPrompt, preset.state.options.removeWatermark, preset.state.options.aspectRatio)
+            );
+            return Promise.all(promises);
+        },
+    },
     'dress-the-model': {
         imageKeys: ['modelImage', 'clothingImage'],
+        requiredImageCount: 2,
         generator: (images, preset) => generateDressedModelImage(images[0]!, images[1]!, preset.state.options),
     },
     'photo-restoration': {
         imageKeys: ['uploadedImage'],
+        requiredImageCount: 1,
         generator: (images, preset) => restoreOldPhoto(images[0]!, preset.state.options),
     },
-    'image-to-real': {
-        imageKeys: ['uploadedImage'],
-        generator: (images, preset) => convertImageToRealistic(images[0]!, preset.state.options),
-    },
     'swap-style': {
-        imageKeys: ['uploadedImage'],
-        generator: (images, preset) => swapImageStyle(images[0]!, preset.state.options),
-    },
-    'mix-style': {
         imageKeys: ['contentImage', 'styleImage'],
+        requiredImageCount: 1,
         generator: async (images, preset) => {
-            const { resultUrl } = await mixImageStyle(images[0]!, images[1]!, preset.state.options);
-            return [resultUrl];
+            const contentImage = images[0];
+            const styleImage = images[1]; // This can be undefined
+            const options = preset.state.options;
+
+            if (!contentImage) {
+                throw new Error("Swap Style preset requires a content image.");
+            }
+            
+            // `swapImageStyle` handles the `convertToReal` case internally.
+            if (options.convertToReal) {
+                const result = await swapImageStyle(contentImage, options);
+                return [result];
+            }
+        
+            // If a style image is present (either from canvas or preset), use `mixImageStyle`.
+            if (styleImage) {
+                const { resultUrl } = await mixImageStyle(contentImage, styleImage, options);
+                return [resultUrl];
+            }
+        
+            // Otherwise, it's a text-based style swap.
+            const result = await swapImageStyle(contentImage, options);
+            return [result];
         },
     },
     'toy-model-creator': {
         imageKeys: ['uploadedImage'],
+        requiredImageCount: 1,
         generator: (images, preset) => {
             const concept = preset.state.concept;
             if (!concept) throw new Error("Toy Model Creator preset is missing a 'concept'.");
@@ -174,14 +250,16 @@ const presetConfig: Record<string, PresetConfig> = {
         },
     },
     'free-generation': {
-        imageKeys: ['image1', 'image2'],
-        generator: (images, preset) => generateFreeImage(preset.state.options.prompt, preset.state.options.numberOfImages, preset.state.options.aspectRatio, images[0], images[1], preset.state.options.removeWatermark),
+        imageKeys: ['image1', 'image2', 'image3', 'image4'],
+        requiredImageCount: 0,
+        generator: (images, preset) => generateFreeImage(preset.state.options.prompt, preset.state.options.numberOfImages, preset.state.options.aspectRatio, images[0], images[1], images[2], images[3], preset.state.options.removeWatermark),
     },
     'image-interpolation': {
         imageKeys: ['referenceImage'],
+        requiredImageCount: 0,
         generator: async (images, preset) => {
             const { generatedPrompt, additionalNotes } = preset.state;
-            const referenceUrl = images[0];
+            const referenceUrl = images[0] || preset.state.inputImage;
             if (!generatedPrompt || !referenceUrl) throw new Error("Preset is missing prompt or reference image.");
             let iPrompt = generatedPrompt;
             if (additionalNotes) { iPrompt = await interpolatePrompts(iPrompt, additionalNotes); }
@@ -212,9 +290,12 @@ export async function generateFromPreset(presetData: PresetData, selectedLayerUr
         return selectedLayerUrls[index] ?? state[key];
     });
 
+    const requiredCount = config.requiredImageCount ?? 0;
+
     // Ensure all required images are present
-    if (finalImageUrls.some(url => !url)) {
-        throw new Error(`Not enough images provided for "${viewId}" preset. Required: ${config.imageKeys.join(', ')}.`);
+    if (finalImageUrls.slice(0, requiredCount).some(url => !url)) {
+        const requiredKeys = config.imageKeys.slice(0, requiredCount);
+        throw new Error(`Not enough images provided for "${viewId}" preset. Required: ${requiredKeys.join(', ')}.`);
     }
 
     const result = await config.generator(finalImageUrls, presetData);
