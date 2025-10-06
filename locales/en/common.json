@@ -231,6 +231,7 @@
   "layerComposer_ai_batchMode": "Batch Generate",
   "layerComposer_ai_multiInputMode": "Multi Input",
   "layerComposer_ai_batchMode_desc": "Create a separate image for each selected layer.",
+  "layerComposer_ai_batchMode_desc_count": "{0} layers selected. Each will be processed individually.",
   "layerComposer_ai_multiInputMode_desc": "All selected layers will be used as input for a single generation.",
   "layerComposer_mergeLayers": "Merge Layers",
   "confirmClose_title": "Are you sure you want to close?",

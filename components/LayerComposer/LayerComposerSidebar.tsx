@@ -286,40 +286,91 @@ const PresetControls: React.FC<PresetControlsProps> = ({
             </div>
             
             <div className="space-y-2">
-                {requiredImages.map((label, index) => {
-                    const assignedLayer = selectedLayersForPreset[index];
-                    const imageKey = imageKeys[index];
-                    const presetImage = loadedPreset?.state?.[imageKey];
-                    const imageUrl = assignedLayer?.url || presetImage;
-    
-                    return (
-                        <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md flex items-center gap-3">
-                            {imageUrl ? (
-                                <img src={imageUrl} alt={label} className="w-10 h-10 object-cover rounded-sm flex-shrink-0 bg-neutral-700" />
-                            ) : (
-                                <div className="w-10 h-10 flex-shrink-0 bg-neutral-700 rounded-sm flex items-center justify-center text-neutral-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                            )}
-                            <div className="flex-grow min-w-0">
-                                <span className="font-semibold text-neutral-300 block">{label}</span>
-                                {assignedLayer ? (
-                                    <span className="text-green-400 text-xs truncate block">
-                                        Đã gán: {assignedLayer.text || `Layer #${assignedLayer.id.substring(0,4)}`}
-                                    </span>
-                                ) : presetImage ? (
-                                    <span className="text-yellow-400 text-xs truncate block">Sử dụng ảnh từ preset</span>
+                 {isSimpleImageMode ? (
+                    // Multi-Input Mode UI
+                    requiredImages.map((label, index) => {
+                        const assignedLayer = selectedLayersForPreset[index];
+                        const imageKey = imageKeys[index];
+                        const presetImage = loadedPreset?.state?.[imageKey];
+                        const imageUrl = assignedLayer?.url || presetImage;
+                
+                        return (
+                            <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md flex items-center gap-3">
+                                {imageUrl ? (
+                                    <img src={imageUrl} alt={label} className="w-10 h-10 object-cover rounded-sm flex-shrink-0 bg-neutral-700" />
                                 ) : (
-                                    <span className="text-neutral-500 text-xs truncate block">Không bắt buộc / Trống</span>
+                                    <div className="w-10 h-10 flex-shrink-0 bg-neutral-700 rounded-sm flex items-center justify-center text-neutral-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
                                 )}
+                                <div className="flex-grow min-w-0">
+                                    <span className="font-semibold text-neutral-300 block">{label}</span>
+                                    {assignedLayer ? (
+                                        <span className="text-green-400 text-xs truncate block">
+                                            Đã gán: {assignedLayer.text || `Layer #${assignedLayer.id.substring(0,4)}`}
+                                        </span>
+                                    ) : presetImage ? (
+                                        <span className="text-yellow-400 text-xs truncate block">Sử dụng ảnh từ preset</span>
+                                    ) : (
+                                        <span className="text-neutral-500 text-xs truncate block">Không bắt buộc / Trống</span>
+                                    )}
+                                </div>
                             </div>
+                        );
+                    })
+                ) : (
+                    // Batch Mode UI
+                    <>
+                        <div className="text-sm bg-neutral-900/50 p-3 rounded-md">
+                            <p className="font-semibold text-green-400">Chế độ Tạo Hàng Loạt</p>
+                            <p className="text-xs text-neutral-400 mt-1">
+                                {selectedLayersForPreset.length > 0
+                                    ? `Đã chọn ${selectedLayersForPreset.length} layer. Mỗi layer sẽ được xử lý riêng biệt qua preset này.`
+                                    : "Chọn một hoặc nhiều layer để tạo hàng loạt."
+                                }
+                            </p>
                         </div>
-                    );
-                })}
+                        {requiredImages.map((label, index) => {
+                            const imageKey = imageKeys[index];
+                            const presetImage = loadedPreset?.state?.[imageKey];
+                            const isPrimaryInput = index === 0;
+                            const imageUrl = isPrimaryInput ? (selectedLayersForPreset[0]?.url || presetImage) : presetImage;
+
+                            return (
+                                <div key={index} className="text-sm bg-neutral-900/50 p-2 rounded-md flex items-center gap-3">
+                                    {imageUrl ? (
+                                        <img src={imageUrl} alt={label} className="w-10 h-10 object-cover rounded-sm flex-shrink-0 bg-neutral-700" />
+                                    ) : (
+                                        <div className="w-10 h-10 flex-shrink-0 bg-neutral-700 rounded-sm flex items-center justify-center text-neutral-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                    <div className="flex-grow min-w-0">
+                                        <span className="font-semibold text-neutral-300 block">{label}</span>
+                                        {isPrimaryInput ? (
+                                            <span className="text-green-400 text-xs truncate block">
+                                                {selectedLayersForPreset.length > 0
+                                                    ? `Sẽ lần lượt sử dụng ${selectedLayersForPreset.length} layer đã chọn`
+                                                    : "Sử dụng layer được chọn"
+                                                }
+                                            </span>
+                                        ) : presetImage ? (
+                                            <span className="text-yellow-400 text-xs truncate block">Sử dụng ảnh từ preset</span>
+                                        ) : (
+                                            <span className="text-neutral-500 text-xs truncate block">Trống (Không sử dụng)</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </>
+                )}
             </div>
-            
+
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {Object.entries(loadedPreset.state.options).map(([key, value]) => {
                     if (typeof value === 'boolean') {
@@ -439,6 +490,15 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
     const hasImageInput = selectedLayers.length > 0;
     const ASPECT_RATIO_OPTIONS: string[] = t('aspectRatioOptions');
 
+    const getLayerName = (layer: Layer) => {
+        switch(layer.type) {
+            case 'image': return 'Image Layer';
+            case 'text': return layer.text || 'Text Layer';
+            case 'shape': return `${layer.shapeType === 'rectangle' ? 'Rectangle' : 'Ellipse'} Shape`;
+            default: return 'Layer';
+        }
+    };
+
     useEffect(() => {
         if (selectedLayer) {
             setActiveTab(selectedLayer.type === 'text' ? 'text' : 'properties');
@@ -479,7 +539,39 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                         {openSection === 'ai' && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-neutral-800/50">
                                 <div className="p-3 space-y-3">
-                                    <p className="text-xs text-neutral-400 text-center"> {selectedLayerIds.length > 0 ? t('layerComposer_ai_note_selection') : t('layerComposer_ai_note_canvas')} </p>
+                                    
+                                    {selectedLayers.length === 0 ? (
+                                        <p className="text-xs text-neutral-400 text-center">{t('layerComposer_ai_note_canvas')}</p>
+                                    ) : isSimpleImageMode ? (
+                                        // Multi-Input Mode UI
+                                        <div className="space-y-2">
+                                            {selectedLayers.map((layer, index) => (
+                                                <div key={layer.id} className="text-sm bg-neutral-900/50 p-2 rounded-md flex items-center gap-3">
+                                                    {layer.type === 'image' && layer.url ? (
+                                                        <img src={layer.url} alt={`Input ${index + 1}`} className="w-10 h-10 object-cover rounded-sm flex-shrink-0 bg-neutral-700" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 flex-shrink-0 bg-neutral-700 rounded-sm flex items-center justify-center text-neutral-300 font-bold" style={{ fontFamily: 'Asimovian', fontSize: '1.5rem', color: layer.color || '#FFFFFF' }}>
+                                                            {layer.type === 'text' ? 'T' : 'S'}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-grow min-w-0">
+                                                        <span className="font-semibold text-neutral-300 block">Input {index + 1}</span>
+                                                        <span className="text-green-400 text-xs truncate block">
+                                                            {getLayerName(layer)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        // Batch Mode UI
+                                        <div className="text-sm bg-neutral-900/50 p-3 rounded-md">
+                                            <p className="font-semibold text-green-400">{t('layerComposer_ai_batchMode')}</p>
+                                            <p className="text-xs text-neutral-400 mt-1">
+                                                {t('layerComposer_ai_batchMode_desc_count', selectedLayers.length)}
+                                            </p>
+                                        </div>
+                                    )}
                                     
                                     <div>
                                         <label htmlFor="ai-preset-select" className="block text-sm font-medium text-neutral-300 mb-1">{t('layerComposer_ai_preset')}</label>

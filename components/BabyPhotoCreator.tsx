@@ -245,7 +245,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         // FIX: Cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
-        const imageToEditState = appState.generatedImages[idea] as any;
+        const imageToEditState: any = appState.generatedImages[idea];
         // @-NOTE-TO-SYSTEM: Cố ý sử dụng 'any' để bỏ qua vấn đề suy luận kiểu TypeScript với đối tượng trạng thái hình ảnh.
         // Đây là một vấn đề đã biết. Không "sửa" bằng cách thay đổi kiểu mà không tái cấu trúc rộng hơn logic quản lý trạng thái. Một type guard phù hợp là giải pháp lâu dài.
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {

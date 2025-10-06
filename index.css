@@ -333,7 +333,7 @@ body {
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2rem; /* rounded-lg */
-  padding: 1.5rem; /* p-6 */
+  padding: 1.25rem; /* p-5 */
   text-align: left;
   display: flex;
   flex-direction: column;

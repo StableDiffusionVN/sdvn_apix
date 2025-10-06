@@ -251,7 +251,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         // FIX: Cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
-        const imageToEditState = appState.generatedImages[idea] as any;
+        const imageToEditState: any = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }

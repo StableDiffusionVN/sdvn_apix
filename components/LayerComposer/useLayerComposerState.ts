@@ -465,9 +465,14 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         let canvasNeedsInit = nextLayers.length === 0 && !currentCanvasInitialized;
         let canvasSettingsToUpdate = { ...currentCanvasSettings };
         if (canvasNeedsInit) {
-            const firstImg = loadedImages[0];
-            canvasSettingsToUpdate = { ...currentCanvasSettings, width: firstImg.naturalWidth, height: firstImg.naturalHeight };
-            setCanvasSettings(canvasSettingsToUpdate); setCanvasInitialized(true); setIsInfiniteCanvas(false);
+            // User request: Default to infinite canvas in all cases when starting.
+            // We set a default canvas size and enable infinite mode,
+            // rather than fitting the canvas to the first image.
+            const defaultSize = 2048; // Consistent with creating a new blank canvas
+            canvasSettingsToUpdate = { ...currentCanvasSettings, width: defaultSize, height: defaultSize };
+            setCanvasSettings(canvasSettingsToUpdate);
+            setCanvasInitialized(true);
+            setIsInfiniteCanvas(true);
         }
         let nextY = position ? position.y : 0; let nextX = position ? position.x : 0;
         [...loadedImages].reverse().forEach((img) => {
@@ -555,8 +560,8 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         if (selectedLayers.length === 0) return []; beginInteraction();
         let newLayersState = [...layers]; const newDuplicatedLayers: Layer[] = []; const newSelectedIds: string[] = [];
         const topMostLayerInSelection = selectedLayers[0]; const topMostSelectedIndex = layers.findIndex(l => l.id === topMostLayerInSelection.id);
+        // FIX: Replaced spread operator with Object.assign to resolve a "Spread types may only be created from object types" error that occurred due to a subtle type inference issue.
         [...selectedLayers].reverse().forEach(layerToDup => {
-            // FIX: Replaced spread operator with Object.assign to resolve a "Spread types may only be created from object types" error that occurred due to a subtle type inference issue.
             const newLayer: Layer = Object.assign({}, layerToDup, { id: Math.random().toString(36).substring(2, 9), x: layerToDup.x, y: layerToDup.y });
             newLayersState.splice(topMostSelectedIndex, 0, newLayer); newDuplicatedLayers.unshift(newLayer); newSelectedIds.push(newLayer.id);
         });

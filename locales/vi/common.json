@@ -231,6 +231,7 @@
   "layerComposer_ai_batchMode": "Tạo hàng loạt",
   "layerComposer_ai_multiInputMode": "Nhiều Input",
   "layerComposer_ai_batchMode_desc": "Tạo một ảnh riêng cho mỗi selected layer.",
+  "layerComposer_ai_batchMode_desc_count": "Đã chọn {0} layer. Mỗi layer sẽ được xử lý riêng biệt.",
   "layerComposer_ai_multiInputMode_desc": "Tất cả layer đã chọn sẽ được dùng làm input cho 1 lần tạo ảnh.",
   "layerComposer_mergeLayers": "Gộp Layer",
   "confirmClose_title": "Bạn có chắc chắn muốn đóng?",
