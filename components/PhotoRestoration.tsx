@@ -307,6 +307,12 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
                                     <label htmlFor="remove-stains" className="ml-3 block text-sm font-medium text-neutral-300">{t('photoRestoration_removeStainsLabel')}</label>
                                 </div>
                                 <div className="flex items-center">
+                                    <input type="checkbox" id="colorize-rgb" checked={appState.options.colorizeRgb}
+                                        onChange={(e) => handleOptionChange('colorizeRgb', e.target.checked)}
+                                        className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />
+                                    <label htmlFor="colorize-rgb" className="ml-3 block text-sm font-medium text-neutral-300">{t('photoRestoration_colorizeRgb')}</label>
+                                </div>
+                                <div className="flex items-center">
                                     <input type="checkbox" id="remove-watermark-restore" checked={appState.options.removeWatermark}
                                         onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                         className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800" />

@@ -17,6 +17,7 @@ interface PhotoRestorationOptions {
     notes?: string;
     removeWatermark?: boolean;
     removeStains?: boolean;
+    colorizeRgb?: boolean;
 }
 
 export async function restoreOldPhoto(imageDataUrl: string, options: PhotoRestorationOptions): Promise<string> {
@@ -24,20 +25,30 @@ export async function restoreOldPhoto(imageDataUrl: string, options: PhotoRestor
     const imagePart = { inlineData: { mimeType, data: base64Data } };
 
     const promptParts = [
-        'Bạn là một chuyên gia phục chế ảnh cũ. Phục chế bức ảnh này để nó trông như mới, sửa chữa mọi hư hỏng và thêm màu sắc nếu cần.',
-        '**YÊU CẦU BẮT BUỘC:**'
+        'Bạn là một chuyên gia phục chế ảnh cũ. Nhiệm vụ của bạn là phục chế bức ảnh được cung cấp.',
+        '**HƯỚNG DẪN QUAN TRỌNG NHẤT:**'
     ];
     
-    if (options.removeStains) {
-        promptParts.push('1. **Sửa chữa triệt để:** Loại bỏ HOÀN TOÀN các vết xước, nếp gấp, vết ố, phai màu, và các hư hỏng vật lý khác.');
+    // Make colorization the absolute first command if requested.
+    if (options.colorizeRgb) {
+        promptParts.push(
+            '1. **TÔ MÀU ẢNH (ƯU TIÊN SỐ 1):** Đây là ảnh đen trắng hoặc ảnh màu đã cũ. BẠN BẮT BUỘC PHẢI tô màu lại cho bức ảnh này. Sử dụng một bảng màu đầy đủ, rực rỡ và chân thực. Màu sắc phải trông tự nhiên và sống động như một bức ảnh kỹ thuật số hiện đại. **ĐÂY LÀ YÊU CẦU QUAN TRỌNG NHẤT.**'
+        );
     } else {
-        promptParts.push('1. **Sửa chữa cơ bản:** Sửa các vết rách và nếp gấp lớn, nhưng giữ lại kết cấu và các vết ố nhỏ để duy trì nét cổ điển của ảnh.');
+        promptParts.push(
+            '1. **Tô màu (Tự nhiên/Cổ điển):** Nếu ảnh là đen trắng hoặc màu đã phai, hãy tô màu một cách tinh tế. Sử dụng tông màu tự nhiên, phù hợp với thời đại của bức ảnh gốc để giữ lại nét hoài cổ (ví dụ: tông màu sepia nhẹ, màu film cũ).'
+        );
+    }
+
+    if (options.removeStains) {
+        promptParts.push('2. **Sửa chữa triệt để:** Loại bỏ HOÀN TOÀN các vết xước, nếp gấp, vết ố, phai màu, và các hư hỏng vật lý khác.');
+    } else {
+        promptParts.push('2. **Sửa chữa cơ bản:** Sửa các vết rách và nếp gấp lớn, nhưng giữ lại kết cấu và các vết ố nhỏ để duy trì nét cổ điển của ảnh.');
     }
 
     promptParts.push(
-        '2. **Tăng cường chi tiết:** Làm sắc nét hình ảnh và khôi phục các chi tiết bị mất, đặc biệt là trên khuôn mặt.',
-        '3. **Tô màu tự nhiên (nếu là ảnh đen trắng):** Áp dụng màu sắc một cách chân thực, phù hợp với thời đại của bức ảnh.',
-        '4. **Giữ nguyên bản chất:** Không thay đổi các đặc điểm trên khuôn mặt, bố cục, hay nội dung gốc của ảnh.',
+        '3. **Tăng cường chi tiết:** Làm sắc nét hình ảnh và khôi phục các chi tiết bị mất, đặc biệt là trên khuôn mặt.',
+        '4. **Giữ nguyên bản chất:** KHÔNG thay đổi các đặc điểm trên khuôn mặt, bố cục, hay nội dung gốc của ảnh.',
         '',
         '**THÔNG TIN BỔ SUNG ĐỂ CÓ KẾT QUẢ TỐT NHẤT:**'
     );
@@ -62,13 +73,13 @@ export async function restoreOldPhoto(imageDataUrl: string, options: PhotoRestor
         promptParts.push('- **Yêu cầu đặc biệt:** Không được có bất kỳ watermark, logo, hay chữ ký nào trên ảnh kết quả.');
     }
 
-    promptParts.push('Chỉ trả về hình ảnh đã được phục chế, không kèm theo văn bản giải thích.');
+    promptParts.push('', 'Chỉ trả về hình ảnh đã được phục chế, không kèm theo văn bản giải thích.');
 
     const prompt = promptParts.join('\n');
     const textPart = { text: prompt };
 
     try {
-        console.log("Attempting to restore old photo...");
+        console.log("Attempting to restore old photo with new stronger prompt...");
         const response = await callGeminiWithRetry([imagePart, textPart]);
         return processGeminiResponse(response);
     } catch (error) {

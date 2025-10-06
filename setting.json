@@ -13,84 +13,96 @@
       "titleKey": "app_free-generation_title",
       "descriptionKey": "app_free-generation_description",
       "icon": "🚀",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/free-gen-1.jpg"
     },
     {
       "id": "image-interpolation",
       "titleKey": "app_image-interpolation_title",
       "descriptionKey": "app_image-interpolation_description",
       "icon": "⚗️",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/noi-suy.jpg"
     },
     {
       "id": "architecture-ideator",
       "titleKey": "app_architecture-ideator_title",
       "descriptionKey": "app_architecture-ideator_description",
       "icon": "🏛️",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/kientruc-2.jpeg"
     },
     {
       "id": "dress-the-model",
       "titleKey": "app_dress-the-model_title",
       "descriptionKey": "app_dress-the-model_description",
       "icon": "👗",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/thoitrang.jpg"
     },
     {
       "id": "photo-restoration",
       "titleKey": "app_photo-restoration_title",
       "descriptionKey": "app_photo-restoration_description",
       "icon": "🖼️",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/phuc-che.jpg"
     },
     {
       "id": "swap-style",
       "titleKey": "app_swap-style_title",
       "descriptionKey": "app_swap-style_description",
       "icon": "🎨",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/swap-style.jpg"
     },
     {
       "id": "toy-model-creator",
       "titleKey": "app_toy-model-creator_title",
       "descriptionKey": "app_toy-model-creator_description",
       "icon": "🤖",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/figure.jpeg"
     },
     {
       "id": "avatar-creator",
       "titleKey": "app_avatar-creator_title",
       "descriptionKey": "app_avatar-creator_description",
       "icon": "🇻🇳",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/yeu-nuoc.jpeg"
     },
     {
       "id": "beauty-creator",
       "titleKey": "app_beauty-creator_title",
       "descriptionKey": "app_beauty-creator_description",
       "icon": "💄",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/beauty.jpeg"
     },
     {
       "id": "entrepreneur-creator",
       "titleKey": "app_entrepreneur-creator_title",
       "descriptionKey": "app_entrepreneur-creator_description",
       "icon": "💼",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/doanhnhan.jpeg"
     },
     {
       "id": "mid-autumn-creator",
       "titleKey": "app_mid-autumn-creator_title",
       "descriptionKey": "app_mid-autumn-creator_description",
       "icon": "🌕",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/trungthu.jpeg"
     },
     {
       "id": "baby-photo-creator",
       "titleKey": "app_baby-photo-creator_title",
       "descriptionKey": "app_baby-photo-creator_description",
       "icon": "👶",
-      "supportsCanvasPreset": true
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/baby.jpeg"
     }
   ],
   "avatarCreator": {
@@ -122,6 +134,8 @@
     "subtitleKey": "beautyCreator_subtitle",
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
+    "minIdeas": 1,
+    "maxIdeas": 6,
     "uploaderCaptionKey": "beautyCreator_uploaderCaption",
     "uploaderDescriptionKey": "beautyCreator_uploaderDescription",
     "uploaderCaptionStyleKey": "beautyCreator_uploaderCaptionStyle",

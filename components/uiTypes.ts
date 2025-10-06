@@ -24,6 +24,7 @@ export interface AppConfig {
     descriptionKey: string;
     icon: string;
     supportsCanvasPreset?: boolean;
+    previewImageUrl?: string;
 }
 
 export interface AppSettings {
@@ -140,8 +141,9 @@ export interface BeautyCreatorState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     uploadedImage: string | null;
     styleReferenceImage: string | null;
-    generatedImage: string | null;
-    historicalImages: string[];
+    generatedImages: Record<string, GeneratedAvatarImage>;
+    historicalImages: HistoricalAvatarImage[];
+    selectedIdeas: string[];
     options: {
         notes: string;
         removeWatermark: boolean;
@@ -184,6 +186,7 @@ export interface PhotoRestorationState {
         notes: string;
         removeWatermark: boolean;
         removeStains: boolean;
+        colorizeRgb: boolean;
     };
     error: string | null;
 }
@@ -380,7 +383,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'baby-photo-creator':
             return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'beauty-creator':
-            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImage: null, historicalImages: [], options: { notes: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { notes: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'mid-autumn-creator':
             return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'entrepreneur-creator':
@@ -388,7 +391,7 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'dress-the-model':
             return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: '', pose: '', style: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'photo-restoration':
-            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { type: 'Chân dung', gender: 'Tự động', age: '', nationality: '', notes: '', removeWatermark: false, removeStains: true }, error: null };
+            return { stage: 'idle', uploadedImage: null, generatedImage: null, historicalImages: [], options: { type: 'Chân dung', gender: 'Tự động', age: '', nationality: '', notes: '', removeWatermark: false, removeStains: true, colorizeRgb: true }, error: null };
         case 'swap-style':
             return { stage: 'idle', contentImage: null, styleImage: null, generatedImage: null, historicalImages: [], options: { style: '', styleStrength: 'Rất mạnh', notes: '', removeWatermark: false, convertToReal: false }, error: null };
         case 'free-generation':

@@ -1,3 +1,4 @@
+
 {
   "photoRestoration_mainTitle": "Old Photo Restoration",
   "photoRestoration_subtitle": "Upload a photo to restore to begin",
@@ -13,6 +14,7 @@
   "photoRestoration_notesLabel": "Notes",
   "photoRestoration_notesPlaceholder": "e.g., restore the color of the blue ao dai...",
   "photoRestoration_removeStainsLabel": "Remove stains, spots",
+  "photoRestoration_colorizeRgb": "RGB Colorization",
   "photoRestoration_creating": "Restoring...",
   "photoRestoration_createButton": "Restore Photo",
   "photoRestoration_resultCaption": "Restored Photo",

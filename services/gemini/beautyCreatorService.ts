@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
+import { Type } from "@google/genai";
 import ai from './client';
 import {
     processApiError,
@@ -46,16 +47,75 @@ Chỉ trả lời bằng một đoạn văn mô tả liền mạch, súc tích.`
     }
 }
 
+export async function analyzeForBeautyConcepts(
+    imageDataUrl: string,
+    categories: { category: string; key: string; ideas: string[] }[]
+): Promise<string[]> {
+    const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
+    const imagePart = { inlineData: { mimeType, data: base64Data } };
+
+    const categoryNames = categories.map(c => c.category);
+
+    const prompt = `Phân tích người trong ảnh chân dung được cung cấp. Dựa trên giới tính, biểu cảm, và phong thái chung, hãy chọn ra 1 đến 2 danh mục phù hợp nhất từ danh sách sau đây cho một bộ ảnh beauty.
+
+    Các danh mục có sẵn:
+    ${categoryNames.join('\n')}
+
+    Phản hồi của bạn phải là một đối tượng JSON có một khóa duy nhất "suggested_categories" là một mảng chuỗi chứa các danh mục đã chọn. Các chuỗi trong mảng phải khớp chính xác với danh sách được cung cấp.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, { text: prompt }] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_categories: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING },
+                        },
+                    },
+                    required: ["suggested_categories"],
+                }
+            }
+        });
+
+        const jsonText = response.text.trim();
+        const parsed = JSON.parse(jsonText);
+        if (parsed.suggested_categories && Array.isArray(parsed.suggested_categories)) {
+            const validCategories = parsed.suggested_categories.filter((cat: string) => categoryNames.includes(cat));
+            if (validCategories.length > 0) {
+                return validCategories;
+            }
+        }
+        
+        console.warn("AI returned no valid beauty categories, using fallback.");
+        const shuffled = categoryNames.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 1);
+
+    } catch (error) {
+        console.error("Error analyzing for beauty concepts:", error);
+        const shuffled = categoryNames.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 1);
+    }
+}
+
 export async function generateBeautyImage(
     imageDataUrl: string,
-    styleReferenceImageDataUrl: string | null,
-    options: BeautyOptions
+    idea: string,
+    options: BeautyOptions,
+    styleReferenceImageDataUrl?: string | null
 ): Promise<string> {
     const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
     const portraitImagePart = { inlineData: { mimeType, data: base64Data } };
 
     const requestParts: object[] = [portraitImagePart];
     const promptParts: string[] = [];
+    
+    let finalIdea = idea;
 
     if (options.aspectRatio && options.aspectRatio !== 'Giữ nguyên') {
         promptParts.push(`**YÊU CẦU BỐ CỤC:** Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${options.aspectRatio}.`);
@@ -67,19 +127,21 @@ export async function generateBeautyImage(
     );
 
     if (styleReferenceImageDataUrl) {
-        const styleDescription = await analyzeBeautyConceptImage(styleReferenceImageDataUrl);
-        promptParts.push(
+        finalIdea = await analyzeBeautyConceptImage(styleReferenceImageDataUrl);
+         promptParts.push(
             'Áp dụng concept, phong cách và cảm xúc được mô tả chi tiết sau đây:',
             `--- MÔ TẢ CONCEPT ---`,
-            styleDescription,
+            finalIdea,
             `--- KẾT THÚC MÔ TẢ ---`
         );
+    } else if (finalIdea) {
+        promptParts.push(`Áp dụng concept beauty sau đây: "${finalIdea}".`);
     } else {
         promptParts.push('Hãy tự sáng tạo một concept beauty phù hợp (ví dụ: studio, tự nhiên, thời trang cao cấp) để làm nổi bật người trong ảnh.');
     }
 
     if (options.notes) {
-        promptParts.push(`- **Ghi chú bổ sung của người dùng (Ưu tiên cao):** "${options.notes}". Tích hợp yêu cầu này trong khi vẫn tuân thủ mô tả concept ở trên.`);
+        promptParts.push(`- **Ghi chú bổ sung của người dùng (Ưu tiên cao):** "${options.notes}".`);
     }
 
     if (options.removeWatermark) {

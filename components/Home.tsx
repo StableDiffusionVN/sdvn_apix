@@ -186,12 +186,22 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
               tabIndex={0}
               aria-label={`Mở tính năng ${app.title.replace('\n', ' ')}`}
             >
-              <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{app.icon}</div>
-              <h3 className="base-font font-bold text-xl text-yellow-400 mb-2 min-h-[3rem] flex items-center">
-                {renderAppTitle(app.title)}
-              </h3>
-              <p className="base-font text-neutral-300 flex-grow text-sm line-clamp-2">{app.description}</p>
-              <span className="base-font font-bold text-white mt-4 self-end transition-transform duration-300 group-hover:translate-x-1">{t('home_start')}</span>
+              {/* Content that fades out */}
+              <div className="absolute inset-0 p-5 flex flex-col items-start text-left transition-opacity duration-300 ease-in-out group-hover:opacity-0">
+                  <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{app.icon}</div>
+                  <h3 className="base-font font-bold text-xl text-yellow-400 mb-2 min-h-[3rem] flex items-center">
+                      {renderAppTitle(app.title)}
+                  </h3>
+                  <p className="base-font text-neutral-300 text-sm line-clamp-2">{app.description}</p>
+                  <span className="base-font font-bold text-white mt-auto pt-2 self-end transition-transform duration-300 group-hover:translate-x-1">{t('home_start')}</span>
+              </div>
+
+              {/* Preview image that fades in */}
+              {app.previewImageUrl && (
+                  <div className="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
+                      <img src={app.previewImageUrl} className="w-full h-full object-cover" alt={`Preview for ${app.title}`} loading="lazy" />
+                  </div>
+              )}
             </motion.div>
           );
         })}

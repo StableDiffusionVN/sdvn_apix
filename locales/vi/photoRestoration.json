@@ -1,3 +1,4 @@
+
 {
   "photoRestoration_mainTitle": "Phục Chế Ảnh Cũ",
   "photoRestoration_subtitle": "Tải lên bức ảnh cần phục chế để bắt đầu",
@@ -13,6 +14,7 @@
   "photoRestoration_notesLabel": "Ghi chú",
   "photoRestoration_notesPlaceholder": "Ví dụ: phục chế màu áo dài xanh...",
   "photoRestoration_removeStainsLabel": "Xóa vết loang, ố",
+  "photoRestoration_colorizeRgb": "Đổ màu RGB",
   "photoRestoration_creating": "Đang phục chế...",
   "photoRestoration_createButton": "Phục chế ảnh",
   "photoRestoration_resultCaption": "Ảnh đã phục chế",

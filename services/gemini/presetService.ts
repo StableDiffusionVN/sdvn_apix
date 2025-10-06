@@ -5,7 +5,7 @@
 import { generateArchitecturalImage } from './architectureIdeatorService';
 import { generatePatrioticImage, analyzeAvatarForConcepts } from './avatarCreatorService';
 import { generateBabyPhoto, estimateAgeGroup } from './babyPhotoCreatorService';
-import { generateBeautyImage } from './beautyCreatorService';
+import { generateBeautyImage, analyzeForBeautyConcepts } from './beautyCreatorService';
 import { generateMidAutumnImage, analyzeForConcepts as analyzeMidAutumnConcepts } from './midAutumnCreatorService';
 import { generateEntrepreneurImage, analyzeForEntrepreneurConcepts } from './entrepreneurCreatorService';
 import { generateDressedModelImage } from './dressTheModelService';
@@ -57,40 +57,17 @@ const BEAUTY_IDEAS_BY_CATEGORY = [
     {
       "category": "Dành cho Nữ",
       "key": "female",
-      "ideas": [
-        "Vẻ đẹp Studio",
-        "Nắng Mai Tự nhiên",
-        "Mộng Mơ Kỳ Ảo",
-        "Thời trang cao cấp",
-        "Trong veo Hàn Quốc",
-        "Cổ điển Hollywood",
-        "Vẻ đẹp với hoa",
-        "Trang sức tinh tế",
-        "Chân dung nghệ thuật"
-      ]
+      "ideas": [ "Vẻ đẹp Studio", "Nắng Mai Tự nhiên", "Mộng Mơ Kỳ Ảo", "Thời trang cao cấp", "Trong veo Hàn Quốc", "Cổ điển Hollywood", "Vẻ đẹp với hoa", "Trang sức tinh tế", "Chân dung nghệ thuật" ]
     },
     {
       "category": "Dành cho Nam",
       "key": "male",
-      "ideas": [
-        "Quý Ông Lịch Lãm",
-        "Chân dung ngoài trời",
-        "Điện ảnh & Trầm lắng",
-        "Tối giản Hiện đại",
-        "Tài tử Hồng Kông 80s",
-        "Doanh nhân thành đạt"
-      ]
+      "ideas": [ "Quý Ông Lịch Lãm", "Chân dung ngoài trời", "Điện ảnh & Trầm lắng", "Tối giản Hiện đại", "Tài tử Hồng Kông 80s", "Doanh nhân thành đạt" ]
     },
     {
       "category": "Phong cách chung",
       "key": "general",
-      "ideas": [
-        "Chân dung Đen Trắng",
-        "Hoàng hôn vàng óng",
-        "Ảnh chụp dưới mưa",
-        "Vẻ đẹp trong nước",
-        "Tranh sơn dầu"
-      ]
+      "ideas": [ "Chân dung Đen Trắng", "Hoàng hôn vàng óng", "Ảnh chụp dưới mưa", "Vẻ đẹp trong nước", "Tranh sơn dầu" ]
     }
 ];
 
@@ -104,63 +81,19 @@ const MID_AUTUMN_IDEAS_BY_CATEGORY = [
 const ENTREPRENEUR_IDEAS_BY_CATEGORY = [
     {
       "category": "Chân dung Studio",
-      "ideas": [
-        "Phông nền xám tối giản",
-        "Phông nền trắng hiện đại",
-        "Phong cách 'Dark & Moody'",
-        "Hiệu ứng ánh sáng tinh tế",
-        "Nhìn thẳng vào ống kính",
-        "Mỉm cười tự tin",
-        "Chân dung đen trắng",
-        "Chụp cận mặt (headshot)",
-        "Tạo dáng với ghế studio",
-        "Ánh sáng Rembrandt"
-      ]
+      "ideas": [ "Phông nền xám tối giản", "Phông nền trắng hiện đại", "Phong cách 'Dark & Moody'", "Hiệu ứng ánh sáng tinh tế", "Nhìn thẳng vào ống kính", "Mỉm cười tự tin", "Chân dung đen trắng", "Chụp cận mặt (headshot)", "Tạo dáng với ghế studio", "Ánh sáng Rembrandt", "Chụp qua lớp kính có vệt nước", "Hiệu ứng 'split lighting'", "Chụp với ghế bành da cổ điển", "Tương tác với ánh sáng neon", "Bóng đổ ấn tượng trên tường", "Chân dung low-key", "Chân dung high-key", "Phong cách ảnh tạp chí GQ", "Tạo dáng suy tư, tay chống cằm", "Chụp với rèm cửa sổ" ]
     },
     {
       "category": "Môi trường Công sở",
-      "ideas": [
-        "Trong phòng họp hiện đại",
-        "Đứng bên cửa sổ nhìn ra thành phố",
-        "Làm việc trên laptop",
-        "Dẫn dắt một cuộc họp",
-        "Trong văn phòng riêng",
-        "Đi bộ trong sảnh công ty",
-        "Thuyết trình trước bảng trắng",
-        "Bối cảnh co-working space",
-        "Trước bức tường logo công ty",
-        "Trò chuyện với đồng nghiệp"
-      ]
+      "ideas": [ "Trong phòng họp hiện đại", "Đứng bên cửa sổ nhìn ra thành phố", "Làm việc trên laptop", "Dẫn dắt một cuộc họp", "Trong văn phòng riêng", "Đi bộ trong sảnh công ty", "Thuyết trình trước bảng trắng", "Bối cảnh co-working space", "Trước bức tường logo công ty", "Trò chuyện với đồng nghiệp", "Viết trên bảng kính trong suốt", "Sử dụng laptop trong quán cà phê sang trọng", "Thảo luận sôi nổi với team", "Đi lên thang cuốn trong toà nhà văn phòng", "Ngồi trong phòng chờ sân bay hạng thương gia", "Kiểm tra tiến độ tại nhà máy/công trường", "Uống cà phê và đọc báo kinh doanh", "Đứng trong phòng server", "Trong một cuộc gọi video call quan trọng", "Sắp xếp giấy tờ trên bàn làm việc lớn" ]
     },
     {
       "category": "Lãnh đạo & Quyền lực",
-      "ideas": [
-        "Khoanh tay tự tin",
-        "Tạo dáng quyền lực (power pose)",
-        "Ảnh chụp đang đi bộ (candid)",
-        "Phát biểu trên bục",
-        "Nhìn xa xăm, đầy tầm nhìn",
-        "Ngồi trên ghế giám đốc",
-        "Chỉnh lại cà vạt/cổ áo",
-        "Chụp từ góc thấp",
-        "Tương tác với kiến trúc",
-        "Đứng trên sân thượng"
-      ]
+      "ideas": [ "Khoanh tay tự tin", "Tạo dáng quyền lực (power pose)", "Ảnh chụp đang đi bộ (candid)", "Phát biểu trên bục", "Nhìn xa xăm, đầy tầm nhìn", "Ngồi trên ghế giám đốc", "Chỉnh lại cà vạt/cổ áo", "Chụp từ góc thấp", "Tương tác với kiến trúc", "Đứng trên sân thượng", "Xuống xe từ một chiếc xe sang", "Đi bộ qua sảnh lớn của một tòa nhà", "Phát biểu tại một hội nghị quốc tế", "Nhìn ra đường băng sân bay", "Ngồi trong máy bay riêng", "Chơi cờ vua", "Trong một buổi phỏng vấn truyền hình", "Đứng trên bục vinh danh nhận giải thưởng", "Chỉ tay vào bản đồ thế giới", "Bắt tay đối tác quan trọng" ]
     },
     {
       "category": "Sáng tạo & Công nghệ",
-      "ideas": [
-        "Không gian làm việc sáng tạo",
-        "Trước bảng trắng đầy ý tưởng",
-        "Cầm máy tính bảng",
-        "Không khí startup năng động",
-        "Mặc đồ casual (áo thun, hoodie)",
-        "Bối cảnh phòng lab/xưởng",
-        "Tương tác với sản phẩm công nghệ",
-        "Chụp ảnh với hiệu ứng neon",
-        "Bên cạnh một tác phẩm nghệ thuật",
-        "Đọc sách trong thư viện hiện đại"
-      ]
+      "ideas": [ "Không gian làm việc sáng tạo", "Trước bảng trắng đầy ý tưởng", "Cầm máy tính bảng", "Không khí startup năng động", "Mặc đồ casual (áo thun, hoodie)", "Bối cảnh phòng lab/xưởng", "Tương tác với sản phẩm công nghệ", "Chụp ảnh với hiệu ứng neon", "Bên cạnh một tác phẩm nghệ thuật", "Đọc sách trong thư viện hiện đại", "Tương tác với màn hình голограм", "Đeo kính thực tế ảo (VR/AR)", "Trong một trung tâm dữ liệu (data center)", "Vẽ ý tưởng trên máy tính bảng Wacom", "Thử nghiệm drone", "Làm việc tại quán cà phê công nghệ", "Bên cạnh mô hình kiến trúc", "Trong một phòng thu âm/podcast", "Kiểm tra một sản phẩm robot", "Đứng trước một bức tường nghệ thuật số" ]
     }
 ];
 
@@ -292,18 +225,64 @@ const presetConfig: Record<string, PresetConfig> = {
     'beauty-creator': {
         imageKeys: ['uploadedImage', 'styleReferenceImage'],
         requiredImageCount: 1,
-        generator: (images, preset) => {
-            const portraitUrl = images[0];
+        generator: async (images, preset) => {
+            const portraitUrl = images[0]!;
             const styleRefUrl = images[1] || preset.state.styleReferenceImage;
-
-            if (!portraitUrl) {
-                throw new Error("Beauty Creator preset requires a portrait image layer to be selected.");
-            }
-            if (!styleRefUrl) {
-                throw new Error("Beauty Creator preset requires a concept reference image, either from a selected layer or saved in the preset.");
+            const options = preset.state.options;
+    
+            if (styleRefUrl) {
+                console.log("Preset is using a style reference image for Beauty Creator.");
+                const result = await generateBeautyImage(
+                    portraitUrl,
+                    '', // idea is empty when using style ref
+                    options,
+                    styleRefUrl
+                );
+                return [result];
             }
     
-            return generateBeautyImage(portraitUrl, styleRefUrl, preset.state.options);
+            let ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) {
+                ideas = ["Ngẫu nhiên"]; // Default to random if no ideas are in the preset
+            }
+            
+            const randomConceptString = "Ngẫu nhiên";
+            let finalIdeas = [...ideas];
+    
+            if (finalIdeas.includes(randomConceptString)) {
+                console.log("Preset contains 'Random' for Beauty Creator, resolving...");
+                const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
+    
+                const suggestedCategories = await analyzeForBeautyConcepts(portraitUrl, BEAUTY_IDEAS_BY_CATEGORY as any);
+                
+                let ideaPool: string[] = [];
+                if (suggestedCategories.length > 0) {
+                    ideaPool = BEAUTY_IDEAS_BY_CATEGORY
+                        .filter(c => suggestedCategories.includes(c.category))
+                        .flatMap(c => c.ideas);
+                }
+                
+                if (ideaPool.length === 0) {
+                    ideaPool = BEAUTY_IDEAS_BY_CATEGORY.flatMap(c => c.ideas);
+                }
+                
+                const randomIdeas: string[] = [];
+                for (let i = 0; i < randomCount; i++) {
+                    if (ideaPool.length > 0) {
+                         const randomIndex = Math.floor(Math.random() * ideaPool.length);
+                         randomIdeas.push(ideaPool[randomIndex]);
+                         ideaPool.splice(randomIndex, 1);
+                    }
+                }
+                finalIdeas = finalIdeas.filter(i => i !== randomConceptString).concat(randomIdeas);
+                finalIdeas = [...new Set(finalIdeas)];
+                console.log("Resolved 'Random' to concrete beauty ideas:", finalIdeas);
+            }
+            
+            const promises = finalIdeas.map((idea: string) => 
+                generateBeautyImage(portraitUrl, idea, options)
+            );
+            return Promise.all(promises);
         },
     },
     'mid-autumn-creator': {

@@ -332,18 +332,17 @@ body {
   -webkit-backdrop-filter: blur(4px); /* backdrop-blur-sm */
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 2rem; /* rounded-lg */
-  padding: 1.25rem; /* p-5 */
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  border-radius: 2rem;
   cursor: pointer;
   transition: all 300ms;
-  /* NEW: Use flex-basis for responsive columns in a flex-wrap container */
   flex-basis: 100%;
-  max-width: 420px; /* Good for single column layout on larger phones/tablets */
+  max-width: 420px;
+  /* NEW styles */
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
 }
+
 
 @media(min-width: 640px) { /* sm breakpoint */
   .app-card {
