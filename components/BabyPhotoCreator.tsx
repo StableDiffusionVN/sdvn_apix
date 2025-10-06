@@ -36,6 +36,8 @@ interface BabyPhotoCreatorProps {
     smartTitleWrapWords: number;
     uploaderCaption: string;
     uploaderDescription: string;
+    uploaderCaptionStyle: string;
+    uploaderDescriptionStyle: string;
     addImagesToGallery: (images: string[]) => void;
     appState: BabyPhotoCreatorState;
     onStateChange: (newState: BabyPhotoCreatorState) => void;
@@ -47,7 +49,7 @@ interface BabyPhotoCreatorProps {
 const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     const { 
         minIdeas, maxIdeas, 
-        uploaderCaption, uploaderDescription,
+        uploaderCaption, uploaderDescription, uploaderCaptionStyle, uploaderDescriptionStyle,
         addImagesToGallery,
         appState, onStateChange, onReset,
         logGeneration,
@@ -74,7 +76,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         .filter(img => img?.status === 'done' && img.url)
         .map(img => img.url!);
 
-    const lightboxImages = [appState.uploadedImage, ...outputLightboxImages].filter((img): img is string => !!img);
+    const lightboxImages = [appState.uploadedImage, appState.styleReferenceImage, ...outputLightboxImages].filter((img): img is string => !!img);
     
     const handleImageSelectedForUploader = (imageDataUrl: string) => {
         onStateChange({
@@ -85,6 +87,15 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             selectedIdeas: [],
             historicalImages: [],
             error: null,
+        });
+        addImagesToGallery([imageDataUrl]);
+    };
+
+    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+        onStateChange({
+            ...appState,
+            styleReferenceImage: imageDataUrl,
+            selectedIdeas: [],
         });
         addImagesToGallery([imageDataUrl]);
     };
@@ -121,16 +132,63 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         onStateChange({ ...appState, selectedIdeas: newSelectedIdeas });
     };
 
-    const executeGeneration = async (ideas: string[]) => {
+    const executeGeneration = async (ideas?: string[]) => {
         if (!appState.uploadedImage) return;
+
+        hasLoggedGeneration.current = false;
+
+        if (appState.styleReferenceImage) {
+            const idea = "Style Reference";
+            const preGenState = { ...appState, selectedIdeas: [idea] };
+            const stage: 'generating' = 'generating';
+            // FIX: Capture intermediate state to pass to subsequent updates, avoiding stale state issues.
+            // FIX: The status property was being inferred as a generic 'string'. Using 'as const' ensures
+            // it's typed as a literal, which is assignable to the 'ImageStatus' type.
+            const generatingState = { ...appState, stage, generatedImages: { [idea]: { status: 'pending' as const } }, selectedIdeas: [idea] };
+            onStateChange(generatingState);
+
+            try {
+                const resultUrl = await generateBabyPhoto(
+                    appState.uploadedImage,
+                    '',
+                    appState.options.additionalPrompt,
+                    appState.options.removeWatermark,
+                    appState.options.aspectRatio,
+                    appState.styleReferenceImage
+                );
+                const settingsToEmbed = {
+                    viewId: 'baby-photo-creator',
+                    state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
+                };
+                const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
+                logGeneration('baby-photo-creator', preGenState, urlWithMetadata);
+                // FIX: Pass a state object instead of a function to `onStateChange`.
+                onStateChange({
+                    ...generatingState,
+                    stage: 'results',
+                    generatedImages: { [idea]: { status: 'done' as const, url: urlWithMetadata } },
+                    historicalImages: [...generatingState.historicalImages, { idea, url: urlWithMetadata }],
+                });
+                addImagesToGallery([urlWithMetadata]);
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+                // FIX: Pass a state object instead of a function to `onStateChange`.
+                onStateChange({
+                    ...generatingState,
+                    stage: 'results',
+                    generatedImages: { [idea]: { status: 'error' as const, error: errorMessage } },
+                });
+            }
+            return;
+        }
+
+        if (!ideas || ideas.length === 0) return;
         if (ideas.length > maxIdeas && !ideas.includes(t('babyPhotoCreator_randomConcept'))) {
             toast.error(t('babyPhotoCreator_maxIdeasError', maxIdeas));
             return;
         }
 
-        hasLoggedGeneration.current = false;
         const preGenState = { ...appState, selectedIdeas: ideas };
-        
         const randomConceptString = t('babyPhotoCreator_randomConcept');
         
         let ideasToGenerate = [...ideas];
@@ -149,12 +207,11 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     if (availableIdeas.length > 0) {
                          const randomIndex = Math.floor(Math.random() * availableIdeas.length);
                          randomIdeas.push(availableIdeas[randomIndex]);
-                         // Optional: remove to avoid duplicates
                          availableIdeas.splice(randomIndex, 1);
                     }
                 }
                 ideasToGenerate = ideasToGenerate.filter(i => i !== randomConceptString).concat(randomIdeas);
-                ideasToGenerate = [...new Set(ideasToGenerate)]; // Ensure unique ideas
+                ideasToGenerate = [...new Set(ideasToGenerate)];
             } catch (err) {
                 toast.error(t('babyPhotoCreator_ageEstimationError'));
                 setIsEstimatingAge(false);
@@ -233,13 +290,18 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     };
 
     const handleGenerateClick = async () => {
-        const effectiveIdeas = appState.selectedIdeas.length > 0
-            ? appState.selectedIdeas
-            : [t('babyPhotoCreator_randomConcept')];
-        await executeGeneration(effectiveIdeas);
+        if (appState.styleReferenceImage) {
+            await executeGeneration();
+        } else {
+            const effectiveIdeas = appState.selectedIdeas.length > 0
+                ? appState.selectedIdeas
+                : [t('babyPhotoCreator_randomConcept')];
+            await executeGeneration(effectiveIdeas);
+        }
     };
 
     const handleRandomGenerateClick = async () => {
+        onStateChange({ ...appState, styleReferenceImage: null });
         await executeGeneration([t('babyPhotoCreator_randomConcept')]);
     };
 
@@ -324,6 +386,22 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
 
+    const inputImagesForResults = [];
+    if (appState.uploadedImage) {
+        inputImagesForResults.push({
+            url: appState.uploadedImage,
+            caption: t('common_originalImage'),
+            onClick: () => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))
+        });
+    }
+    if (appState.styleReferenceImage) {
+        inputImagesForResults.push({
+            url: appState.styleReferenceImage,
+            caption: t('common_referenceImage'),
+            onClick: () => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!))
+        });
+    }
+
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
             <AnimatePresence>
@@ -348,62 +426,82 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <ActionablePolaroidCard
-                        type="photo-input"
-                        mediaUrl={appState.uploadedImage}
-                        caption={t('babyPhotoCreator_yourImageCaption')}
-                        status="done"
-                        onClick={() => openLightbox(0)}
-                        onImageChange={handleUploadedImageChange}
-                    />
-
-                    <div className="w-full max-w-4xl text-center mt-4">
-                        <h2 className="base-font font-bold text-2xl text-neutral-200">{t('babyPhotoCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
-                        <p className="text-neutral-400 mb-2">{t('babyPhotoCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
-                        <div className="mb-4">
-                            <button
-                                onClick={handleRandomGenerateClick}
-                                className="btn btn-primary btn-sm"
-                                disabled={isLoading || isEstimatingAge}
-                            >
-                                {t('babyPhotoCreator_randomButton')}
-                            </button>
-                        </div>
-                        <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
-                            {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.filter((categoryObj: any) => categoryObj.key !== 'random').map((categoryObj: any) => (
-                                <div key={categoryObj.category}>
-                                    <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10 flex items-center gap-2">
-                                        {categoryObj.category}
-                                        {categoryObj.key === 'random' && (
-                                            <span className="text-xs font-normal bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                <MagicWandIcon className="h-3 w-3" />
-                                                {t('babyPhotoCreator_autoAgeDetection')}
-                                            </span>
-                                        )}
-                                    </h3>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                        {categoryObj.ideas.map((p: string) => {
-                                            const isSelected = appState.selectedIdeas.includes(p);
-                                            return (
-                                                <button 
-                                                    key={p}
-                                                    onClick={() => handleIdeaSelect(p)}
-                                                    className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
-                                                        isSelected 
-                                                        ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
-                                                        : 'bg-white/10 text-neutral-300 hover:bg-white/20'
-                                                    } ${!isSelected && appState.selectedIdeas.length === maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    disabled={!isSelected && appState.selectedIdeas.length === maxIdeas}
-                                                >
-                                                    {p}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
+                    <div className="flex flex-col md:flex-row items-start justify-center gap-8">
+                        <ActionablePolaroidCard
+                            type="photo-input"
+                            mediaUrl={appState.uploadedImage}
+                            caption={t('babyPhotoCreator_yourImageCaption')}
+                            status="done"
+                            onClick={() => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))}
+                            onImageChange={handleUploadedImageChange}
+                        />
+                         <div className="w-full md:w-auto">
+                            <ActionablePolaroidCard
+                                type="style-input"
+                                mediaUrl={appState.styleReferenceImage ?? undefined}
+                                caption={uploaderCaptionStyle}
+                                placeholderType='magic'
+                                status='done'
+                                onImageChange={handleStyleReferenceImageChange}
+                                onClick={appState.styleReferenceImage ? () => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!)) : undefined}
+                            />
+                            <p className="mt-4 text-center text-sm text-neutral-400 max-w-xs mx-auto">{uploaderDescriptionStyle}</p>
                         </div>
                     </div>
+
+                    {!appState.styleReferenceImage ? (
+                        <div className="w-full max-w-4xl text-center mt-4">
+                            <h2 className="base-font font-bold text-2xl text-neutral-200">{t('babyPhotoCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
+                            <p className="text-neutral-400 mb-2">{t('babyPhotoCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                            <div className="mb-4">
+                                <button
+                                    onClick={handleRandomGenerateClick}
+                                    className="btn btn-primary btn-sm"
+                                    disabled={isLoading || isEstimatingAge}
+                                >
+                                    {t('babyPhotoCreator_randomButton')}
+                                </button>
+                            </div>
+                            <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
+                                {Array.isArray(IDEAS_BY_CATEGORY) && IDEAS_BY_CATEGORY.filter((categoryObj: any) => categoryObj.key !== 'random').map((categoryObj: any) => (
+                                    <div key={categoryObj.category}>
+                                        <h3 className="text-xl base-font font-bold text-yellow-400 text-left mb-3 sticky top-0 bg-black/50 py-2 -mx-4 px-4 z-10 flex items-center gap-2">
+                                            {categoryObj.category}
+                                            {categoryObj.key === 'random' && (
+                                                <span className="text-xs font-normal bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <MagicWandIcon className="h-3 w-3" />
+                                                    {t('babyPhotoCreator_autoAgeDetection')}
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                            {categoryObj.ideas.map((p: string) => {
+                                                const isSelected = appState.selectedIdeas.includes(p);
+                                                return (
+                                                    <button 
+                                                        key={p}
+                                                        onClick={() => handleIdeaSelect(p)}
+                                                        className={`base-font font-bold p-2 rounded-sm text-sm transition-all duration-200 ${
+                                                            isSelected 
+                                                            ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105' 
+                                                            : 'bg-white/10 text-neutral-300 hover:bg-white/20'
+                                                        } ${!isSelected && appState.selectedIdeas.length === maxIdeas ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        disabled={!isSelected && appState.selectedIdeas.length === maxIdeas}
+                                                    >
+                                                        {p}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-full max-w-4xl text-center p-4 bg-neutral-700/50 rounded-lg my-4">
+                            <p className="text-sm text-yellow-300">{t('common_styleReferenceActive')}</p>
+                        </div>
+                    )}
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
@@ -456,7 +554,12 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                         <button 
                             onClick={handleGenerateClick} 
                             className="btn btn-primary"
-                            disabled={(appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('babyPhotoCreator_randomConcept')) || appState.selectedIdeas.length > maxIdeas || isLoading || isEstimatingAge}
+                             disabled={
+                                (!appState.styleReferenceImage && appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('babyPhotoCreator_randomConcept')) ||
+                                (!appState.styleReferenceImage && appState.selectedIdeas.length > maxIdeas) ||
+                                isLoading ||
+                                isEstimatingAge
+                            }
                         >
                             {getButtonText()}
                         </button>
@@ -467,8 +570,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             {(appState.stage === 'generating' || appState.stage === 'results') && (
                 <ResultsView
                     stage={appState.stage}
-                    originalImage={appState.uploadedImage}
-                    onOriginalClick={() => openLightbox(0)}
+                    inputImages={inputImagesForResults}
                     isMobile={isMobile}
                     hasPartialError={hasPartialError}
                     actions={
@@ -504,7 +606,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                             >
                                 <ActionablePolaroidCard
                                     type="output"
-                                    caption={idea}
+                                    caption={idea === 'Style Reference' ? t('common_result') : idea}
                                     status={imageState?.status || 'pending'}
                                     mediaUrl={imageState?.url}
                                     error={imageState?.error}

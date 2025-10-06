@@ -1,0 +1,16 @@
+
+{
+  "beautyCreator_mainTitle": "Beauty Photo Creator",
+  "beautyCreator_subtitle": "Upload a portrait and a concept reference photo to start",
+  "beautyCreator_uploaderCaption": "Upload Portrait Photo",
+  "beautyCreator_uploaderDescription": "Click the frame to upload a photo and start creating",
+  "beautyCreator_yourImageCaption": "Your Photo",
+  "beautyCreator_notesPlaceholder": "e.g., nude makeup, soft curly hair...",
+  "beautyCreator_createButton": "Create Photo",
+  "beautyCreator_regenPlaceholder": "e.g., add an earring, change lipstick color...",
+  "beautyCreator_uploaderCaptionStyle": "Upload Concept Photo",
+  "beautyCreator_uploaderDescriptionStyle": "Image with the style, lighting, and colors for reference",
+  "beautyCreator_styleReferenceCaption": "Concept Photo",
+  "beautyCreator_styleReferenceDescription": "Upload a reference image for the AI to analyze and apply its concept.",
+  "beautyCreator_missingImagesError": "Please upload both a portrait and a concept reference photo."
+}

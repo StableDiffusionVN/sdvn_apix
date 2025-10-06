@@ -1,0 +1,16 @@
+
+{
+  "beautyCreator_mainTitle": "Tạo Ảnh Beauty",
+  "beautyCreator_subtitle": "Tải ảnh chân dung và ảnh concept tham khảo để bắt đầu",
+  "beautyCreator_uploaderCaption": "Tải ảnh chân dung",
+  "beautyCreator_uploaderDescription": "Nhấn vào khung ảnh để tải ảnh và bắt đầu sáng tạo",
+  "beautyCreator_yourImageCaption": "Ảnh của bạn",
+  "beautyCreator_notesPlaceholder": "Ví dụ: trang điểm tông nude, tóc xoăn nhẹ...",
+  "beautyCreator_createButton": "Tạo ảnh",
+  "beautyCreator_regenPlaceholder": "Ví dụ: thêm một bông hoa tai, thay đổi màu son...",
+  "beautyCreator_uploaderCaptionStyle": "Tải ảnh Concept",
+  "beautyCreator_uploaderDescriptionStyle": "Ảnh chứa phong cách, ánh sáng, màu sắc để tham khảo",
+  "beautyCreator_styleReferenceCaption": "Ảnh Concept",
+  "beautyCreator_styleReferenceDescription": "Tải lên ảnh tham chiếu để AI tự động phân tích và áp dụng concept.",
+  "beautyCreator_missingImagesError": "Vui lòng tải lên cả ảnh chân dung và ảnh concept tham khảo."
+}

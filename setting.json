@@ -65,6 +65,20 @@
       "supportsCanvasPreset": true
     },
     {
+      "id": "beauty-creator",
+      "titleKey": "app_beauty-creator_title",
+      "descriptionKey": "app_beauty-creator_description",
+      "icon": "💄",
+      "supportsCanvasPreset": true
+    },
+    {
+      "id": "entrepreneur-creator",
+      "titleKey": "app_entrepreneur-creator_title",
+      "descriptionKey": "app_entrepreneur-creator_description",
+      "icon": "💼",
+      "supportsCanvasPreset": true
+    },
+    {
       "id": "mid-autumn-creator",
       "titleKey": "app_mid-autumn-creator_title",
       "descriptionKey": "app_mid-autumn-creator_description",
@@ -87,7 +101,9 @@
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
     "uploaderCaptionKey": "avatarCreator_uploaderCaption",
-    "uploaderDescriptionKey": "avatarCreator_uploaderDescription"
+    "uploaderDescriptionKey": "avatarCreator_uploaderDescription",
+    "uploaderCaptionStyleKey": "common_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "common_uploaderDescriptionStyle"
   },
   "babyPhotoCreator": {
     "mainTitleKey": "babyPhotoCreator_mainTitle",
@@ -97,7 +113,19 @@
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
     "uploaderCaptionKey": "babyPhotoCreator_uploaderCaption",
-    "uploaderDescriptionKey": "babyPhotoCreator_uploaderDescription"
+    "uploaderDescriptionKey": "babyPhotoCreator_uploaderDescription",
+    "uploaderCaptionStyleKey": "common_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "common_uploaderDescriptionStyle"
+  },
+  "beautyCreator": {
+    "mainTitleKey": "beautyCreator_mainTitle",
+    "subtitleKey": "beautyCreator_subtitle",
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaptionKey": "beautyCreator_uploaderCaption",
+    "uploaderDescriptionKey": "beautyCreator_uploaderDescription",
+    "uploaderCaptionStyleKey": "beautyCreator_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "beautyCreator_uploaderDescriptionStyle"
   },
   "midAutumnCreator": {
     "mainTitleKey": "midAutumnCreator_mainTitle",
@@ -107,7 +135,21 @@
     "useSmartTitleWrapping": true,
     "smartTitleWrapWords": 2,
     "uploaderCaptionKey": "midAutumnCreator_uploaderCaption",
-    "uploaderDescriptionKey": "midAutumnCreator_uploaderDescription"
+    "uploaderDescriptionKey": "midAutumnCreator_uploaderDescription",
+    "uploaderCaptionStyleKey": "common_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "common_uploaderDescriptionStyle"
+  },
+  "entrepreneurCreator": {
+    "mainTitleKey": "entrepreneurCreator_mainTitle",
+    "subtitleKey": "entrepreneurCreator_subtitle",
+    "minIdeas": 1,
+    "maxIdeas": 6,
+    "useSmartTitleWrapping": true,
+    "smartTitleWrapWords": 2,
+    "uploaderCaptionKey": "entrepreneurCreator_uploaderCaption",
+    "uploaderDescriptionKey": "entrepreneurCreator_uploaderDescription",
+    "uploaderCaptionStyleKey": "common_uploaderCaptionStyle",
+    "uploaderDescriptionStyleKey": "common_uploaderDescriptionStyle"
   },
   "architectureIdeator": {
     "mainTitleKey": "architectureIdeator_mainTitle",

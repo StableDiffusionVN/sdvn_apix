@@ -17,6 +17,7 @@
   "common_regenerate": "Regenerate",
   "common_download": "Download",
   "common_originalImage": "Original Image",
+  "common_referenceImage": "Reference Image",
   "common_removeWatermark": "Remove watermark (if any)",
   "common_removeWatermarkSimple": "Remove watermark",
   "common_changeImage": "Change Image",
@@ -290,5 +291,8 @@
   "layerComposer_chatbot_analysisPrompt": "Analyze this image. Describe its content, style, composition, and color palette in detail. Provide suggestions for how to improve or alter it.",
   "layerComposer_new_title": "Create New Canvas?",
   "layerComposer_new_message": "This will clear your current canvas and any unsaved work. This action cannot be undone. Are you sure?",
-  "layerComposer_new_confirm": "Clear Canvas"
+  "layerComposer_new_confirm": "Clear Canvas",
+  "common_uploaderCaptionStyle": "Upload Concept Photo",
+  "common_uploaderDescriptionStyle": "Image with style, lighting, colors for reference",
+  "common_styleReferenceActive": "Using concept from reference image. Ideas below are disabled."
 }

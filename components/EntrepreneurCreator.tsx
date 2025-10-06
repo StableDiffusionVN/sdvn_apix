@@ -5,7 +5,7 @@
 import React, { useState, ChangeEvent, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { generatePatrioticImage, editImageWithPrompt, analyzeAvatarForConcepts } from '../services/geminiService';
+import { generateEntrepreneurImage, editImageWithPrompt, analyzeForEntrepreneurConcepts } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -14,7 +14,7 @@ import {
     ImageUploader,
     ResultsView,
     ImageForZip,
-    type AvatarCreatorState,
+    type EntrepreneurCreatorState,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
@@ -24,7 +24,7 @@ import {
 } from './uiUtils';
 import { MagicWandIcon } from './icons';
 
-interface AvatarCreatorProps {
+interface EntrepreneurCreatorProps {
     mainTitle: string;
     subtitle: string;
     minIdeas: number;
@@ -36,14 +36,14 @@ interface AvatarCreatorProps {
     uploaderCaptionStyle: string;
     uploaderDescriptionStyle: string;
     addImagesToGallery: (images: string[]) => void;
-    appState: AvatarCreatorState;
-    onStateChange: (newState: AvatarCreatorState) => void;
+    appState: EntrepreneurCreatorState;
+    onStateChange: (newState: EntrepreneurCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
     logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
-const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
+const EntrepreneurCreator: React.FC<EntrepreneurCreatorProps> = (props) => {
     const { 
         minIdeas, maxIdeas, 
         uploaderCaption, uploaderDescription, uploaderCaptionStyle, uploaderDescriptionStyle,
@@ -65,7 +65,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         setLocalPrompt(appState.options.additionalPrompt);
     }, [appState.options.additionalPrompt]);
     
-    const IDEAS_BY_CATEGORY = t('avatarCreator_ideasByCategory');
+    const IDEAS_BY_CATEGORY = t('entrepreneurCreator_ideasByCategory');
     const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
 
     const outputLightboxImages = appState.selectedIdeas
@@ -92,7 +92,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
-            selectedIdeas: [], // Clear selected ideas when a style ref is used
+            selectedIdeas: [],
         });
         addImagesToGallery([imageDataUrl]);
     };
@@ -106,7 +106,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         addImagesToGallery([newUrl]);
     };
 
-    const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {
+    const handleOptionChange = (field: keyof EntrepreneurCreatorState['options'], value: string | boolean) => {
         onStateChange({
             ...appState,
             options: { ...appState.options, [field]: value },
@@ -122,7 +122,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         } else if (selectedIdeas.length < maxIdeas) {
             newSelectedIdeas = [...selectedIdeas, idea];
         } else {
-            toast.error(t('avatarCreator_maxIdeasError', maxIdeas));
+            toast.error(t('entrepreneurCreator_maxIdeasError', maxIdeas));
             return;
         }
 
@@ -133,8 +133,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         if (!appState.uploadedImage) return;
 
         hasLoggedGeneration.current = false;
-        
-        // --- Branch 1: Generation from Style Reference Image ---
+
         if (appState.styleReferenceImage) {
             const idea = "Style Reference";
             const preGenState = { ...appState, selectedIdeas: [idea] };
@@ -146,22 +145,20 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             onStateChange(generatingState);
 
             try {
-                const resultUrl = await generatePatrioticImage(
+                const resultUrl = await generateEntrepreneurImage(
                     appState.uploadedImage,
-                    '', // Idea is ignored by service when style ref is passed
+                    '',
                     appState.options.additionalPrompt,
                     appState.options.removeWatermark,
                     appState.options.aspectRatio,
                     appState.styleReferenceImage
                 );
-
                 const settingsToEmbed = {
-                    viewId: 'avatar-creator',
+                    viewId: 'entrepreneur-creator',
                     state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
                 };
                 const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
-                logGeneration('avatar-creator', preGenState, urlWithMetadata);
-
+                logGeneration('entrepreneur-creator', preGenState, urlWithMetadata);
                 // FIX: Pass a state object instead of a function to `onStateChange`.
                 onStateChange({
                     ...generatingState,
@@ -172,8 +169,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 addImagesToGallery([urlWithMetadata]);
             } catch (err) {
                  const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-                 // FIX: Pass a state object instead of a function to `onStateChange`.
-                 onStateChange({
+                // FIX: Pass a state object instead of a function to `onStateChange`.
+                onStateChange({
                     ...generatingState,
                     stage: 'results',
                     generatedImages: { [idea]: { status: 'error' as const, error: errorMessage } },
@@ -181,16 +178,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             }
             return;
         }
-        
-        // --- Branch 2: Generation from Idea List ---
+
         if (!ideas || ideas.length === 0) return;
-        if (ideas.length > maxIdeas && !ideas.includes(t('avatarCreator_randomConcept'))) {
-            toast.error(t('avatarCreator_maxIdeasError', maxIdeas));
+        if (ideas.length > maxIdeas && !ideas.includes(t('entrepreneurCreator_randomConcept'))) {
+            toast.error(t('entrepreneurCreator_maxIdeasError', maxIdeas));
             return;
         }
         
         const preGenState = { ...appState, selectedIdeas: ideas };
-        const randomConceptString = t('avatarCreator_randomConcept');
+        const randomConceptString = t('entrepreneurCreator_randomConcept');
         
         let ideasToGenerate = [...ideas];
         const randomCount = ideasToGenerate.filter(i => i === randomConceptString).length;
@@ -199,7 +195,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             setIsAnalyzing(true);
             try {
                 const allCategories = IDEAS_BY_CATEGORY.filter((c: any) => c.key !== 'random');
-                const suggestedCategories = await analyzeAvatarForConcepts(appState.uploadedImage, allCategories);
+                const suggestedCategories = await analyzeForEntrepreneurConcepts(appState.uploadedImage, allCategories);
                 
                 let ideaPool: string[] = [];
                 if (suggestedCategories.length > 0) {
@@ -207,6 +203,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         .filter((c: any) => suggestedCategories.includes(c.category))
                         .flatMap((c: any) => c.ideas);
                 }
+                
                 if (ideaPool.length === 0) {
                     ideaPool = allCategories.flatMap((c: any) => c.ideas);
                 }
@@ -222,14 +219,14 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                 ideasToGenerate = ideasToGenerate.filter(i => i !== randomConceptString).concat(randomIdeas);
                 ideasToGenerate = [...new Set(ideasToGenerate)];
             } catch (err) {
-                toast.error(t('avatarCreator_analysisError'));
+                toast.error(t('entrepreneurCreator_analysisError'));
                 setIsAnalyzing(false);
                 return;
             } finally {
                 setIsAnalyzing(false);
             }
         }
-        
+
         const stage : 'generating' = 'generating';
         onStateChange({ ...appState, stage: stage });
         
@@ -243,22 +240,22 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         const concurrencyLimit = 2;
         const ideasQueue = [...ideasToGenerate];
         
-        let currentAppState: AvatarCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
+        let currentAppState: EntrepreneurCreatorState = { ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate };
         const settingsToEmbed = {
-            viewId: 'avatar-creator',
+            viewId: 'entrepreneur-creator',
             state: { ...preGenState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
         };
 
         const processIdea = async (idea: string) => {
             try {
-                const resultUrl = await generatePatrioticImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
+                const resultUrl = await generateEntrepreneurImage(appState.uploadedImage!, idea, appState.options.additionalPrompt, appState.options.removeWatermark, appState.options.aspectRatio);
                 const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
                 
                 if (!hasLoggedGeneration.current) {
-                    logGeneration('avatar-creator', preGenState, urlWithMetadata);
+                    logGeneration('entrepreneur-creator', preGenState, urlWithMetadata);
                     hasLoggedGeneration.current = true;
                 }
-                
+
                 currentAppState = {
                     ...currentAppState,
                     generatedImages: {
@@ -300,26 +297,27 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
     const handleGenerateClick = async () => {
         if (appState.styleReferenceImage) {
-            await executeGeneration(); // Call without ideas for style ref mode
+            await executeGeneration();
         } else {
             const effectiveIdeas = appState.selectedIdeas.length > 0
                 ? appState.selectedIdeas
-                : [t('avatarCreator_randomConcept')];
+                : [t('entrepreneurCreator_randomConcept')];
             await executeGeneration(effectiveIdeas);
         }
     };
 
     const handleRandomGenerateClick = async () => {
         onStateChange({ ...appState, styleReferenceImage: null });
-        await executeGeneration([t('avatarCreator_randomConcept')]);
+        await executeGeneration([t('entrepreneurCreator_randomConcept')]);
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
+        // FIX: Explicitly cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
         const imageToEditState = appState.generatedImages[idea] as any;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
-
+        
         const imageUrlToEdit = imageToEditState.url;
         const preGenState = { ...appState };
         
@@ -331,11 +329,11 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         try {
             const resultUrl = await editImageWithPrompt(imageUrlToEdit, customPrompt);
             const settingsToEmbed = {
-                viewId: 'avatar-creator',
+                viewId: 'entrepreneur-creator',
                 state: { ...appState, stage: 'configuring', generatedImages: {}, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
-            logGeneration('avatar-creator', preGenState, urlWithMetadata);
+            logGeneration('entrepreneur-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
@@ -377,18 +375,17 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'anh-yeu-nuoc.zip',
-            baseOutputFilename: 'anh-yeu-nuoc',
+            zipFilename: 'profile-doanh-nhan.zip',
+            baseOutputFilename: 'profile-doanh-nhan',
         });
     };
 
     const isLoading = appState.stage === 'generating' || isAnalyzing;
     const getButtonText = () => {
-        if (isAnalyzing) return t('avatarCreator_analyzing');
+        if (isAnalyzing) return t('entrepreneurCreator_analyzing');
         if (isLoading) return t('common_creating');
-        return t('avatarCreator_createButton');
+        return t('entrepreneurCreator_createButton');
     };
-    
     const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
 
     const inputImagesForResults = [];
@@ -435,12 +432,12 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         <ActionablePolaroidCard
                             type="photo-input"
                             mediaUrl={appState.uploadedImage}
-                            caption={t('avatarCreator_yourImageCaption')}
+                            caption={t('entrepreneurCreator_yourImageCaption')}
                             status="done"
                             onClick={() => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))}
                             onImageChange={handleUploadedImageChange}
                         />
-                        <div className="w-full md:w-auto">
+                         <div className="w-full md:w-auto">
                             <ActionablePolaroidCard
                                 type="style-input"
                                 mediaUrl={appState.styleReferenceImage ?? undefined}
@@ -456,15 +453,15 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
 
                     {!appState.styleReferenceImage ? (
                         <div className="w-full max-w-4xl text-center mt-4">
-                            <h2 className="base-font font-bold text-2xl text-neutral-200">{t('avatarCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
-                            <p className="text-neutral-400 mb-2">{t('avatarCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
+                            <h2 className="base-font font-bold text-2xl text-neutral-200">{t('entrepreneurCreator_selectIdeasTitle', minIdeas, maxIdeas)}</h2>
+                            <p className="text-neutral-400 mb-4">{t('entrepreneurCreator_selectedCount', appState.selectedIdeas.length, maxIdeas)}</p>
                             <div className="mb-4">
                                 <button
                                     onClick={handleRandomGenerateClick}
                                     className="btn btn-primary btn-sm"
                                     disabled={isLoading || isAnalyzing}
                                 >
-                                    {t('avatarCreator_randomButton')}
+                                    {t('entrepreneurCreator_randomButton')}
                                 </button>
                             </div>
                             <div className="max-h-[50vh] overflow-y-auto p-4 bg-black/20 border border-white/10 rounded-lg space-y-6">
@@ -504,9 +501,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     
                     <div className="w-full max-w-4xl mx-auto mt-2 space-y-4">
                         <div>
-                            <label htmlFor="aspect-ratio-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                            <label htmlFor="aspect-ratio-entrepreneur" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
                             <select
-                                id="aspect-ratio-avatar"
+                                id="aspect-ratio-entrepreneur"
                                 value={appState.options.aspectRatio}
                                 onChange={(e) => handleOptionChange('aspectRatio', e.target.value)}
                                 className="form-input"
@@ -515,9 +512,9 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="additional-prompt-avatar" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
+                            <label htmlFor="additional-prompt-entrepreneur" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                             <textarea
-                                id="additional-prompt-avatar"
+                                id="additional-prompt-entrepreneur"
                                 value={localPrompt}
                                 onChange={(e) => setLocalPrompt(e.target.value)}
                                 onBlur={() => {
@@ -525,7 +522,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                         handleOptionChange('additionalPrompt', localPrompt);
                                     }
                                 }}
-                                placeholder={t('avatarCreator_notesPlaceholder')}
+                                placeholder={t('entrepreneurCreator_notesPlaceholder')}
                                 className="form-input h-20"
                                 rows={2}
                                 aria-label="Ghi chú bổ sung cho ảnh"
@@ -534,13 +531,13 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                         <div className="flex items-center pt-2">
                             <input
                                 type="checkbox"
-                                id="remove-watermark-avatar"
+                                id="remove-watermark-entrepreneur"
                                 checked={appState.options.removeWatermark}
                                 onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                 className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
                                 aria-label={t('common_removeWatermark')}
                             />
-                            <label htmlFor="remove-watermark-avatar" className="ml-3 block text-sm font-medium text-neutral-300">
+                            <label htmlFor="remove-watermark-entrepreneur" className="ml-3 block text-sm font-medium text-neutral-300">
                                 {t('common_removeWatermark')}
                             </label>
                         </div>
@@ -554,7 +551,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                             onClick={handleGenerateClick} 
                             className="btn btn-primary"
                             disabled={
-                                (!appState.styleReferenceImage && appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('avatarCreator_randomConcept')) ||
+                                (!appState.styleReferenceImage && appState.selectedIdeas.length < minIdeas && appState.selectedIdeas[0] !== t('entrepreneurCreator_randomConcept')) ||
                                 (!appState.styleReferenceImage && appState.selectedIdeas.length > maxIdeas) ||
                                 isLoading ||
                                 isAnalyzing
@@ -578,7 +575,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                 {t('common_downloadAll')}
                             </button>
                             <button onClick={handleChooseOtherIdeas} className="btn btn-secondary">
-                                {t('avatarCreator_chooseOtherIdeas')}
+                                {t('entrepreneurCreator_chooseOtherIdeas')}
                             </button>
                             <button onClick={onReset} className="btn btn-secondary">
                                 {t('common_startOver')}
@@ -614,7 +611,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                                     onGenerateVideoFromPrompt={(prompt) => imageState?.url && generateVideo(imageState.url, prompt)}
                                     regenerationTitle={t('common_regenTitle')}
                                     regenerationDescription={t('common_regenDescription')}
-                                    regenerationPlaceholder={t('avatarCreator_regenPlaceholder')}
+                                    regenerationPlaceholder={t('entrepreneurCreator_regenPlaceholder')}
                                     onClick={imageState?.status === 'done' && imageState.url ? () => openLightbox(currentImageIndexInLightbox) : undefined}
                                     isMobile={isMobile}
                                 />
@@ -657,4 +654,4 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     );
 };
 
-export default AvatarCreator;
+export default EntrepreneurCreator;

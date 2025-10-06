@@ -44,6 +44,30 @@ function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?
     return `${aspectRatioText}\nTạo một bức ảnh chụp chân dung của người trong ảnh này với chủ đề "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
 }
 
+async function analyzePatrioticConceptImage(styleImageDataUrl: string): Promise<string> {
+    const { mimeType, data } = parseDataUrl(styleImageDataUrl);
+    const imagePart = { inlineData: { mimeType, data } };
+
+    const prompt = `Phân tích hình ảnh này và mô tả concept yêu nước của nó. Tập trung vào không khí, ánh sáng, bối cảnh, trang phục và các yếu tố biểu tượng. Mô tả phải phù hợp để hướng dẫn AI tái tạo một chủ đề yêu nước tương tự.`;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, {text: prompt}] },
+        });
+
+        const text = response.text;
+        if (!text) {
+             throw new Error("AI không thể phân tích được concept từ ảnh.");
+        }
+        return text.trim();
+    } catch (error) {
+        console.error("Error in analyzePatrioticConceptImage:", error);
+        throw new Error("Lỗi khi phân tích ảnh concept.");
+    }
+}
+
+
 /**
  * Generates a patriotic-themed image from a source image and an idea.
  * It includes a fallback mechanism for prompts that might be blocked.
@@ -52,14 +76,27 @@ function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?
  * @param customPrompt Optional additional instructions for modification.
  * @param removeWatermark Optional boolean to request watermark removal.
  * @param aspectRatio Optional target aspect ratio.
+ * @param styleReferenceImageDataUrl Optional data URL for a style reference image, which overrides the 'idea'.
  * @returns A promise that resolves to a base64-encoded image data URL of the generated image.
  */
-export async function generatePatrioticImage(imageDataUrl: string, idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): Promise<string> {
+export async function generatePatrioticImage(
+    imageDataUrl: string, 
+    idea: string, 
+    customPrompt?: string, 
+    removeWatermark?: boolean, 
+    aspectRatio?: string,
+    styleReferenceImageDataUrl?: string | null
+): Promise<string> {
     const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
 
     const imagePart = {
         inlineData: { mimeType, data: base64Data },
     };
+
+    let finalIdea = idea;
+    if (styleReferenceImageDataUrl) {
+        finalIdea = await analyzePatrioticConceptImage(styleReferenceImageDataUrl);
+    }
 
     const config: any = {};
     const validRatios = ['1:1', '3:4', '4:3', '9:16', '16:9', '2:3', '4:5', '3:2', '5:4', '21:9'];
@@ -70,7 +107,7 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
     // --- First attempt with the original prompt ---
     try {
         console.log("Attempting generation with original prompt...");
-        const prompt = getPrimaryPrompt(idea, customPrompt, removeWatermark, aspectRatio);
+        const prompt = getPrimaryPrompt(finalIdea, customPrompt, removeWatermark, aspectRatio);
         const textPart = { text: prompt };
         const response = await callGeminiWithRetry([imagePart, textPart], config);
         return processGeminiResponse(response);
@@ -85,12 +122,12 @@ export async function generatePatrioticImage(imageDataUrl: string, idea: string,
         const isNoImageError = errorMessage.includes("The AI model responded with text instead of an image");
 
         if (isNoImageError) {
-            console.warn(`Original prompt was likely blocked for idea: ${idea}. Trying a fallback prompt.`);
+            console.warn(`Original prompt was likely blocked for idea: ${finalIdea}. Trying a fallback prompt.`);
             
             // --- Second attempt with the fallback prompt ---
             try {
-                const fallbackPrompt = getFallbackPrompt(idea, customPrompt, removeWatermark, aspectRatio);
-                console.log(`Attempting generation with fallback prompt for ${idea}...`);
+                const fallbackPrompt = getFallbackPrompt(finalIdea, customPrompt, removeWatermark, aspectRatio);
+                console.log(`Attempting generation with fallback prompt for ${finalIdea}...`);
                 const fallbackTextPart = { text: fallbackPrompt };
                 const fallbackResponse = await callGeminiWithRetry([imagePart, fallbackTextPart], config);
                 return processGeminiResponse(fallbackResponse);

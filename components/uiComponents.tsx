@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -197,8 +197,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageChange, upl
 
 interface ResultsViewProps {
     stage: 'generating' | 'results';
-    originalImage: string | null;
+    originalImage?: string | null;
     onOriginalClick?: () => void;
+    inputImages?: { url: string; caption: string; onClick: () => void; }[];
     children: React.ReactNode;
     actions: React.ReactNode;
     isMobile?: boolean;
@@ -206,8 +207,8 @@ interface ResultsViewProps {
     hasPartialError?: boolean;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, children, actions, isMobile, error, hasPartialError }) => {
-    const isTotalError = !!error;
+
+export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, onOriginalClick, inputImages, children, actions, isMobile, error, hasPartialError }) => {
     const { currentView, t, viewHistory } = useAppControls();
 
     useEffect(() => {
@@ -215,6 +216,17 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
             toast.error("Một hoặc nhiều ảnh đã không thể tạo thành công.");
         }
     }, [hasPartialError, stage]);
+    
+    const finalInputImages = useMemo(() => {
+        if (inputImages && inputImages.length > 0) {
+            return inputImages;
+        }
+        if (originalImage) {
+            return [{ url: originalImage, caption: t('common_originalImage'), onClick: onOriginalClick || (() => {}) }];
+        }
+        return [];
+    }, [inputImages, originalImage, onOriginalClick, t]);
+
 
     const getExportableState = (state: any) => {
         const exportableState = JSON.parse(JSON.stringify(state));
@@ -284,7 +296,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.4 }}
                     >
-                        {isTotalError ? (
+                        {error ? (
                             <>
                                 <h2 className="base-font font-bold text-3xl text-red-400">Đã xảy ra lỗi</h2>
                                 <p className="text-neutral-300 mt-1 max-w-md mx-auto">{error}</p>
@@ -308,25 +320,25 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ stage, originalImage, 
                     layout
                     className="flex flex-col md:flex-row md:flex-nowrap items-center md:items-stretch gap-6 md:gap-8 px-4 md:px-8 w-full md:w-max mx-auto py-4"
                 >
-                    {originalImage && (
+                    {finalInputImages.map((input, index) => (
                         <motion.div
-                            key="original-image-result"
+                            key={`input-${index}-${input.url.slice(-10)}`}
                             className="w-full md:w-auto flex-shrink-0"
                             initial={{ opacity: 0, scale: 0.5, y: 100 }}
                             animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
-                            transition={{ type: 'spring', stiffness: 80, damping: 15, delay: -0.15 }}
+                            transition={{ type: 'spring', stiffness: 80, damping: 15, delay: index * -0.05 }}
                             whileHover={{ scale: 1.05, rotate: 0, zIndex: 10 }}
                         >
-                             <div className={cn("polaroid-card")}>
-                                <div className={cn("polaroid-image-container has-image")}>
-                                    <img src={originalImage} alt="Ảnh gốc" className="w-full h-auto md:w-auto md:h-full block" onClick={onOriginalClick}/>
-                                </div>
-                                <div className="absolute bottom-4 left-4 right-4 text-center px-2">
-                                    <p className="polaroid-caption text-black">Ảnh gốc</p>
-                                </div>
-                            </div>
+                             <ActionablePolaroidCard
+                                type="display"
+                                mediaUrl={input.url}
+                                caption={input.caption}
+                                status="done"
+                                onClick={input.onClick}
+                                isMobile={isMobile}
+                            />
                         </motion.div>
-                    )}
+                    ))}
                     {children}
                 </motion.div>
             </div>

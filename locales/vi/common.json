@@ -17,6 +17,7 @@
   "common_regenerate": "Tạo lại",
   "common_download": "Tải về",
   "common_originalImage": "Ảnh gốc",
+  "common_referenceImage": "Ảnh tham khảo",
   "common_removeWatermark": "Xóa watermark (nếu có)",
   "common_removeWatermarkSimple": "Xóa watermark",
   "common_changeImage": "Đổi ảnh khác",
@@ -290,5 +291,8 @@
   "layerComposer_chatbot_analysisPrompt": "Phân tích hình ảnh này. Mô tả chi tiết về nội dung, phong cách, bố cục và bảng màu của nó. Đưa ra gợi ý về cách cải thiện hoặc thay đổi nó.",
   "layerComposer_new_title": "Tạo Canvas mới?",
   "layerComposer_new_message": "Thao tác này sẽ xóa canvas hiện tại và mọi công việc chưa được lưu. Hành động này không thể hoàn tác. Bạn có chắc chắn không?",
-  "layerComposer_new_confirm": "Xóa Canvas"
+  "layerComposer_new_confirm": "Xóa Canvas",
+  "common_uploaderCaptionStyle": "Tải ảnh Concept",
+  "common_uploaderDescriptionStyle": "Ảnh chứa phong cách, ánh sáng, màu sắc để tham khảo",
+  "common_styleReferenceActive": "Đang sử dụng concept từ ảnh tham chiếu. Các ý tưởng bên dưới đã bị vô hiệu hóa."
 }

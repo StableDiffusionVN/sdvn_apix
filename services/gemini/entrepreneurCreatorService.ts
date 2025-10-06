@@ -4,11 +4,11 @@
 */
 import { Type } from "@google/genai";
 import ai from './client';
-import { 
-    processApiError, 
-    parseDataUrl, 
-    callGeminiWithRetry, 
-    processGeminiResponse 
+import {
+    processApiError,
+    parseDataUrl,
+    callGeminiWithRetry,
+    processGeminiResponse
 } from './baseService';
 
 function getPrimaryPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
@@ -16,7 +16,7 @@ function getPrimaryPrompt(idea: string, customPrompt?: string, removeWatermark?:
     const watermarkText = removeWatermark ? ' Yêu cầu quan trọng: Kết quả cuối cùng không được chứa bất kỳ watermark, logo, hay chữ ký nào.' : '';
     const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioText}\nTạo một bức ảnh chụp chân thật và tự nhiên của người trong ảnh gốc, trong bối cảnh chủ đề Trung Thu là "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải có chất lượng cao, sắc nét, với không khí ấm cúng, lung linh của đêm hội trăng rằm. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chân dung doanh nhân chuyên nghiệp, chụp trong studio của người trong ảnh gốc, theo concept "${idea}".${modificationText}${watermarkText} YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt, đường nét, và biểu cảm của người trong ảnh gốc. Không được thay đổi hay chỉnh sửa khuôn mặt. Bức ảnh phải có chất lượng cao, sắc nét, ánh sáng chuyên nghiệp như ảnh profile cho tạp chí Forbes hoặc LinkedIn. Tránh tạo ra ảnh theo phong cách vẽ hay hoạt hình.`;
 }
 
 function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?: boolean, aspectRatio?: string): string {
@@ -24,14 +24,14 @@ function getFallbackPrompt(idea: string, customPrompt?: string, removeWatermark?
     const watermarkText = removeWatermark ? ' Yêu cầu thêm: Không có watermark, logo, hay chữ ký trên ảnh.' : '';
     const aspectRatioText = (aspectRatio && aspectRatio !== 'Giữ nguyên') ? `Bức ảnh kết quả BẮT BUỘC phải có tỷ lệ khung hình chính xác là ${aspectRatio}.` : '';
 
-    return `${aspectRatioText}\nTạo một bức ảnh chân dung của người trong ảnh này với chủ đề Trung Thu là "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
+    return `${aspectRatioText}\nTạo một bức ảnh chân dung của người trong ảnh này với chủ đề doanh nhân là "${idea}".${modificationText}${watermarkText} Bức ảnh cần trông thật và tự nhiên. YÊU CẦU QUAN TRỌNG NHẤT: Phải giữ lại chính xác tuyệt đối 100% các đặc điểm trên khuôn mặt của người trong ảnh gốc. Không được thay đổi khuôn mặt.`;
 }
 
-async function analyzeMidAutumnConceptImage(styleImageDataUrl: string): Promise<string> {
+async function analyzeEntrepreneurConceptImage(styleImageDataUrl: string): Promise<string> {
     const { mimeType, data } = parseDataUrl(styleImageDataUrl);
     const imagePart = { inlineData: { mimeType, data } };
 
-    const prompt = `Phân tích hình ảnh này và mô tả concept Trung Thu của nó. Tập trung vào chủ đề, đèn lồng, mặt trăng, màu sắc và không khí chung. Mô tả phải phù hợp để hướng dẫn AI tái tạo một chủ đề tương tự.`;
+    const prompt = `Phân tích bức ảnh chân dung này và mô tả concept chuyên nghiệp/doanh nhân của nó. Tập trung vào bối cảnh, ánh sáng, trang phục, tư thế và thần thái chung (ví dụ: tự tin, sáng tạo, quyền lực).`;
     
     try {
         const response = await ai.models.generateContent({
@@ -44,12 +44,12 @@ async function analyzeMidAutumnConceptImage(styleImageDataUrl: string): Promise<
         }
         return text.trim();
     } catch (error) {
-        console.error("Error in analyzeMidAutumnConceptImage:", error);
+        console.error("Error in analyzeEntrepreneurConceptImage:", error);
         throw new Error("Lỗi khi phân tích ảnh concept.");
     }
 }
 
-export async function generateMidAutumnImage(
+export async function generateEntrepreneurImage(
     imageDataUrl: string, 
     idea: string, 
     customPrompt?: string, 
@@ -62,7 +62,7 @@ export async function generateMidAutumnImage(
 
     let finalIdea = idea;
     if (styleReferenceImageDataUrl) {
-        finalIdea = await analyzeMidAutumnConceptImage(styleReferenceImageDataUrl);
+        finalIdea = await analyzeEntrepreneurConceptImage(styleReferenceImageDataUrl);
     }
 
     const config: any = {};
@@ -72,7 +72,7 @@ export async function generateMidAutumnImage(
     }
 
     try {
-        console.log("Attempting Mid-Autumn image generation with primary prompt...");
+        console.log("Attempting entrepreneur image generation with primary prompt...");
         const prompt = getPrimaryPrompt(finalIdea, customPrompt, removeWatermark, aspectRatio);
         const textPart = { text: prompt };
         const response = await callGeminiWithRetry([imagePart, textPart], config);
@@ -100,13 +100,14 @@ export async function generateMidAutumnImage(
                 throw new Error(`The AI model failed with both primary and fallback prompts. Last error: ${processedFallbackError.message}`);
             }
         } else {
-            console.error("Error during Mid-Autumn image generation:", processedError);
+            console.error("Error during entrepreneur image generation:", processedError);
             throw processedError;
         }
     }
 }
 
-export async function analyzeForConcepts(
+
+export async function analyzeForEntrepreneurConcepts(
     imageDataUrl: string,
     categories: { category: string; ideas: string[] }[]
 ): Promise<string[]> {
@@ -115,7 +116,7 @@ export async function analyzeForConcepts(
 
     const categoryNames = categories.map(c => c.category);
 
-    const prompt = `Phân tích người trong ảnh được cung cấp. Dựa trên giới tính, độ tuổi biểu kiến, biểu cảm (cảm xúc), và bối cảnh chung, hãy chọn ra từ 1 đến 3 danh mục phù hợp nhất từ danh sách sau đây cho một bộ ảnh sáng tạo.
+    const prompt = `Phân tích người trong ảnh được cung cấp. Dựa trên trang phục, biểu cảm, và phong thái chung, hãy chọn ra từ 1 đến 3 danh mục phù hợp nhất từ danh sách sau đây cho một bộ ảnh chân dung doanh nhân.
 
     Các danh mục có sẵn:
     ${categoryNames.join('\n')}
@@ -124,7 +125,7 @@ export async function analyzeForConcepts(
     `;
 
     try {
-        console.log("Analyzing image for concept suggestions...");
+        console.log("Analyzing image for entrepreneur concept suggestions...");
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: { parts: [imagePart, { text: prompt }] },

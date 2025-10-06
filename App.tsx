@@ -35,7 +35,9 @@ import { LoadingSpinnerIcon } from './components/icons';
 const ArchitectureIdeator = lazy(() => import('./components/ArchitectureIdeator'));
 const AvatarCreator = lazy(() => import('./components/AvatarCreator'));
 const BabyPhotoCreator = lazy(() => import('./components/BabyPhotoCreator'));
+const BeautyCreator = lazy(() => import('./components/BeautyCreator'));
 const MidAutumnCreator = lazy(() => import('./components/MidAutumnCreator'));
+const EntrepreneurCreator = lazy(() => import('./components/EntrepreneurCreator'));
 const DressTheModel = lazy(() => import('./components/DressTheModel'));
 const PhotoRestoration = lazy(() => import('./components/PhotoRestoration'));
 const SwapStyle = lazy(() => import('./components/SwapStyle'));
@@ -52,9 +54,11 @@ const AppLoadingFallback = () => (
 
 const AppComponents: Record<string, any> = {
     'architecture-ideator': { Component: ArchitectureIdeator, settingsKey: 'architectureIdeator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'avatar-creator': { Component: AvatarCreator, settingsKey: 'avatarCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'baby-photo-creator': { Component: BabyPhotoCreator, settingsKey: 'babyPhotoCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
-    'mid-autumn-creator': { Component: MidAutumnCreator, settingsKey: 'midAutumnCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
+    'avatar-creator': { Component: AvatarCreator, settingsKey: 'avatarCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'baby-photo-creator': { Component: BabyPhotoCreator, settingsKey: 'babyPhotoCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'beauty-creator': { Component: BeautyCreator, settingsKey: 'beautyCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'mid-autumn-creator': { Component: MidAutumnCreator, settingsKey: 'midAutumnCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
+    'entrepreneur-creator': { Component: EntrepreneurCreator, settingsKey: 'entrepreneurCreator', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },
     'dress-the-model': { Component: DressTheModel, settingsKey: 'dressTheModel', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionModel: t(s.uploaderCaptionModelKey), uploaderDescriptionModel: t(s.uploaderDescriptionModelKey), uploaderCaptionClothing: t(s.uploaderCaptionClothingKey), uploaderDescriptionClothing: t(s.uploaderDescriptionClothingKey) }) },
     'photo-restoration': { Component: PhotoRestoration, settingsKey: 'photoRestoration', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaption: t(s.uploaderCaptionKey), uploaderDescription: t(s.uploaderDescriptionKey) }) },
     'swap-style': { Component: SwapStyle, settingsKey: 'swapStyle', props: (s:any, t:any) => ({ mainTitle: t(s.mainTitleKey), subtitle: t(s.subtitleKey), uploaderCaptionContent: t(s.uploaderCaptionContentKey), uploaderDescriptionContent: t(s.uploaderDescriptionContentKey), uploaderCaptionStyle: t(s.uploaderCaptionStyleKey), uploaderDescriptionStyle: t(s.uploaderDescriptionStyleKey) }) },

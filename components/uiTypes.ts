@@ -48,7 +48,9 @@ export interface Settings {
     architectureIdeator: AppSettings;
     avatarCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
     babyPhotoCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
+    beautyCreator: AppSettings;
     midAutumnCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
+    entrepreneurCreator: AppSettings & { minIdeas: number; maxIdeas: number; };
     dressTheModel: AppSettings;
     photoRestoration: AppSettings;
     swapStyle: AppSettings;
@@ -120,6 +122,7 @@ interface HistoricalAvatarImage {
 export interface AvatarCreatorState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     uploadedImage: string | null;
+    styleReferenceImage: string | null;
     generatedImages: Record<string, GeneratedAvatarImage>;
     historicalImages: HistoricalAvatarImage[];
     selectedIdeas: string[];
@@ -131,14 +134,16 @@ export interface AvatarCreatorState {
     error: string | null;
 }
 
-export interface BabyPhotoCreatorState {
+export interface BabyPhotoCreatorState extends AvatarCreatorState {}
+
+export interface BeautyCreatorState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
     uploadedImage: string | null;
-    generatedImages: Record<string, GeneratedAvatarImage>;
-    historicalImages: HistoricalAvatarImage[];
-    selectedIdeas: string[];
+    styleReferenceImage: string | null;
+    generatedImage: string | null;
+    historicalImages: string[];
     options: {
-        additionalPrompt: string;
+        notes: string;
         removeWatermark: boolean;
         aspectRatio: string;
     };
@@ -146,6 +151,8 @@ export interface BabyPhotoCreatorState {
 }
 
 export interface MidAutumnCreatorState extends AvatarCreatorState {}
+export interface EntrepreneurCreatorState extends AvatarCreatorState {}
+
 
 export interface DressTheModelState {
     stage: 'idle' | 'configuring' | 'generating' | 'results';
@@ -314,7 +321,9 @@ export type AnyAppState =
   | ArchitectureIdeatorState
   | AvatarCreatorState
   | BabyPhotoCreatorState
+  | BeautyCreatorState
   | MidAutumnCreatorState
+  | EntrepreneurCreatorState
   | DressTheModelState
   | PhotoRestorationState
   | SwapStyleState
@@ -329,7 +338,9 @@ export type HomeView = { viewId: 'home'; state: HomeState };
 export type ArchitectureIdeatorView = { viewId: 'architecture-ideator'; state: ArchitectureIdeatorState };
 export type AvatarCreatorView = { viewId: 'avatar-creator'; state: AvatarCreatorState };
 export type BabyPhotoCreatorView = { viewId: 'baby-photo-creator'; state: BabyPhotoCreatorState };
+export type BeautyCreatorView = { viewId: 'beauty-creator'; state: BeautyCreatorState };
 export type MidAutumnCreatorView = { viewId: 'mid-autumn-creator'; state: MidAutumnCreatorState };
+export type EntrepreneurCreatorView = { viewId: 'entrepreneur-creator'; state: EntrepreneurCreatorState };
 export type DressTheModelView = { viewId: 'dress-the-model'; state: DressTheModelState };
 export type PhotoRestorationView = { viewId: 'photo-restoration'; state: PhotoRestorationState };
 export type SwapStyleView = { viewId: 'swap-style'; state: SwapStyleState };
@@ -345,7 +356,9 @@ export type ViewState =
   | ArchitectureIdeatorView
   | AvatarCreatorView
   | BabyPhotoCreatorView
+  | BeautyCreatorView
   | MidAutumnCreatorView
+  | EntrepreneurCreatorView
   | DressTheModelView
   | PhotoRestorationView
   | SwapStyleView
@@ -363,11 +376,15 @@ export const getInitialStateForApp = (viewId: string): AnyAppState => {
         case 'architecture-ideator':
             return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImage: null, historicalImages: [], options: { context: '', style: '', color: '', lighting: '', notes: '', removeWatermark: false }, error: null };
         case 'avatar-creator':
-            return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'baby-photo-creator':
-            return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+        case 'beauty-creator':
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImage: null, historicalImages: [], options: { notes: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'mid-autumn-creator':
-            return { stage: 'idle', uploadedImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
+        case 'entrepreneur-creator':
+            return { stage: 'idle', uploadedImage: null, styleReferenceImage: null, generatedImages: {}, historicalImages: [], selectedIdeas: [], options: { additionalPrompt: '', removeWatermark: false, aspectRatio: 'Giữ nguyên' }, error: null };
         case 'dress-the-model':
             return { stage: 'idle', modelImage: null, clothingImage: null, generatedImage: null, historicalImages: [], options: { background: '', pose: '', style: '', aspectRatio: 'Giữ nguyên', notes: '', removeWatermark: false }, error: null };
         case 'photo-restoration':

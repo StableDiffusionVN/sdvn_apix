@@ -1,5 +1,5 @@
 {
-  "version": "aPix v1.10 [051025]",
+  "version": "aPix v1.10 [061025]",
   "developer": {
     "name": "Phạm Hưng",
     "url": "https://www.facebook.com/phamhungd/"
@@ -15,7 +15,7 @@
     "linkText": "Cộng đồng AI Art Việt Nam",
     "linkUrl": "https://www.facebook.com/groups/stablediffusion.vn"
   },
-  "latestUpdate": "🔥 Thêm ứng dụng 'Tạo ảnh trung thu', nâng cấp ứng dụng 'Kiến trúc' và 'Đổi phong cách ảnh', nâng cấp 'Preset' của Canvas, tinh chỉnh các lỗi vặt",
+  "latestUpdate": "🔥 Thêm ứng dụng 'Tạo ảnh doanh nhân', 'Tạo ảnh beauty', nâng cấp chế độ đọc ảnh Ref cho các ứng dụng tạo ảnh",
   "videoTutorial": {
     "prefix": "💡 ",
     "linkText": "Video hướng dẫn",

@@ -5,7 +5,9 @@
 import { generateArchitecturalImage } from './architectureIdeatorService';
 import { generatePatrioticImage, analyzeAvatarForConcepts } from './avatarCreatorService';
 import { generateBabyPhoto, estimateAgeGroup } from './babyPhotoCreatorService';
+import { generateBeautyImage } from './beautyCreatorService';
 import { generateMidAutumnImage, analyzeForConcepts as analyzeMidAutumnConcepts } from './midAutumnCreatorService';
+import { generateEntrepreneurImage, analyzeForEntrepreneurConcepts } from './entrepreneurCreatorService';
 import { generateDressedModelImage } from './dressTheModelService';
 import { restoreOldPhoto } from './photoRestorationService';
 import { swapImageStyle } from './swapStyleService';
@@ -13,7 +15,6 @@ import { generateFreeImage } from './freeGenerationService';
 import { generateToyModelImage } from './toyModelCreatorService';
 import { interpolatePrompts, adaptPromptToContext } from './imageInterpolationService';
 import { editImageWithPrompt } from './imageEditingService';
-// FIX: Import 'mixImageStyle' to resolve 'Cannot find name' error.
 import { mixImageStyle } from './mixStyleService';
 
 type PresetData = {
@@ -52,11 +53,115 @@ const BABY_PHOTO_IDEAS_BY_CATEGORY = [
     { "category": "5-10 tuổi", "key": "child", "ideas": [ "Thám tử lừng danh", "Nhà khoa học điên rồ", "Điệp viên 007 nhí", "Nhà thám hiểm Ai Cập cổ đại", "Lập trình viên nhí", "Nhà làm phim Hollywood", "Ca sĩ trên sân khấu lớn", "Vận động viên trượt ván", "Cầu thủ bóng đá chuyên nghiệp", "Họa sĩ đường phố (graffiti)", "Nhà thiết kế thời trang", "Du hành xuyên thời gian", "Chơi cờ vua với người máy", "Nhà vô địch game e-sport", "Lớp học phép thuật Harry Potter", "Học làm bánh", "Nhà báo nhí", "Kỹ sư robot", "Chăm sóc vườn thú", "Leo núi", "Bé làm DJ", "Tham gia ban nhạc rock", "Vận động viên bóng rổ", "Nhà văn nhí", "Giáo viên tí hon", "Thám tử không gian", "Nhà thực vật học trong rừng Amazon", "Điệp viên công nghệ cao", "Nhà khảo cổ học tìm kiếm thành phố Atlantis", "CEO của một công ty khởi nghiệp", "Nhà làm phim tài liệu về động vật hoang dã", "Nhà soạn nhạc cho phim", "Vận động viên parkour", "Cầu thủ bóng rổ đường phố", "Họa sĩ vẽ truyện tranh manga", "Nhà thiết kế ô tô tương lai", "Người canh giữ ngọn hải đăng", "Chơi trong một ban nhạc jazz", "Nhà vô địch cờ vây", "Học viên tại học viện Ninja", "Đầu bếp sao Michelin", "Người dẫn chương trình TV", "Kỹ sư xây dựng cầu", "Chăm sóc một khu bảo tồn biển", "Vận động viên leo núi trong nhà", "Bé làm đạo diễn sân khấu", "Tham gia một ban nhạc indie", "Vận động viên đấu kiếm", "Nhà văn viết tiểu thuyết giả tưởng", "Người huấn luyện rồng" ] }
 ];
 
+const BEAUTY_IDEAS_BY_CATEGORY = [
+    {
+      "category": "Dành cho Nữ",
+      "key": "female",
+      "ideas": [
+        "Vẻ đẹp Studio",
+        "Nắng Mai Tự nhiên",
+        "Mộng Mơ Kỳ Ảo",
+        "Thời trang cao cấp",
+        "Trong veo Hàn Quốc",
+        "Cổ điển Hollywood",
+        "Vẻ đẹp với hoa",
+        "Trang sức tinh tế",
+        "Chân dung nghệ thuật"
+      ]
+    },
+    {
+      "category": "Dành cho Nam",
+      "key": "male",
+      "ideas": [
+        "Quý Ông Lịch Lãm",
+        "Chân dung ngoài trời",
+        "Điện ảnh & Trầm lắng",
+        "Tối giản Hiện đại",
+        "Tài tử Hồng Kông 80s",
+        "Doanh nhân thành đạt"
+      ]
+    },
+    {
+      "category": "Phong cách chung",
+      "key": "general",
+      "ideas": [
+        "Chân dung Đen Trắng",
+        "Hoàng hôn vàng óng",
+        "Ảnh chụp dưới mưa",
+        "Vẻ đẹp trong nước",
+        "Tranh sơn dầu"
+      ]
+    }
+];
+
 const MID_AUTUMN_IDEAS_BY_CATEGORY = [
     { "category": "Truyền thống & Cổ tích", "ideas": [ "Rước đèn ông sao", "Bên cạnh Chị Hằng", "Cùng chú Cuội trông trăng", "Múa Lân Sư Rồng", "Áo dài và đèn lồng", "Phá cỗ trông trăng", "Làm bánh Trung Thu", "Thả đèn hoa đăng", "Trang phục cổ trang", "Bên cây đa cổ thụ" ] },
     { "category": "Hiện đại & Sáng tạo", "ideas": [ "Check-in phố đèn lồng", "Selfie với siêu trăng", "Đèn lồng neon cyberpunk", "Cosplay Chị Hằng hiện đại", "Tiệc BBQ ngoài trời", "Dã ngoại dưới trăng", "Chụp ảnh bokeh đèn lồng", "Phong cách light painting", "Tạo dáng với mặt trăng", "Trang phục lấp lánh" ] },
     { "category": "Hoạt động & Vui chơi", "ideas": [ "Xem múa lân", "Chơi các trò chơi dân gian", "Làm đèn lồng thủ công", "Ngắm trăng bằng kính thiên văn", "Sum vầy bên gia đình", "Kể chuyện sự tích Trung Thu", "Tặng quà cho trẻ em", "Múa hát đêm hội trăng rằm", "Chơi cờ dưới trăng", "Cùng bạn bè đi dạo" ] },
     { "category": "Giả tưởng & Kỳ ảo", "ideas": [ "Bay lên cung trăng", "Gặp gỡ Thỏ Ngọc", "Lạc vào xứ sở đèn lồng", "Cưỡi cá chép hóa rồng", "Nhận quà từ Chị Hằng", "Phiêu lưu trong truyện cổ tích", "Hóa thân thành nhân vật thần thoại", "Bữa tiệc trên cung trăng", "Khám phá khu rừng bí ẩn", "Trò chuyện với các vì sao" ] }
+];
+
+const ENTREPRENEUR_IDEAS_BY_CATEGORY = [
+    {
+      "category": "Chân dung Studio",
+      "ideas": [
+        "Phông nền xám tối giản",
+        "Phông nền trắng hiện đại",
+        "Phong cách 'Dark & Moody'",
+        "Hiệu ứng ánh sáng tinh tế",
+        "Nhìn thẳng vào ống kính",
+        "Mỉm cười tự tin",
+        "Chân dung đen trắng",
+        "Chụp cận mặt (headshot)",
+        "Tạo dáng với ghế studio",
+        "Ánh sáng Rembrandt"
+      ]
+    },
+    {
+      "category": "Môi trường Công sở",
+      "ideas": [
+        "Trong phòng họp hiện đại",
+        "Đứng bên cửa sổ nhìn ra thành phố",
+        "Làm việc trên laptop",
+        "Dẫn dắt một cuộc họp",
+        "Trong văn phòng riêng",
+        "Đi bộ trong sảnh công ty",
+        "Thuyết trình trước bảng trắng",
+        "Bối cảnh co-working space",
+        "Trước bức tường logo công ty",
+        "Trò chuyện với đồng nghiệp"
+      ]
+    },
+    {
+      "category": "Lãnh đạo & Quyền lực",
+      "ideas": [
+        "Khoanh tay tự tin",
+        "Tạo dáng quyền lực (power pose)",
+        "Ảnh chụp đang đi bộ (candid)",
+        "Phát biểu trên bục",
+        "Nhìn xa xăm, đầy tầm nhìn",
+        "Ngồi trên ghế giám đốc",
+        "Chỉnh lại cà vạt/cổ áo",
+        "Chụp từ góc thấp",
+        "Tương tác với kiến trúc",
+        "Đứng trên sân thượng"
+      ]
+    },
+    {
+      "category": "Sáng tạo & Công nghệ",
+      "ideas": [
+        "Không gian làm việc sáng tạo",
+        "Trước bảng trắng đầy ý tưởng",
+        "Cầm máy tính bảng",
+        "Không khí startup năng động",
+        "Mặc đồ casual (áo thun, hoodie)",
+        "Bối cảnh phòng lab/xưởng",
+        "Tương tác với sản phẩm công nghệ",
+        "Chụp ảnh với hiệu ứng neon",
+        "Bên cạnh một tác phẩm nghệ thuật",
+        "Đọc sách trong thư viện hiện đại"
+      ]
+    }
 ];
 
 
@@ -66,23 +171,40 @@ const presetConfig: Record<string, PresetConfig> = {
     'architecture-ideator': {
         imageKeys: ['uploadedImage', 'styleReferenceImage'],
         requiredImageCount: 1,
-        generator: (images, preset) => generateArchitecturalImage(images[0]!, preset.state.options, images[1]),
+        generator: (images, preset) => {
+            const sketchImage = images[0]!;
+            const styleRefImage = images[1] || preset.state.styleReferenceImage;
+            return generateArchitecturalImage(sketchImage, preset.state.options, styleRefImage);
+        },
     },
     'avatar-creator': {
-        imageKeys: ['uploadedImage'],
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
         requiredImageCount: 1,
         generator: async (images, preset) => {
-            const ideas = preset.state.selectedIdeas;
-            if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
             const imageUrl = images[0]!;
-
+            const styleRefUrl = images[1] || preset.state.styleReferenceImage;
+            const options = preset.state.options;
+    
+            if (styleRefUrl) {
+                console.log("Preset is using a style reference image for Avatar Creator.");
+                const result = await generatePatrioticImage(
+                    imageUrl, '', options.additionalPrompt, options.removeWatermark, options.aspectRatio, styleRefUrl
+                );
+                return [result];
+            }
+    
+            let ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) {
+                ideas = ["Ngẫu nhiên"];
+            }
+    
             const randomConceptString = "Ngẫu nhiên";
             let finalIdeas = [...ideas];
-
+    
             if (finalIdeas.includes(randomConceptString)) {
                 console.log("Preset contains 'Random' for Avatar Creator, resolving...");
                 const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
-
+    
                 const suggestedCategories = await analyzeAvatarForConcepts(imageUrl, AVATAR_IDEAS_BY_CATEGORY as any);
                 
                 let ideaPool: string[] = [];
@@ -110,22 +232,35 @@ const presetConfig: Record<string, PresetConfig> = {
             }
             
             const promises = finalIdeas.map((idea: string) => 
-                generatePatrioticImage(imageUrl, idea, preset.state.options.additionalPrompt, preset.state.options.removeWatermark, preset.state.options.aspectRatio)
+                generatePatrioticImage(imageUrl, idea, options.additionalPrompt, options.removeWatermark, options.aspectRatio)
             );
             return Promise.all(promises);
         },
     },
     'baby-photo-creator': {
-        imageKeys: ['uploadedImage'],
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
         requiredImageCount: 1,
         generator: async (images, preset) => {
-            const ideas = preset.state.selectedIdeas;
-            if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
             const imageUrl = images[0]!;
-
+            const styleRefUrl = images[1] || preset.state.styleReferenceImage;
+            const options = preset.state.options;
+    
+            if (styleRefUrl) {
+                console.log("Preset is using a style reference image for Baby Photo Creator.");
+                const result = await generateBabyPhoto(
+                    imageUrl, '', options.additionalPrompt, options.removeWatermark, options.aspectRatio, styleRefUrl
+                );
+                return [result];
+            }
+            
+            let ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) {
+                ideas = ["Ngẫu nhiên"];
+            }
+            
             const randomConceptString = "Ngẫu nhiên";
             let finalIdeas = [...ideas];
-
+    
             if (finalIdeas.includes(randomConceptString)) {
                 console.log("Preset contains 'Random' for Baby Photo Creator, resolving...");
                 const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
@@ -147,28 +282,58 @@ const presetConfig: Record<string, PresetConfig> = {
                 finalIdeas = [...new Set(finalIdeas)];
                  console.log(`Resolved 'Random' for age group '${ageGroup}' to concrete ideas:`, finalIdeas);
             }
-
+    
             const promises = finalIdeas.map((idea: string) => 
-                generateBabyPhoto(imageUrl, idea, preset.state.options.additionalPrompt, preset.state.options.removeWatermark, preset.state.options.aspectRatio)
+                generateBabyPhoto(imageUrl, idea, options.additionalPrompt, options.removeWatermark, options.aspectRatio)
             );
             return Promise.all(promises);
         },
     },
+    'beauty-creator': {
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
+        requiredImageCount: 1,
+        generator: (images, preset) => {
+            const portraitUrl = images[0];
+            const styleRefUrl = images[1] || preset.state.styleReferenceImage;
+
+            if (!portraitUrl) {
+                throw new Error("Beauty Creator preset requires a portrait image layer to be selected.");
+            }
+            if (!styleRefUrl) {
+                throw new Error("Beauty Creator preset requires a concept reference image, either from a selected layer or saved in the preset.");
+            }
+    
+            return generateBeautyImage(portraitUrl, styleRefUrl, preset.state.options);
+        },
+    },
     'mid-autumn-creator': {
-        imageKeys: ['uploadedImage'],
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
         requiredImageCount: 1,
         generator: async (images, preset) => {
-            const ideas = preset.state.selectedIdeas;
-            if (!ideas || ideas.length === 0) throw new Error("Preset has no ideas selected.");
             const imageUrl = images[0]!;
-
+            const styleRefUrl = images[1] || preset.state.styleReferenceImage;
+            const options = preset.state.options;
+    
+            if (styleRefUrl) {
+                console.log("Preset is using a style reference image for Mid-Autumn Creator.");
+                const result = await generateMidAutumnImage(
+                    imageUrl, '', options.additionalPrompt, options.removeWatermark, options.aspectRatio, styleRefUrl
+                );
+                return [result];
+            }
+    
+            let ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) {
+                ideas = ["Ngẫu nhiên"];
+            }
+            
             const randomConceptString = "Ngẫu nhiên";
             let finalIdeas = [...ideas];
-
+    
             if (finalIdeas.includes(randomConceptString)) {
                 console.log("Preset contains 'Random' for Mid-Autumn Creator, resolving...");
                 const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
-
+    
                 const suggestedCategories = await analyzeMidAutumnConcepts(imageUrl, MID_AUTUMN_IDEAS_BY_CATEGORY as any);
                 
                 let ideaPool: string[] = [];
@@ -196,7 +361,67 @@ const presetConfig: Record<string, PresetConfig> = {
             }
             
             const promises = finalIdeas.map((idea: string) => 
-                generateMidAutumnImage(imageUrl, idea, preset.state.options.additionalPrompt, preset.state.options.removeWatermark, preset.state.options.aspectRatio)
+                generateMidAutumnImage(imageUrl, idea, options.additionalPrompt, options.removeWatermark, options.aspectRatio)
+            );
+            return Promise.all(promises);
+        },
+    },
+    'entrepreneur-creator': {
+        imageKeys: ['uploadedImage', 'styleReferenceImage'],
+        requiredImageCount: 1,
+        generator: async (images, preset) => {
+            const imageUrl = images[0]!;
+            const styleRefUrl = images[1] || preset.state.styleReferenceImage;
+            const options = preset.state.options;
+    
+            if (styleRefUrl) {
+                console.log("Preset is using a style reference image for Entrepreneur Creator.");
+                const result = await generateEntrepreneurImage(
+                    imageUrl, '', options.additionalPrompt, options.removeWatermark, options.aspectRatio, styleRefUrl
+                );
+                return [result];
+            }
+    
+            let ideas = preset.state.selectedIdeas;
+            if (!ideas || ideas.length === 0) {
+                ideas = ["Ngẫu nhiên"];
+            }
+            
+            const randomConceptString = "Ngẫu nhiên";
+            let finalIdeas = [...ideas];
+    
+            if (finalIdeas.includes(randomConceptString)) {
+                console.log("Preset contains 'Random' for Entrepreneur Creator, resolving...");
+                const randomCount = finalIdeas.filter(i => i === randomConceptString).length;
+    
+                const suggestedCategories = await analyzeForEntrepreneurConcepts(imageUrl, ENTREPRENEUR_IDEAS_BY_CATEGORY as any);
+                
+                let ideaPool: string[] = [];
+                if (suggestedCategories.length > 0) {
+                    ideaPool = ENTREPRENEUR_IDEAS_BY_CATEGORY
+                        .filter(c => suggestedCategories.includes(c.category))
+                        .flatMap(c => c.ideas);
+                }
+                
+                if (ideaPool.length === 0) {
+                    ideaPool = ENTREPRENEUR_IDEAS_BY_CATEGORY.flatMap(c => c.ideas);
+                }
+                
+                const randomIdeas: string[] = [];
+                for (let i = 0; i < randomCount; i++) {
+                    if (ideaPool.length > 0) {
+                         const randomIndex = Math.floor(Math.random() * ideaPool.length);
+                         randomIdeas.push(ideaPool[randomIndex]);
+                         ideaPool.splice(randomIndex, 1);
+                    }
+                }
+                finalIdeas = finalIdeas.filter(i => i !== randomConceptString).concat(randomIdeas);
+                finalIdeas = [...new Set(finalIdeas)];
+                console.log("Resolved 'Random' to concrete entrepreneur ideas:", finalIdeas);
+            }
+            
+            const promises = finalIdeas.map((idea: string) => 
+                generateEntrepreneurImage(imageUrl, idea, options.additionalPrompt, options.removeWatermark, options.aspectRatio)
             );
             return Promise.all(promises);
         },
@@ -216,7 +441,7 @@ const presetConfig: Record<string, PresetConfig> = {
         requiredImageCount: 1,
         generator: async (images, preset) => {
             const contentImage = images[0];
-            const styleImage = images[1]; // This can be undefined
+            const styleImage = images[1] || preset.state.styleImage;
             const options = preset.state.options;
 
             if (!contentImage) {

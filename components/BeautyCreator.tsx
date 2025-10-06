@@ -2,9 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, ChangeEvent, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateArchitecturalImage, editImageWithPrompt } from '../services/geminiService';
+import toast from 'react-hot-toast';
+import { generateBeautyImage, editImageWithPrompt } from '../services/geminiService';
 import ActionablePolaroidCard from './ActionablePolaroidCard';
 import Lightbox from './Lightbox';
 import { 
@@ -12,38 +13,38 @@ import {
     ImageUploader,
     ResultsView,
     ImageForZip,
-    AppOptionsLayout,
     OptionsPanel,
-    type ArchitectureIdeatorState,
+    type BeautyCreatorState,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
     processAndDownloadAll,
-    SearchableSelect,
     useAppControls,
     embedJsonInPng,
-    getInitialStateForApp,
 } from './uiUtils';
 
-interface ArchitectureIdeatorProps {
+interface BeautyCreatorProps {
     mainTitle: string;
     subtitle: string;
     useSmartTitleWrapping: boolean;
     smartTitleWrapWords: number;
     uploaderCaption: string;
     uploaderDescription: string;
+    uploaderCaptionStyle: string;
+    uploaderDescriptionStyle: string;
     addImagesToGallery: (images: string[]) => void;
-    appState: ArchitectureIdeatorState;
-    onStateChange: (newState: ArchitectureIdeatorState) => void;
+    appState: BeautyCreatorState;
+    onStateChange: (newState: BeautyCreatorState) => void;
     onReset: () => void;
     onGoBack: () => void;
     logGeneration: (appId: string, preGenState: any, thumbnailUrl: string) => void;
 }
 
-const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
+const BeautyCreator: React.FC<BeautyCreatorProps> = (props) => {
     const { 
-        uploaderCaption, uploaderDescription, addImagesToGallery, 
-        appState, onStateChange, onReset, onGoBack,
+        uploaderCaption, uploaderDescription, uploaderCaptionStyle, uploaderDescriptionStyle,
+        addImagesToGallery, 
+        appState, onStateChange, onReset,
         logGeneration,
         ...headerProps 
     } = props;
@@ -52,6 +53,8 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const { lightboxIndex, openLightbox, closeLightbox, navigateLightbox } = useLightbox();
     const { videoTasks, generateVideo } = useVideoGeneration();
     const [localNotes, setLocalNotes] = useState(appState.options.notes);
+
+    const ASPECT_RATIO_OPTIONS = t('aspectRatioOptions');
 
     useEffect(() => {
         setLocalNotes(appState.options.notes);
@@ -79,12 +82,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
 
-
-    const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-        handleFileUpload(e, handleImageSelectedForUploader);
-    }, [appState, onStateChange]);
-    
-    const handleOptionChange = (field: keyof ArchitectureIdeatorState['options'], value: string | boolean) => {
+    const handleOptionChange = (field: keyof BeautyCreatorState['options'], value: string | boolean) => {
         onStateChange({
             ...appState,
             options: {
@@ -95,19 +93,22 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     };
 
     const executeInitialGeneration = async () => {
-        if (!appState.uploadedImage) return;
+        if (!appState.uploadedImage || !appState.styleReferenceImage) {
+            toast.error(t('beautyCreator_missingImagesError'));
+            return;
+        }
         
         const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
 
         try {
-            const resultUrl = await generateArchitecturalImage(appState.uploadedImage, appState.options, appState.styleReferenceImage);
+            const resultUrl = await generateBeautyImage(appState.uploadedImage, appState.styleReferenceImage, appState.options);
             const settingsToEmbed = { 
-                viewId: 'architecture-ideator', 
+                viewId: 'beauty-creator', 
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
-            logGeneration('architecture-ideator', preGenState, urlWithMetadata);
+            logGeneration('beauty-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -130,11 +131,11 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
              const settingsToEmbed = { 
-                viewId: 'architecture-ideator', 
+                viewId: 'beauty-creator', 
                 state: { ...appState, stage: 'configuring', generatedImage: null, historicalImages: [], error: null },
             };
             const urlWithMetadata = await embedJsonInPng(resultUrl, settingsToEmbed, settings.enableImageMetadata);
-            logGeneration('architecture-ideator', preGenState, urlWithMetadata);
+            logGeneration('beauty-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
                 stage: 'results',
@@ -166,26 +167,18 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     const handleDownloadAll = () => {
         const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            inputImages.push({
-                url: appState.uploadedImage,
-                filename: 'anh-phac-thao-goc',
-                folder: 'input',
-            });
+            inputImages.push({ url: appState.uploadedImage, filename: 'anh-chan-dung', folder: 'input' });
         }
         if (appState.styleReferenceImage) {
-            inputImages.push({
-                url: appState.styleReferenceImage,
-                filename: 'anh-tham-chieu-style',
-                folder: 'input',
-            });
+            inputImages.push({ url: appState.styleReferenceImage, filename: 'anh-concept', folder: 'input' });
         }
         
         processAndDownloadAll({
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: 'ket-qua-kien-truc.zip',
-            baseOutputFilename: 'ket-qua-kien-truc',
+            zipFilename: 'anh-beauty.zip',
+            baseOutputFilename: 'anh-beauty',
         });
     };
     
@@ -210,7 +203,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
             <AnimatePresence>
-            {appState.stage === 'idle' || appState.stage === 'configuring' && (
+            {(appState.stage === 'idle' || appState.stage === 'configuring') && (
                 <AppScreenHeader {...headerProps} />
             )}
             </AnimatePresence>
@@ -221,7 +214,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         onImageChange={handleImageSelectedForUploader}
                         uploaderCaption={uploaderCaption}
                         uploaderDescription={uploaderDescription}
-                        placeholderType="architecture"
+                        placeholderType="person"
                     />
                 )}
 
@@ -235,9 +228,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                         <div className="flex flex-col md:flex-row items-start justify-center gap-8">
                              <div className="w-full md:w-auto">
                                 <ActionablePolaroidCard
-                                    type="sketch-input"
+                                    type="photo-input"
                                     mediaUrl={appState.uploadedImage}
-                                    caption={t('architectureIdeator_sketchCaption')}
+                                    caption={t('beautyCreator_yourImageCaption')}
                                     status="done"
                                     onClick={() => openLightbox(lightboxImages.indexOf(appState.uploadedImage!))}
                                     onImageChange={handleUploadedImageChange}
@@ -247,78 +240,30 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                 <ActionablePolaroidCard
                                     type="style-input"
                                     mediaUrl={appState.styleReferenceImage ?? undefined}
-                                    caption={t('architectureIdeator_styleReferenceCaption')}
-                                    placeholderType='style'
+                                    caption={uploaderCaptionStyle}
+                                    placeholderType='magic'
                                     status='done'
                                     onImageChange={handleStyleReferenceImageChange}
                                     onClick={appState.styleReferenceImage ? () => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!)) : undefined}
                                 />
-                                <p className="mt-4 text-center text-sm text-neutral-400 max-w-xs mx-auto">{t('architectureIdeator_styleReferenceDescription')}</p>
+                                <p className="mt-4 text-center text-sm text-neutral-400 max-w-xs mx-auto">{uploaderDescriptionStyle}</p>
                             </div>
                         </div>
 
                         <OptionsPanel>
-                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('architectureIdeator_optionsTitle')}</h2>
-                            <AnimatePresence mode="wait">
-                                {!appState.styleReferenceImage ? (
-                                    <motion.div
-                                        key="options"
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        transition={{ duration: 0.3 }}
-                                    >
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                            <SearchableSelect
-                                                id="context"
-                                                label={t('architectureIdeator_contextLabel')}
-                                                options={t('architectureIdeator_contextOptions')}
-                                                value={appState.options.context}
-                                                onChange={(value) => handleOptionChange('context', value)}
-                                                placeholder={t('architectureIdeator_contextPlaceholder')}
-                                            />
-                                            <SearchableSelect
-                                                id="style"
-                                                label={t('architectureIdeator_styleLabel')}
-                                                options={t('architectureIdeator_styleOptions')}
-                                                value={appState.options.style}
-                                                onChange={(value) => handleOptionChange('style', value)}
-                                                placeholder={t('architectureIdeator_stylePlaceholder')}
-                                            />
-                                            <SearchableSelect
-                                                id="color"
-                                                label={t('architectureIdeator_colorLabel')}
-                                                options={t('architectureIdeator_colorOptions')}
-                                                value={appState.options.color}
-                                                onChange={(value) => handleOptionChange('color', value)}
-                                                placeholder={t('architectureIdeator_colorPlaceholder')}
-                                            />
-                                            <SearchableSelect
-                                                id="lighting"
-                                                label={t('architectureIdeator_lightingLabel')}
-                                                options={t('architectureIdeator_lightingOptions')}
-                                                value={appState.options.lighting}
-                                                onChange={(value) => handleOptionChange('lighting', value)}
-                                                placeholder={t('architectureIdeator_lightingPlaceholder')}
-                                            />
-                                        </div>
-                                    </motion.div>
-                                ) : (
-                                     <motion.div
-                                        key="style-ref-active"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="text-center p-3 bg-neutral-700/50 rounded-lg my-2"
-                                    >
-                                        <p className="text-sm text-yellow-300">{t('architectureIdeator_styleReferenceActive')}</p>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('common_options')}</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <label htmlFor="aspect-ratio-beauty" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                                    <select id="aspect-ratio-beauty" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
+                                        {ASPECT_RATIO_OPTIONS.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                </div>
+                            </div>
                             <div className="pt-2">
-                                <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('architectureIdeator_notesLabel')}</label>
+                                <label htmlFor="notes-beauty" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotesOptional')}</label>
                                 <textarea
-                                    id="notes"
+                                    id="notes-beauty"
                                     value={localNotes}
                                     onChange={(e) => setLocalNotes(e.target.value)}
                                     onBlur={() => {
@@ -326,7 +271,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                             handleOptionChange('notes', localNotes);
                                         }
                                     }}
-                                    placeholder={t('architectureIdeator_notesPlaceholder')}
+                                    placeholder={t('beautyCreator_notesPlaceholder')}
                                     className="form-input h-24"
                                     rows={3}
                                 />
@@ -334,13 +279,13 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                              <div className="flex items-center pt-2">
                                 <input
                                     type="checkbox"
-                                    id="remove-watermark-arch"
+                                    id="remove-watermark-beauty"
                                     checked={appState.options.removeWatermark}
                                     onChange={(e) => handleOptionChange('removeWatermark', e.target.checked)}
                                     className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800"
                                     aria-label={t('common_removeWatermark')}
                                 />
-                                <label htmlFor="remove-watermark-arch" className="ml-3 block text-sm font-medium text-neutral-300">
+                                <label htmlFor="remove-watermark-beauty" className="ml-3 block text-sm font-medium text-neutral-300">
                                     {t('common_removeWatermark')}
                                 </label>
                             </div>
@@ -353,7 +298,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                                     className="btn btn-primary"
                                     disabled={isLoading}
                                 >
-                                    {isLoading ? t('common_creating') : t('architectureIdeator_createButton')}
+                                    {isLoading ? t('common_creating') : t('beautyCreator_createButton')}
                                 </button>
                             </div>
                         </OptionsPanel>
@@ -384,7 +329,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                 >
                     <motion.div
                         className="w-full md:w-auto flex-shrink-0"
-                        key="generated-architecture"
+                        key="generated-beauty"
                         initial={{ opacity: 0, scale: 0.5, y: 100 }}
                         animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                         transition={{ type: 'spring', stiffness: 80, damping: 15, delay: 0.15 }}
@@ -399,9 +344,9 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
-                            regenerationTitle={t('architectureIdeator_regenTitle')}
-                            regenerationDescription={t('architectureIdeator_regenDescription')}
-                            regenerationPlaceholder={t('architectureIdeator_regenPlaceholder')}
+                            regenerationTitle={t('common_regenTitle')}
+                            regenerationDescription={t('common_regenDescription')}
+                            regenerationPlaceholder={t('beautyCreator_regenPlaceholder')}
                         />
                     </motion.div>
                     {appState.historicalImages.map(sourceUrl => {
@@ -439,4 +384,4 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     );
 };
 
-export default ArchitectureIdeator;
+export default BeautyCreator;
