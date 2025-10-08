@@ -17,13 +17,16 @@ import UserStatus from './components/UserStatus';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import HistoryPanel from './components/HistoryPanel';
 import { ImageEditorModal } from './components/ImageEditorModal';
+// FIX: Import LayerComposerModal directly to break circular dependency.
+import { LayerComposerModal } from './components/LayerComposerModal';
+import { StoryboardingModal } from './components/StoryboardingModal';
 import {
     renderSmartlyWrappedTitle,
     useImageEditor,
     useAppControls,
     ImageLayoutModal,
     BeforeAfterModal,
-    LayerComposerModal,
+    AppCoverCreatorModal,
     useAuth,
     createThumbnailDataUrl,
     type AppConfig,
@@ -79,6 +82,9 @@ function App() {
         isHistoryPanelOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
+        isAppCoverCreatorModalOpen,
+        isStoryboardingModalMounted,
+        isStoryboardingModalVisible,
         isLayerComposerMounted,
         isLayerComposerVisible,
         handleSelectApp,
@@ -94,6 +100,9 @@ function App() {
         handleCloseHistoryPanel,
         closeImageLayoutModal,
         closeBeforeAfterModal,
+        closeAppCoverCreatorModal,
+        closeStoryboardingModal,
+        hideStoryboardingModal,
         closeLayerComposer,
         hideLayerComposer,
         t,
@@ -118,6 +127,8 @@ function App() {
                                isHistoryPanelOpen ||
                                isImageLayoutModalOpen || 
                                isBeforeAfterModalOpen || 
+                               isAppCoverCreatorModalOpen ||
+                               isStoryboardingModalVisible ||
                                isLayerComposerVisible || 
                                !!imageToEdit;
 
@@ -131,7 +142,7 @@ function App() {
         return () => {
             document.body.style.overflow = 'auto';
         };
-    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isLayerComposerVisible, imageToEdit]);
+    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isAppCoverCreatorModalOpen, isStoryboardingModalVisible, isLayerComposerVisible, imageToEdit]);
 
     const getExportableState = useCallback((appState: any, appId: string): any => {
         const exportableState = JSON.parse(JSON.stringify(appState));
@@ -333,6 +344,17 @@ function App() {
                 isOpen={isBeforeAfterModalOpen}
                 onClose={closeBeforeAfterModal}
             />
+            <AppCoverCreatorModal
+                isOpen={isAppCoverCreatorModalOpen}
+                onClose={closeAppCoverCreatorModal}
+            />
+            {isStoryboardingModalMounted && (
+                <StoryboardingModal
+                    isOpen={isStoryboardingModalVisible}
+                    onClose={closeStoryboardingModal}
+                    onHide={hideStoryboardingModal}
+                />
+            )}
             {isLayerComposerMounted && (
                 <LayerComposerModal
                     isOpen={isLayerComposerVisible}

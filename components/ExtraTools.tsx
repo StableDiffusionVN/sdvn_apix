@@ -5,12 +5,18 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppControls } from './uiUtils';
-import { LayoutIcon, BeforeAfterIcon } from './icons';
+import { LayoutIcon, BeforeAfterIcon, AppCoverIcon } from './icons';
 
 const ExtraTools: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
-    const { openImageLayoutModal, openBeforeAfterModal, t } = useAppControls();
+    const { openImageLayoutModal, openBeforeAfterModal, openAppCoverCreatorModal, t } = useAppControls();
 
     const tools = [
+        {
+            id: 'before-after',
+            label: t('extraTools_beforeAfter'),
+            action: openBeforeAfterModal,
+            icon: <BeforeAfterIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" />,
+        },
         {
             id: 'image-layout',
             label: t('extraTools_layout'),
@@ -18,10 +24,10 @@ const ExtraTools: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
             icon: <LayoutIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" strokeWidth={2} />,
         },
         {
-            id: 'before-after',
-            label: t('extraTools_beforeAfter'),
-            action: openBeforeAfterModal,
-            icon: <BeforeAfterIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" />,
+            id: 'app-cover',
+            label: t('extraTools_appCover'),
+            action: openAppCoverCreatorModal,
+            icon: <AppCoverIcon className="h-5 w-5 group-hover:text-yellow-400 transition-colors" />,
         }
     ];
 

@@ -621,7 +621,8 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
             const newLayer: Layer = { id: Math.random().toString(36).substring(2, 9), type: 'image', url: mergedImageUrl, x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height, rotation: 0, opacity: 100, blendMode: 'source-over', isVisible: true, isLocked: false, fontWeight: 'normal', fontStyle: 'normal', textTransform: 'none', textAlign: undefined, color: undefined, lineHeight: undefined, };
             const topMostLayerIndex = layers.findIndex(l => l.id === selectedLayerIds[0]); const newLayers = layers.filter(l => !selectedLayerIds.includes(l.id));
             newLayers.splice(topMostLayerIndex, 0, newLayer); setLayers(newLayers); setSelectedLayerIds([newLayer.id]);
-            const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newLayers); setHistory(newHistory); setHistoryIndex(newHistory.length - 1); interactionStartHistoryState.current = null;
+            const newHistory = history.slice(0, historyIndex + 1); newHistory.push(newLayers); setHistory(newHistory); setHistoryIndex(newHistory.length - 1);
+            interactionStartHistoryState.current = null;
         } catch (err) { const msg = err instanceof Error ? err.message : "Unknown error."; setError(t('layerComposer_error', msg)); interactionStartHistoryState.current = null; }
         finally { setRunningJobCount(prev => Math.max(0, prev - 1)); }
     }, [selectedLayers, layers, selectedLayerIds, beginInteraction, history, historyIndex, t]);

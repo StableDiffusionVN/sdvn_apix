@@ -141,6 +141,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.gallery')}</span> <Shortcut keys="Cmd/Ctrl + G" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.editor')}</span> <Shortcut keys="Cmd/Ctrl + E" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.layerComposer')}</span> <Shortcut keys="Cmd/Ctrl + L" /></li>
+                                        <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.storyboard')}</span> <Shortcut keys="Cmd/Ctrl + B" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_generalShortcuts_items.info')}</span> <Shortcut keys="Cmd/Ctrl + /" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_appNav_items.undo')}</span> <Shortcut keys="Cmd/Ctrl + Z" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_appNav_items.redo')}</span> <Shortcut keys="Cmd/Ctrl + Shift + Z" /></li>
@@ -189,6 +190,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
                                         <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.tempPicker')}</span> <Shortcut keys="Giữ Alt" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.quickDuplicate')}</span> <Shortcut keys="Giữ Alt + Kéo" /></li>
                                         <li className="flex justify-between items-center"><span>{t('infoModal_usageTips_items.multiSelect')}</span> <Shortcut keys="Giữ Shift" /></li>
+                                        <li className="flex items-center"><span>{t('infoModal_usageTips_items.apiLimitSolution')}</span></li>
                                     </ul>
                                 </div>
                             </div>

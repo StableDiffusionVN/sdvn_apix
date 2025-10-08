@@ -16,8 +16,7 @@ body {
   --footer-bg-color: rgba(30, 27, 75, 0.8);
 }
 
-.theme-vietnam {
-  /* UPDATE: Replaced solid color with a gradient + star SVG */
+/* .theme-vietnam {
   background-image: 
     url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M50,5 L61.8,38.2 L98.2,38.2 L68.2,59.8 L79.6,92.7 L50,71.5 L20.4,92.7 L31.8,59.8 L1.8,38.2 L38.2,38.2 Z' fill='%23FFFF00' fill-opacity='0.15'/%3e%3c/svg%3e"),
     radial-gradient(ellipse at bottom, #DA251D, #a21a14);
@@ -26,28 +25,16 @@ body {
   background-size: 80vmin, cover;
   background-attachment: fixed, fixed;
 
-  /* OVERRIDE: Polaroid theme variables */
+  --polaroid-bg-color: #450A0A; 
+  --polaroid-placeholder-color: #b45309; 
+  --footer-bg-color: rgba(69, 10, 10, 0.5);
+} */
+
+.theme-vietnam {
+  background-image: radial-gradient(ellipse at bottom, #c62921, #a21a14);
   --polaroid-bg-color: #450A0A; /* bg-red-950 */
   --polaroid-placeholder-color: #b45309; /* text-yellow-700 */
   --footer-bg-color: rgba(69, 10, 10, 0.5); /* UPDATED: Increased transparency */
-}
-
-.theme-black-night {
-  background-color: #090a0f;
-  background-image: radial-gradient(ellipse at bottom, #222222 0%, #3d3d3d 100%);
-  /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #1f2129; /* Deep navy */
-  --polaroid-placeholder-color: #696d6f; /* A brighter blue */
-  --footer-bg-color: rgba(9, 10, 15, 0.5); /* UPDATED: Increased transparency */
-}
-
-.theme-clear-sky {
-  background-color: #005C97; /* Fallback color */
-  background-image: linear-gradient(to right, #363795, #005C97);
-  /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #052b82; /* A deep indigo/purple */
-  --polaroid-placeholder-color: #93c5fd; /* A soft, light blue */
-  --footer-bg-color: rgba(0, 67, 108, 0.5); /* UPDATED: Increased transparency */
 }
 
 .theme-skyline {
@@ -57,34 +44,6 @@ body {
   --polaroid-bg-color: #052e6c; /* A deep, rich blue */
   --polaroid-placeholder-color: #a7cffd; /* A soft, sky blue */
   --footer-bg-color: rgba(0, 82, 212, 0.5); /* UPDATED: Increased transparency */
-}
-
-.theme-emerald-water {
-  background: #348F50;  /* fallback for old browsers */
-  background: -webkit-linear-gradient(to right, #56B4D3, #348F50);  /* Chrome 10-25, Safari 5.1-6 */
-  background: linear-gradient(to right, #56B4D3, #348F50); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-  /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #0d3331; /* A deep teal */
-  --polaroid-placeholder-color: #5eead4; /* A soft teal */
-  --footer-bg-color: rgba(52, 143, 80, 0.5); 
-}
-
-.theme-life {
-  background: #ADD100;  /* fallback for old browsers */
-  background: -webkit-linear-gradient(to right, #7B920A, #ADD100);  /* Chrome 10-25, Safari 5.1-6 */
-  background: linear-gradient(to right, #7B920A, #ADD100); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-  /* OVERRIDE: Polaroid theme variables */
-  --polaroid-bg-color: #365314; /* A deep, rich green */
-  --polaroid-placeholder-color: #a3e635; /* A soft, lime green */
-  --footer-bg-color: rgba(123, 146, 10, 0.5); /* UPDATED: Increased transparency */
-}
-
-/* NEW: Violet Theme */
-.theme-violet {
-  background: linear-gradient(to bottom, #eaafc8, #654ea3); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-  --polaroid-bg-color: #3b0764;
-  --polaroid-placeholder-color: #f472b6;
-  --footer-bg-color: rgba(101, 78, 163, 0.5);
 }
 
 /* NEW: Hidden Jaguar Theme */
@@ -102,6 +61,29 @@ body {
   --polaroid-placeholder-color: #fcc5e4;
   --footer-bg-color: rgba(2, 15, 117, 0.6);
 }
+
+/* === Additional Themes === */
+.theme-rainbow {
+  background-image: linear-gradient(to right, #0575E6, #00F260);
+  --polaroid-bg-color: #064e3b;
+  --polaroid-placeholder-color: #00F260;
+  --footer-bg-color: rgba(5, 150, 105, 0.6);
+}
+
+.theme-soundcloud {
+  background-image: linear-gradient(to right, #f83600, #fe8c00);
+  --polaroid-bg-color: #7f1d1d;
+  --polaroid-placeholder-color: #fe8c00;
+  --footer-bg-color: rgba(127, 29, 29, 0.6);
+}
+
+.theme-amin {
+  background-image: linear-gradient(to right, #4A00E0, #8E2DE2);
+  --polaroid-bg-color: #3b0764;
+  --polaroid-placeholder-color: #8E2DE2;
+  --footer-bg-color: rgba(59, 7, 100, 0.6);
+}
+
 
 .title-font {
   font-family: 'Asimovian', sans-serif;
@@ -767,7 +749,7 @@ body {
   transform: translateY(0.25rem); /* Start slightly down */
 }
 
-.gallery-grid-item:hover .thumbnail-actions {
+.group:hover .thumbnail-actions {
   opacity: 1;
   transform: translateY(0);
 }
@@ -1270,4 +1252,67 @@ input:checked + .switch-slider:before {
 
 .results-scroll-container::-webkit-scrollbar:horizontal {
     height: 12px;
+}
+
+/* --- NEW: Storyboard Panel --- */
+.storyboard-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(38, 38, 38, 0.7); /* neutral-800/70 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem; /* rounded-xl */
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+  min-height: 22.5rem; /* 360px */
+}
+.storyboard-panel:hover {
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+}
+.storyboard-panel-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #171717; /* neutral-900 */
+}
+.storyboard-panel-content {
+  padding: 0.75rem; /* p-3 */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 120px; /* Give it a minimum height */
+}
+.storyboard-panel-description {
+  font-size: 0.75rem; /* text-xs */
+  color: #d4d4d4; /* neutral-300 */
+  overflow-y: auto;
+  min-height: 40px; /* Give it a minimum height to not collapse */
+  padding-right: 0.25rem;
+  white-space: pre-wrap;
+  flex-grow: 1; 
+}
+/* Custom scrollbar for description */
+.storyboard-panel-description::-webkit-scrollbar { width: 4px; }
+.storyboard-panel-description::-webkit-scrollbar-track { background: transparent; }
+.storyboard-panel-description::-webkit-scrollbar-thumb { background-color: #737373; border-radius: 4px; }
+
+.storyboard-panel-textarea {
+  width: 100%;
+  flex-grow: 1; /* Allow it to grow */
+  min-height: 80px;
+  background-color: #171717;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  color: #e5e5e5;
+  font-size: 0.75rem;
+  padding: 0.5rem;
+  resize: none;
+}
+.storyboard-panel-textarea:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #FBBF24;
+}
+
+.storyboard-panel-actions {
+  padding: 0 0.75rem 0.75rem; /* px-3 pb-3 */
 }

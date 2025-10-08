@@ -183,6 +183,7 @@ export const useImageEditor = (): ImageEditorContextType => {
 
 
 // --- App Control Context ---
+// @ts-ignore - This will be fixed by the uiTypes.ts change
 interface AppControlContextType {
     currentView: ViewState;
     settings: Settings | null;
@@ -197,6 +198,9 @@ interface AppControlContextType {
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
+    isAppCoverCreatorModalOpen: boolean;
+    isStoryboardingModalMounted: boolean;
+    isStoryboardingModalVisible: boolean;
     isLayerComposerMounted: boolean;
     isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
@@ -227,6 +231,12 @@ interface AppControlContextType {
     closeImageLayoutModal: () => void;
     openBeforeAfterModal: () => void;
     closeBeforeAfterModal: () => void;
+    openAppCoverCreatorModal: () => void;
+    closeAppCoverCreatorModal: () => void;
+    openStoryboardingModal: () => void;
+    closeStoryboardingModal: () => void;
+    hideStoryboardingModal: () => void;
+    toggleStoryboardingModal: () => void;
     openLayerComposer: () => void;
     closeLayerComposer: () => void;
     hideLayerComposer: () => void;
@@ -254,6 +264,9 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [isExtraToolsOpen, setIsExtraToolsOpen] = useState(false);
     const [isImageLayoutModalOpen, setIsImageLayoutModalOpen] = useState(false);
     const [isBeforeAfterModalOpen, setIsBeforeAfterModalOpen] = useState(false);
+    const [isAppCoverCreatorModalOpen, setIsAppCoverCreatorModalOpen] = useState(false);
+    const [isStoryboardingModalMounted, setIsStoryboardingModalMounted] = useState(false);
+    const [isStoryboardingModalVisible, setIsStoryboardingModalVisible] = useState(false);
     const [isLayerComposerMounted, setIsLayerComposerMounted] = useState(false);
     const [isLayerComposerVisible, setIsLayerComposerVisible] = useState(false);
     const [imageGallery, setImageGallery] = useState<string[]>([]);
@@ -262,7 +275,6 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
-    // FIX: Add missing `settings` state to resolve multiple 'settings' related errors.
     const [settings, setSettings] = useState<Settings | null>(null);
 
     const currentView = viewHistory[historyIndex];
@@ -566,6 +578,35 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setIsExtraToolsOpen(false);
     }, []);
     const closeBeforeAfterModal = useCallback(() => setIsBeforeAfterModalOpen(false), []);
+    const openAppCoverCreatorModal = useCallback(() => {
+        setIsAppCoverCreatorModalOpen(true);
+        setIsExtraToolsOpen(false);
+    }, []);
+    const closeAppCoverCreatorModal = useCallback(() => setIsAppCoverCreatorModalOpen(false), []);
+
+    const openStoryboardingModal = useCallback(() => {
+        setIsStoryboardingModalMounted(true);
+        setIsStoryboardingModalVisible(true);
+        setIsExtraToolsOpen(false);
+    }, []);
+
+    const hideStoryboardingModal = useCallback(() => {
+        setIsStoryboardingModalVisible(false);
+    }, []);
+    
+    const closeStoryboardingModal = useCallback(() => {
+        setIsStoryboardingModalMounted(false);
+        setIsStoryboardingModalVisible(false);
+    }, []);
+
+    const toggleStoryboardingModal = useCallback(() => {
+        if (isStoryboardingModalVisible) {
+            hideStoryboardingModal();
+        } else {
+            openStoryboardingModal();
+        }
+    }, [isStoryboardingModalVisible, hideStoryboardingModal, openStoryboardingModal]);
+
     const openLayerComposer = useCallback(() => {
         setIsLayerComposerMounted(true);
         setIsLayerComposerVisible(true);
@@ -601,6 +642,9 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isExtraToolsOpen,
         isImageLayoutModalOpen,
         isBeforeAfterModalOpen,
+        isAppCoverCreatorModalOpen,
+        isStoryboardingModalMounted,
+        isStoryboardingModalVisible,
         isLayerComposerMounted,
         isLayerComposerVisible,
         language,
@@ -631,6 +675,12 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         closeImageLayoutModal,
         openBeforeAfterModal,
         closeBeforeAfterModal,
+        openAppCoverCreatorModal,
+        closeAppCoverCreatorModal,
+        openStoryboardingModal,
+        closeStoryboardingModal,
+        hideStoryboardingModal,
+        toggleStoryboardingModal,
         openLayerComposer,
         closeLayerComposer,
         hideLayerComposer,

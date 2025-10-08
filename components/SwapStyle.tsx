@@ -170,14 +170,18 @@ const SwapStyle: React.FC<SwapStyleProps> = (props) => {
         }
     };
 
-    const handleContentImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, contentImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleContentImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, contentImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
-    const handleStyleImageChange = (newUrl: string) => {
+    const handleStyleImageChange = (newUrl: string | null) => {
         onStateChange({ ...appState, styleImage: newUrl });
-        addImagesToGallery([newUrl]);
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {

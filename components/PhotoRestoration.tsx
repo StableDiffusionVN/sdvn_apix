@@ -166,9 +166,11 @@ const PhotoRestoration: React.FC<PhotoRestorationProps> = (props) => {
         }
     };
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, uploadedImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {

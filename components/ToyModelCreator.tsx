@@ -145,9 +145,11 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
         handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
 
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, uploadedImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {
@@ -188,6 +190,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 ...appState,
                 stage: 'results',
                 generatedImage: urlWithMetadata,
+                // FIX: Correct typo from 'historical' to 'historicalImages'
                 historicalImages: [...appState.historicalImages, urlWithMetadata],
             });
             addImagesToGallery([urlWithMetadata]);
@@ -199,8 +202,10 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     
     const handleRegeneration = async (prompt: string) => {
         if (!appState.generatedImage) return;
+
         const preGenState = { ...appState };
         onStateChange({ ...appState, stage: 'generating', error: null });
+
         try {
             const resultUrl = await editImageWithPrompt(appState.generatedImage, prompt);
             const settingsToEmbed = {
@@ -221,7 +226,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
             onStateChange({ ...appState, stage: 'results', error: errorMessage });
         }
     };
-
+    
     const handleBackToOptions = () => {
         onStateChange({ ...appState, stage: 'configuring', error: null });
     };
@@ -229,57 +234,27 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     const handleDownloadAll = () => {
         const inputImages: ImageForZip[] = [];
         if (appState.uploadedImage) {
-            inputImages.push({ url: appState.uploadedImage, filename: 'anh-goc', folder: 'input' });
+            inputImages.push({
+                url: appState.uploadedImage,
+                filename: 'anh-goc',
+                folder: 'input',
+            });
         }
+        
         processAndDownloadAll({
             inputImages,
             historicalImages: appState.historicalImages,
             videoTasks,
-            zipFilename: `mo-hinh-${appState.concept}.zip`,
-            baseOutputFilename: 'mo-hinh',
+            zipFilename: 'ket-qua-mo-hinh-do-choi.zip',
+            baseOutputFilename: 'mo-hinh-do-choi',
         });
     };
     
-    const renderOption = (option: any) => {
-        const { id, label, type } = option;
-        const value = appState.options[id as keyof typeof appState.options] as string;
-        
-        if (type === 'text-input') {
-            return (
-                <div key={id} className="md:col-span-2">
-                    <label htmlFor={id} className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{label}</label>
-                    <input
-                        id={id}
-                        type="text"
-                        value={value}
-                        onChange={(e) => handleOptionChange(id, e.target.value)}
-                        className="form-input"
-                        placeholder="Ví dụ: Pikachu (giúp AI nhận diện tiến hoá)"
-                    />
-                </div>
-            );
-        }
-        
-        if (type === 'searchable-select') {
-             const choices = typeof option.getChoices === 'function' ? option.getChoices(appState.options) : option.choices;
-            return (
-                <SearchableSelect
-                    key={id}
-                    id={id}
-                    label={label}
-                    options={choices}
-                    value={value}
-                    onChange={(newValue) => handleOptionChange(id, newValue)}
-                    placeholder={t('common_auto')}
-                />
-            );
-        }
-        return null;
-    };
-    
     const isLoading = appState.stage === 'generating';
-    const currentConceptData = CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA];
 
+    const currentConceptData = CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA] || CONCEPTS_DATA.desktop_model;
+
+    // FIX: Add return statement to render JSX.
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
             <AnimatePresence>
@@ -299,43 +274,48 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                 {appState.stage === 'configuring' && appState.uploadedImage && (
                     <AppOptionsLayout>
                         <div className="flex-shrink-0">
-                            <ActionablePolaroidCard type="content-input" mediaUrl={appState.uploadedImage} caption={t('common_originalImage')} status="done" onClick={() => openLightbox(0)} onImageChange={handleUploadedImageChange} />
+                            <ActionablePolaroidCard
+                                type="content-input"
+                                mediaUrl={appState.uploadedImage}
+                                caption={t('common_originalImage')}
+                                status="done"
+                                onClick={() => openLightbox(0)}
+                                onImageChange={handleUploadedImageChange}
+                            />
                         </div>
                         <OptionsPanel>
-                            <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2">{t('toyModelCreator_optionsTitle')}</h2>
-                            <div>
-                                <label className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('toyModelCreator_conceptLabel')}</label>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                                     {/* FIX: Changed destructuring to handle 'any' type from translation and cast to get 'name' property. */}
-                                     {Object.entries(CONCEPTS_DATA).map(([id, data]) => {
-                                        const { name } = data as { name: string; [key: string]: any; };
-                                        const isSelected = appState.concept === id;
-                                        return (
-                                            <button
-                                                key={id}
-                                                onClick={() => handleConceptChange(id)}
-                                                role="radio"
-                                                aria-checked={isSelected}
-                                                className={`base-font font-bold p-3 rounded-md text-sm text-center transition-all duration-200 ${
-                                                    isSelected
-                                                    ? 'bg-yellow-400 text-black ring-2 ring-yellow-300 scale-105'
-                                                    : 'bg-white/10 text-neutral-300 hover:bg-white/20'
-                                                }`}
-                                            >
-                                                {name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {currentConceptData.options.map(renderOption)}
-                            </div>
-                            <div>
-                                <label htmlFor="aspectRatio-toy" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
-                                <select id="aspectRatio-toy" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
-                                    {ASPECT_RATIO_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <h2 className="base-font font-bold text-2xl text-yellow-400 border-b border-yellow-400/20 pb-2 sm:border-b-0 sm:pb-0">{t('toyModelCreator_optionsTitle')}</h2>
+                                <select
+                                    id="concept-select"
+                                    value={appState.concept}
+                                    onChange={(e) => handleConceptChange(e.target.value)}
+                                    className="form-input !py-2 !text-sm max-w-xs"
+                                    aria-label="Chọn concept mô hình"
+                                >
+                                    {Object.entries(CONCEPTS_DATA).map(([key, value]) => (
+                                        <option key={key} value={key}>{value.name}</option>
+                                    ))}
                                 </select>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                               {currentConceptData.options.map((option: any) => (
+                                    <SearchableSelect
+                                        key={option.id}
+                                        id={option.id}
+                                        label={option.label}
+                                        options={typeof option.getChoices === 'function' ? option.getChoices(appState.options) : option.choices}
+                                        value={(appState.options as any)[option.id]}
+                                        onChange={(value) => handleOptionChange(option.id as keyof ToyModelCreatorState['options'], value)}
+                                        placeholder="Để trống để tự động"
+                                    />
+                               ))}
+                                <div>
+                                    <label htmlFor="aspect-ratio-toy" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_aspectRatio')}</label>
+                                    <select id="aspect-ratio-toy" value={appState.options.aspectRatio} onChange={(e) => handleOptionChange('aspectRatio', e.target.value)} className="form-input">
+                                        {ASPECT_RATIO_OPTIONS.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label htmlFor="notes" className="block text-left base-font font-bold text-lg text-neutral-200 mb-2">{t('common_additionalNotes')}</label>
@@ -350,9 +330,10 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                                     }}
                                     placeholder={t('toyModelCreator_notesPlaceholder')}
                                     className="form-input h-24"
+                                    rows={3}
                                 />
                             </div>
-                             <div className="flex items-center pt-2">
+                            <div className="flex items-center pt-2">
                                 <input
                                     type="checkbox"
                                     id="remove-watermark-toy"
@@ -366,16 +347,8 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                                 </label>
                             </div>
                             <div className="flex items-center justify-end gap-4 pt-4">
-                                <button onClick={onReset} className="btn btn-secondary">
-                                    {t('common_changeImage')}
-                                </button>
-                                <button 
-                                    onClick={executeInitialGeneration} 
-                                    className="btn btn-primary"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? t('common_creating') : t('toyModelCreator_createButton')}
-                                </button>
+                                <button onClick={onReset} className="btn btn-secondary">{t('common_changeImage')}</button>
+                                <button onClick={executeInitialGeneration} className="btn btn-primary" disabled={isLoading}>{isLoading ? t('toyModelCreator_creating') : t('toyModelCreator_createButton')}</button>
                             </div>
                         </OptionsPanel>
                     </AppOptionsLayout>
@@ -390,17 +363,9 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     error={appState.error}
                     actions={
                         <>
-                            {appState.generatedImage && !appState.error && (
-                                <button onClick={handleDownloadAll} className="btn btn-secondary">
-                                    {t('common_downloadAll')}
-                                </button>
-                            )}
-                            <button onClick={handleBackToOptions} className="btn btn-secondary">
-                                {t('common_editOptions')}
-                            </button>
-                            <button onClick={onReset} className="btn btn-secondary">
-                                {t('common_startOver')}
-                            </button>
+                            {appState.generatedImage && !appState.error && (<button onClick={handleDownloadAll} className="btn btn-secondary">{t('common_downloadAll')}</button>)}
+                            <button onClick={handleBackToOptions} className="btn btn-secondary">{t('common_editOptions')}</button>
+                            <button onClick={onReset} className="btn btn-secondary">{t('common_startOver')}</button>
                         </>
                     }
                 >
@@ -413,17 +378,17 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                     >
                         <ActionablePolaroidCard
                             type="output"
-                            caption={t('common_result')}
+                            caption={currentConceptData.name}
                             status={isLoading ? 'pending' : (appState.error ? 'error' : 'done')}
                             mediaUrl={appState.generatedImage ?? undefined}
                             error={appState.error ?? undefined}
-                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                             onImageChange={handleGeneratedImageChange}
                             onRegenerate={handleRegeneration}
                             onGenerateVideoFromPrompt={(prompt) => appState.generatedImage && generateVideo(appState.generatedImage, prompt)}
                             regenerationTitle={t('common_regenTitle')}
                             regenerationDescription={t('common_regenDescription')}
                             regenerationPlaceholder={t('toyModelCreator_regenPlaceholder')}
+                            onClick={!appState.error && appState.generatedImage ? () => openLightbox(lightboxImages.indexOf(appState.generatedImage!)) : undefined}
                         />
                     </motion.div>
                     {appState.historicalImages.map(sourceUrl => {

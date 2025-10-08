@@ -89,9 +89,11 @@ const FreeGeneration: React.FC<FreeGenerationProps> = (props) => {
         });
     };
     
-    const handleSaveImage = (imageKey: 'image1' | 'image2' | 'image3' | 'image4') => (newUrl: string) => {
+    const handleSaveImage = (imageKey: 'image1' | 'image2' | 'image3' | 'image4') => (newUrl: string | null) => {
         onStateChange({ ...appState, [imageKey]: newUrl });
-        addImagesToGallery([newUrl]);
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleSaveGeneratedImage = (index: number) => (newUrl: string) => {

@@ -100,7 +100,7 @@ export const RegenerationModal: React.FC<RegenerationModalProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="modal-overlay"
+                    className="modal-overlay z-[70]"
                     aria-modal="true"
                     role="dialog"
                 >
@@ -134,6 +134,88 @@ export const RegenerationModal: React.FC<RegenerationModalProps> = ({
                             )}
                             <button onClick={handleConfirmImage} className="btn btn-primary btn-sm">
                                 Tạo lại ảnh
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>,
+        document.body
+    );
+};
+
+interface PromptRegenerationModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (modificationPrompt: string) => void;
+    itemToModify: string | null;
+    title?: string;
+    description?: string;
+    placeholder?: string;
+}
+
+export const PromptRegenerationModal: React.FC<PromptRegenerationModalProps> = ({
+    isOpen,
+    onClose,
+    onConfirm,
+    itemToModify,
+    title = "Tạo lại Prompt",
+    description = "Nhập yêu cầu để AI viết lại prompt cho",
+    placeholder = "Ví dụ: thêm chi tiết về cảm xúc nhân vật, mô tả bối cảnh ban đêm..."
+}) => {
+    const [modificationPrompt, setModificationPrompt] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setModificationPrompt('');
+        }
+    }, [isOpen]);
+
+    const handleConfirm = () => {
+        onConfirm(modificationPrompt);
+    };
+
+    if (!isOpen) {
+        return null;
+    }
+
+    return ReactDOM.createPortal(
+        <AnimatePresence>
+            {isOpen && itemToModify && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="modal-overlay z-[70]"
+                    aria-modal="true"
+                    role="dialog"
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="modal-content"
+                    >
+                        <h3 className="base-font font-bold text-2xl text-yellow-400">{title}</h3>
+                        <p className="text-neutral-300">
+                            {description} <span className="font-bold text-white">"{itemToModify}"</span>.
+                        </p>
+                        <textarea
+                            value={modificationPrompt}
+                            onChange={(e) => setModificationPrompt(e.target.value)}
+                            placeholder={placeholder}
+                            className="modal-textarea"
+                            rows={3}
+                            aria-label="Yêu cầu chỉnh sửa prompt"
+                        />
+                        <div className="flex justify-end items-center gap-4 mt-2">
+                            <button onClick={onClose} className="btn btn-secondary btn-sm">
+                                Hủy
+                            </button>
+                            <button onClick={handleConfirm} className="btn btn-primary btn-sm">
+                                Tạo lại Prompt
                             </button>
                         </div>
                     </motion.div>

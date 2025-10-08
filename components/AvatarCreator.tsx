@@ -88,22 +88,26 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
 
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
             selectedIdeas: [], // Clear selected ideas when a style ref is used
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, uploadedImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleOptionChange = (field: keyof AvatarCreatorState['options'], value: string | boolean) => {
@@ -235,7 +239,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         
         const initialGeneratedImages = { ...appState.generatedImages };
         ideasToGenerate.forEach(idea => {
-            initialGeneratedImages[idea] = { status: 'pending' };
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            initialGeneratedImages[idea] = { status: 'pending' as const };
         });
         
         onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate });
@@ -263,7 +268,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'done', url: urlWithMetadata },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'done' as const, url: urlWithMetadata },
                     },
                     historicalImages: [...currentAppState.historicalImages, { idea, url: urlWithMetadata }],
                 };
@@ -276,7 +282,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'error', error: errorMessage },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'error' as const, error: errorMessage },
                     },
                 };
                 onStateChange(currentAppState);
@@ -315,7 +322,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        const imageToEditState = appState.generatedImages[idea] as any;
+        // FIX: Remove 'as any' cast. Type safety is now handled by adding 'as const' during state updates.
+        const imageToEditState = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
@@ -325,7 +333,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         
         onStateChange({
             ...appState,
-            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' } }
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' as const } }
         });
 
         try {
@@ -338,7 +347,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             logGeneration('avatar-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done' as const, url: urlWithMetadata } },
                 historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: urlWithMetadata }],
             });
             addImagesToGallery([urlWithMetadata]);
@@ -346,7 +356,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
              onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error', error: errorMessage } }
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error' as const, error: errorMessage } }
             });
             console.error(`Failed to regenerate image for ${idea}:`, err);
         }

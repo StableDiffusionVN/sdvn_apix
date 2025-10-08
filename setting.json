@@ -54,15 +54,15 @@
       "descriptionKey": "app_swap-style_description",
       "icon": "🎨",
       "supportsCanvasPreset": true,
-      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/swap-style.jpg"
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/swap-style-1.jpg"
     },
     {
-      "id": "toy-model-creator",
-      "titleKey": "app_toy-model-creator_title",
-      "descriptionKey": "app_toy-model-creator_description",
-      "icon": "🤖",
+      "id": "baby-photo-creator",
+      "titleKey": "app_baby-photo-creator_title",
+      "descriptionKey": "app_baby-photo-creator_description",
+      "icon": "👶",
       "supportsCanvasPreset": true,
-      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/figure.jpeg"
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/baby.jpeg"
     },
     {
       "id": "avatar-creator",
@@ -89,20 +89,20 @@
       "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/doanhnhan.jpeg"
     },
     {
+      "id": "toy-model-creator",
+      "titleKey": "app_toy-model-creator_title",
+      "descriptionKey": "app_toy-model-creator_description",
+      "icon": "🤖",
+      "supportsCanvasPreset": true,
+      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/figure.jpeg"
+    },
+    {
       "id": "mid-autumn-creator",
       "titleKey": "app_mid-autumn-creator_title",
       "descriptionKey": "app_mid-autumn-creator_description",
       "icon": "🌕",
       "supportsCanvasPreset": true,
       "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/trungthu.jpeg"
-    },
-    {
-      "id": "baby-photo-creator",
-      "titleKey": "app_baby-photo-creator_title",
-      "descriptionKey": "app_baby-photo-creator_description",
-      "icon": "👶",
-      "supportsCanvasPreset": true,
-      "previewImageUrl": "https://trainlora.vn/wp-content/uploads/2025/10/baby.jpeg"
     }
   ],
   "avatarCreator": {
@@ -227,7 +227,7 @@
     "mainTitleKey": "imageInterpolation_mainTitle",
     "subtitleKey": "imageInterpolation_subtitle",
     "useSmartTitleWrapping": true,
-    "smartTitleWrapWords": 3,
+    "smartTitleWrapWords": 2,
     "uploaderCaptionInputKey": "imageInterpolation_uploaderCaptionInput",
     "uploaderDescriptionInputKey": "imageInterpolation_uploaderDescriptionInput",
     "uploaderCaptionOutputKey": "imageInterpolation_uploaderCaptionOutput",

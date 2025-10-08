@@ -1,5 +1,5 @@
 {
-  "version": "aPix v1.10 [061025]",
+  "version": "aPix v1.10 [081025]",
   "developer": {
     "name": "Phạm Hưng",
     "url": "https://www.facebook.com/phamhungd/"
@@ -15,7 +15,7 @@
     "linkText": "Cộng đồng AI Art Việt Nam",
     "linkUrl": "https://www.facebook.com/groups/stablediffusion.vn"
   },
-  "latestUpdate": "🔥 Thêm ứng dụng 'Tạo ảnh doanh nhân', 'Tạo ảnh beauty', nâng cấp chế độ đọc ảnh Ref cho các ứng dụng tạo ảnh",
+  "latestUpdate": "🔥 🔥 Thêm tool 'Storyboard' mới, hỗ trợ xây dựng kịch bản - video",
   "videoTutorial": {
     "prefix": "💡 ",
     "linkText": "Video hướng dẫn",

@@ -22,6 +22,7 @@ import {
     RegenerateIcon, 
     DownloadIcon,
     CloudUploadIcon,
+    DeleteIcon,
 } from './icons';
 
 type ImageStatus = 'pending' | 'done' | 'error';
@@ -34,6 +35,7 @@ interface PolaroidCardProps {
     onShake?: (caption: string) => void;
     onDownload?: (caption: string) => void;
     onEdit?: (caption: string) => void;
+    onClear?: () => void;
     onSwapImage?: () => void;
     onSelectFromGallery?: () => void;
     onCaptureFromWebcam?: () => void;
@@ -80,7 +82,7 @@ const Placeholder = ({ type = 'person' }: { type?: string }) => {
 };
 
 
-const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onSwapImage, onSelectFromGallery, onCaptureFromWebcam, isMobile, placeholderType = 'person', onClick, isDraggingOver, onDragOver, onDragLeave, onDrop }) => {
+const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, error, onShake, onDownload, onEdit, onClear, onSwapImage, onSelectFromGallery, onCaptureFromWebcam, isMobile, placeholderType = 'person', onClick, isDraggingOver, onDragOver, onDragLeave, onDrop }) => {
     const { t } = useAppControls();
     const hasMedia = status === 'done' && mediaUrl;
     const isVideo = hasMedia && mediaUrl!.startsWith('blob:');
@@ -154,6 +156,18 @@ const PolaroidCard: React.FC<PolaroidCardProps> = ({ mediaUrl, caption, status, 
                             aria-label={`${t('common_edit')} ${caption}`}
                         >
                            <EditorIcon className="h-5 w-5" />
+                        </button>
+                    )}
+                     {hasMedia && onClear && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClear();
+                            }}
+                            className="p-2 bg-red-500/60 rounded-full text-white hover:bg-red-600/80 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            aria-label={t('common_clearImage')}
+                        >
+                           <DeleteIcon className="h-5 w-5" />
                         </button>
                     )}
                      {hasMedia && onSwapImage && (

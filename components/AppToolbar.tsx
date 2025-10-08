@@ -16,7 +16,8 @@ import {
     EditorIcon, 
     LayerComposerIcon, 
     EllipsisIcon,
-    HistoryIcon
+    HistoryIcon,
+    StoryboardIcon
 } from './icons';
 
 const AppToolbar: React.FC = () => {
@@ -36,6 +37,8 @@ const AppToolbar: React.FC = () => {
         toggleExtraTools,
         isLayerComposerVisible,
         toggleLayerComposer,
+        isStoryboardingModalVisible,
+        toggleStoryboardingModal,
         t,
         isHistoryPanelOpen,
         handleCloseHistoryPanel,
@@ -88,11 +91,12 @@ const AppToolbar: React.FC = () => {
             const isInfo = (e.metaKey || e.ctrlKey) && e.key === '/';
             const isEditor = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e';
             const isLayerComposer = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l';
+            const isStoryboard = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b';
 
-            if (isUndo && !isEditorOpen && !isLayerComposerVisible) {
+            if (isUndo && !isEditorOpen && !isLayerComposerVisible && !isStoryboardingModalVisible) {
                 e.preventDefault();
                 handleGoBack();
-            } else if (isRedo && !isEditorOpen && !isLayerComposerVisible) {
+            } else if (isRedo && !isEditorOpen && !isLayerComposerVisible && !isStoryboardingModalVisible) {
                 e.preventDefault();
                 handleGoForward();
             } else if (isSearch) {
@@ -120,6 +124,9 @@ const AppToolbar: React.FC = () => {
             } else if (isLayerComposer) {
                 e.preventDefault();
                 toggleLayerComposer();
+            } else if (isStoryboard) {
+                e.preventDefault();
+                toggleStoryboardingModal();
             }
         };
 
@@ -127,7 +134,7 @@ const AppToolbar: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleGoHome, handleOpenInfo, handleOpenHistoryPanel, handleCloseHistoryPanel, isHistoryPanelOpen, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible]);
+    }, [handleGoBack, handleGoForward, handleOpenSearch, handleOpenGallery, handleGoHome, handleOpenInfo, handleOpenHistoryPanel, handleCloseHistoryPanel, isHistoryPanelOpen, handleOpenEditor, toggleLayerComposer, imageToEdit, isLayerComposerVisible, isStoryboardingModalVisible, toggleStoryboardingModal]);
 
     return (
         <>
@@ -220,6 +227,15 @@ const AppToolbar: React.FC = () => {
                         onMouseLeave={hideTooltip}
                     >
                         <LayerComposerIcon className="h-5 w-5" strokeWidth="1.5" />
+                    </button>
+                    <button
+                        onClick={toggleStoryboardingModal}
+                        className={cn("btn-search", isStoryboardingModalVisible && 'bg-white/20')}
+                        aria-label={t('extraTools_storyboarding')}
+                        onMouseEnter={(e) => showTooltip(t('extraTools_storyboarding'), e)}
+                        onMouseLeave={hideTooltip}
+                    >
+                        <StoryboardIcon className="h-5 w-5" />
                     </button>
                     <button
                         onClick={toggleExtraTools}

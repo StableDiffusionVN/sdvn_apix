@@ -91,22 +91,26 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
 
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
             selectedIdeas: [],
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, uploadedImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleOptionChange = (field: keyof BabyPhotoCreatorState['options'], value: string | boolean) => {
@@ -226,7 +230,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         
         const initialGeneratedImages = { ...appState.generatedImages };
         ideasToGenerate.forEach(idea => {
-            initialGeneratedImages[idea] = { status: 'pending' };
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            initialGeneratedImages[idea] = { status: 'pending' as const };
         });
         
         onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate });
@@ -254,7 +259,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'done', url: urlWithMetadata },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'done' as const, url: urlWithMetadata },
                     },
                     historicalImages: [...currentAppState.historicalImages, { idea, url: urlWithMetadata }],
                 };
@@ -267,7 +273,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'error', error: errorMessage },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'error' as const, error: errorMessage },
                     },
                 };
                 onStateChange(currentAppState);
@@ -306,10 +313,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        // FIX: Cast imageToEditState to 'any' to resolve 'unknown' type error on property access.
-        const imageToEditState: any = appState.generatedImages[idea];
-        // @-NOTE-TO-SYSTEM: Cố ý sử dụng 'any' để bỏ qua vấn đề suy luận kiểu TypeScript với đối tượng trạng thái hình ảnh.
-        // Đây là một vấn đề đã biết. Không "sửa" bằng cách thay đổi kiểu mà không tái cấu trúc rộng hơn logic quản lý trạng thái. Một type guard phù hợp là giải pháp lâu dài.
+        // FIX: Remove ': any' cast. Type safety is now handled by adding 'as const' during state updates.
+        const imageToEditState = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
@@ -319,7 +324,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
         
         onStateChange({
             ...appState,
-            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' } }
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' as const } }
         });
 
         try {
@@ -332,7 +338,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             logGeneration('baby-photo-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done' as const, url: urlWithMetadata } },
                 historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: urlWithMetadata }],
             });
             addImagesToGallery([urlWithMetadata]);
@@ -340,7 +347,8 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
              onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error', error: errorMessage } }
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error' as const, error: errorMessage } }
             });
             console.error(`Failed to regenerate image for ${idea}:`, err);
         }

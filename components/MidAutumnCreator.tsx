@@ -233,7 +233,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
         
         const initialGeneratedImages = { ...appState.generatedImages };
         ideasToGenerate.forEach(idea => {
-            initialGeneratedImages[idea] = { status: 'pending' };
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            initialGeneratedImages[idea] = { status: 'pending' as const };
         });
         
         onStateChange({ ...appState, stage: stage, generatedImages: initialGeneratedImages, selectedIdeas: ideasToGenerate });
@@ -261,7 +262,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'done', url: urlWithMetadata },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'done' as const, url: urlWithMetadata },
                     },
                     historicalImages: [...currentAppState.historicalImages, { idea, url: urlWithMetadata }],
                 };
@@ -274,7 +276,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                     ...currentAppState,
                     generatedImages: {
                         ...currentAppState.generatedImages,
-                        [idea]: { status: 'error', error: errorMessage },
+                        // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                        [idea]: { status: 'error' as const, error: errorMessage },
                     },
                 };
                 onStateChange(currentAppState);
@@ -313,7 +316,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        const imageToEditState = appState.generatedImages[idea] as any;
+        // FIX: Remove 'as any' cast. Type safety is now handled by adding 'as const' during state updates.
+        const imageToEditState = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
@@ -323,7 +327,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
         
         onStateChange({
             ...appState,
-            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' } }
+            // FIX: Add 'as const' to prevent type widening of 'status' to string.
+            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' as const } }
         });
 
         try {
@@ -336,7 +341,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
             logGeneration('mid-autumn-creator', preGenState, urlWithMetadata);
             onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done', url: urlWithMetadata } },
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done' as const, url: urlWithMetadata } },
                 historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: urlWithMetadata }],
             });
             addImagesToGallery([urlWithMetadata]);
@@ -344,7 +350,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
              onStateChange({
                 ...appState,
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error', error: errorMessage } }
+                // FIX: Add 'as const' to prevent type widening of 'status' to string.
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error' as const, error: errorMessage } }
             });
             console.error(`Failed to regenerate image for ${idea}:`, err);
         }

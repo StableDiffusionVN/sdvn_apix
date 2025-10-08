@@ -71,12 +71,14 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
     
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
 
@@ -148,9 +150,11 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
         }
     };
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ ...appState, uploadedImage: newUrl, stage: newUrl ? 'configuring' : 'idle' });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleGeneratedImageChange = (newUrl: string) => {
@@ -210,7 +214,7 @@ const ArchitectureIdeator: React.FC<ArchitectureIdeatorProps> = (props) => {
     return (
         <div className="flex flex-col items-center justify-center w-full h-full flex-1 min-h-0">
             <AnimatePresence>
-            {appState.stage === 'idle' || appState.stage === 'configuring' && (
+            {(appState.stage === 'idle' || appState.stage === 'configuring') && (
                 <AppScreenHeader {...headerProps} />
             )}
             </AnimatePresence>

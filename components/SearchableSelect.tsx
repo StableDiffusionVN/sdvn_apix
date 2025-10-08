@@ -157,7 +157,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({ id, label, o
                 }}
                 onFocus={() => setIsOpen(true)}
                 onKeyDown={handleKeyDown}
-                className="form-input"
+                className="form-input !text-xs"
                 placeholder={placeholder || "Để trống để chọn Tự động..."}
                 autoComplete="off"
             />

@@ -197,7 +197,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                                                 e.preventDefault();
-                                                if (!isGenerating && (aiPreset !== 'default' || aiPrompt.trim())) {
+                                                if (aiPreset !== 'default' || aiPrompt.trim()) {
                                                     onGenerateAILayer();
                                                 }
                                             }
@@ -264,7 +264,7 @@ export const LayerComposerSidebar: React.FC<LayerComposerSidebarProps> = (props)
                                         <button 
                                             onClick={onGenerateAILayer} 
                                             className="btn btn-primary btn-sm flex-grow" 
-                                            disabled={isGenerating || (aiPreset === 'default' && !aiPrompt.trim())}
+                                            disabled={aiPreset === 'default' && !aiPrompt.trim()}
                                             title={t('layerComposer_ai_generate_tooltip')}
                                         >
                                             {isGenerating ? t('layerComposer_ai_generating_count', runningJobCount) : t('layerComposer_ai_generate')}

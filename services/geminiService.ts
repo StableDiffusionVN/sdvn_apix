@@ -26,3 +26,4 @@ export * from './gemini/imageToRealService';
 export * from './gemini/videoGenerationService';
 export * from './gemini/presetService'; // NEW: Export the centralized preset service
 export * from './gemini/chatService'; // NEW: Export the new chat service
+export * from './gemini/storyboardingService'; // NEW: Export the new storyboarding service

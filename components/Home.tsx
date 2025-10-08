@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAppControls, useImageEditor, extractJsonFromPng, type AppConfig } from './uiUtils';
 import * as db from '../lib/db';
-import { CloudUploadIcon, LayerComposerIcon, EditorIcon } from './icons';
+import { CloudUploadIcon, LayerComposerIcon, EditorIcon, StoryboardIcon } from './icons';
 
 interface ProcessedAppConfig extends AppConfig {
   title: string;
@@ -22,7 +22,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
-  const { t, importSettingsAndNavigate, openLayerComposer, addImagesToGallery } = useAppControls();
+  const { t, importSettingsAndNavigate, openLayerComposer, addImagesToGallery, openStoryboardingModal } = useAppControls();
   const { openEmptyImageEditor } = useImageEditor();
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
@@ -160,6 +160,13 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
               >
                   <LayerComposerIcon className="h-4 w-4" strokeWidth="1.5" />
                   {t('home_openCanvas')}
+              </button>
+              <button
+                  onClick={openStoryboardingModal}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+              >
+                  <StoryboardIcon className="h-4 w-4" />
+                  {t('extraTools_storyboarding')}
               </button>
               <button
                   onClick={handleOpenEditor}

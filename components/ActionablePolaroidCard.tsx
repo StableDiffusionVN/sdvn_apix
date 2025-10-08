@@ -40,7 +40,7 @@ interface ActionablePolaroidCardProps {
     type: CardType;
 
     // Callbacks for actions
-    onImageChange?: (imageDataUrl: string) => void;
+    onImageChange?: (imageDataUrl: string | null) => void;
     onRegenerate?: (prompt: string) => void;
     onGenerateVideoFromPrompt?: (prompt: string) => void;
     
@@ -78,6 +78,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     // --- Determine button visibility based on the card's role (type) ---
     const isDownloadable = type === 'output';
     const isEditable = type !== 'uploader' && type !== 'display';
+    const isClearable = type !== 'output' && type !== 'display' && !!mediaUrl && onImageChange;
     const isSwappable = type !== 'output' && type !== 'display';
     const isRegeneratable = type === 'output';
     const isGallerySelectable = type !== 'output' && type !== 'display';
@@ -85,7 +86,10 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
     
     const handleFileSelected = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         if (onImageChange) {
-            handleFileUpload(e, onImageChange);
+            const onUploadWrapper = (newUrl: string) => {
+                onImageChange(newUrl);
+            };
+            handleFileUpload(e, onUploadWrapper);
         }
     }, [onImageChange]);
 
@@ -128,9 +132,18 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
 
     const handleEditClick = useCallback(() => {
         if (mediaUrl && onImageChange) {
-            openImageEditor(mediaUrl, onImageChange);
+            const onSaveWrapper = (newUrl: string) => {
+                onImageChange(newUrl);
+            };
+            openImageEditor(mediaUrl, onSaveWrapper);
         }
     }, [mediaUrl, onImageChange, openImageEditor]);
+    
+    const handleClearClick = useCallback(() => {
+        if (onImageChange) {
+            onImageChange(null);
+        }
+    }, [onImageChange]);
     
     const handleRegenerateClick = useCallback(() => {
         setIsRegenModalOpen(true);
@@ -210,6 +223,7 @@ const ActionablePolaroidCard: React.FC<ActionablePolaroidCardProps> = ({
                 onClick={effectiveOnClick}
                 onDownload={showButtons && isDownloadable ? handleDownloadClick : undefined}
                 onEdit={showButtons && isEditable ? handleEditClick : undefined}
+                onClear={isClearable ? handleClearClick : undefined}
                 onSwapImage={isSwappable ? handleSwapClick : undefined}
                 onSelectFromGallery={isGallerySelectable ? handleOpenGalleryPicker : undefined}
                 onCaptureFromWebcam={isWebcamSelectable ? handleOpenWebcam : undefined}

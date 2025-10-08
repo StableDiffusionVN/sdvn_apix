@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
+// This file contains shared type definitions for UI components and application state.
+
 // Base types
 export interface ImageForZip {
     url: string;
@@ -60,8 +62,8 @@ export interface Settings {
     imageInterpolation: AppSettings;
 }
 
-export type Theme = 'sdvn' | 'vietnam' | 'black-night' | 'clear-sky' | 'skyline' | 'emerald-water' | 'life' | 'violet' | 'hidden-jaguar' | 'wide-matrix';
-export const THEMES: Theme[] = ['sdvn', 'vietnam', 'black-night', 'clear-sky', 'skyline', 'emerald-water', 'life', 'violet', 'hidden-jaguar', 'wide-matrix'];
+export type Theme = 'sdvn' | 'vietnam' | 'skyline' | 'hidden-jaguar' | 'wide-matrix' | 'rainbow' | 'soundcloud' | 'amin';
+export const THEMES: Theme[] = ['sdvn', 'vietnam', 'skyline', 'hidden-jaguar', 'wide-matrix', 'rainbow', 'soundcloud', 'amin'];
 
 export interface ThemeInfo {
     id: Theme;
@@ -72,14 +74,12 @@ export interface ThemeInfo {
 export const THEME_DETAILS: ThemeInfo[] = [
     { id: 'sdvn', name: 'SDVN', colors: ['#5858e6', '#151523'] },
     { id: 'vietnam', name: 'Việt Nam', colors: ['#DA251D', '#a21a14'] },
-    { id: 'black-night', name: 'Black Night', colors: ['#3d3d3d', '#090a0f'] },
-    { id: 'clear-sky', name: 'Clear Sky', colors: ['#005C97', '#363795'] },
     { id: 'skyline', name: 'Skyline', colors: ['#0052D4', '#6FB1FC'] },
-    { id: 'emerald-water', name: 'Emerald Water', colors: ['#348F50', '#56B4D3'] },
-    { id: 'life', name: 'Life', colors: ['#ADD100', '#7B920A'] },
-    { id: 'violet', name: 'Violet', colors: ['#eaafc8', '#654ea3'] },
     { id: 'hidden-jaguar', name: 'Hidden Jaguar', colors: ['#f9f047', '#0fd850'] },
-    { id: 'wide-matrix', name: 'Wide Matrix', colors: ['#ff7882', '#0c1db8'] }
+    { id: 'wide-matrix', name: 'Wide Matrix', colors: ['#ff7882', '#0c1db8'] },
+    { id: 'rainbow', name: 'RainBow', colors: ['#0575E6', '#00F260'] },
+    { id: 'soundcloud', name: 'SoundCloud', colors: ['#f83600', '#fe8c00'] },
+    { id: 'amin', name: 'Amin', colors: ['#4A00E0', '#8E2DE2'] }
 ];
 
 
@@ -316,6 +316,19 @@ export interface ImageInterpolationState {
     error: string | null;
 }
 
+// FIX: Add missing SceneState type definition for the Storyboarding feature.
+// --- Storyboarding Types ---
+export interface SceneState {
+    scene: number;
+    description: string;
+    transition?: string;
+    videoPrompt?: string;
+    status: 'idle' | 'pending' | 'done' | 'error';
+    imageSource: 'reference' | string; // 'reference', scene index as string, or custom image data URL
+    imageUrl?: string;
+    error?: string;
+}
+
 
 // Union type for all possible app states
 // FIX: Add MixStyleState and ImageToRealState to the AnyAppState union type.
@@ -471,6 +484,9 @@ export interface AppControlContextType {
     isExtraToolsOpen: boolean;
     isImageLayoutModalOpen: boolean;
     isBeforeAfterModalOpen: boolean;
+    isAppCoverCreatorModalOpen: boolean;
+    isStoryboardingModalMounted: boolean;
+    isStoryboardingModalVisible: boolean;
     isLayerComposerMounted: boolean;
     isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
@@ -501,6 +517,12 @@ export interface AppControlContextType {
     closeImageLayoutModal: () => void;
     openBeforeAfterModal: () => void;
     closeBeforeAfterModal: () => void;
+    openAppCoverCreatorModal: () => void;
+    closeAppCoverCreatorModal: () => void;
+    openStoryboardingModal: () => void;
+    closeStoryboardingModal: () => void;
+    hideStoryboardingModal: () => void;
+    toggleStoryboardingModal: () => void;
     openLayerComposer: () => void;
     closeLayerComposer: () => void;
     hideLayerComposer: () => void;

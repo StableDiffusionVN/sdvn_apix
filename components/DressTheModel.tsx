@@ -97,21 +97,25 @@ const DressTheModel: React.FC<DressTheModelProps> = (props) => {
         });
     };
     
-    const handleModelImageChange = (newUrl: string) => {
+    const handleModelImageChange = (newUrl: string | null) => {
         onStateChange({
             ...appState,
-            stage: appState.clothingImage ? 'configuring' : 'idle',
+            stage: newUrl && appState.clothingImage ? 'configuring' : 'idle',
             modelImage: newUrl,
         });
-        addImagesToGallery([newUrl]);
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
-    const handleClothingImageChange = (newUrl: string) => {
+    const handleClothingImageChange = (newUrl: string | null) => {
         onStateChange({
             ...appState,
-            stage: appState.modelImage ? 'configuring' : 'idle',
+            stage: newUrl && appState.modelImage ? 'configuring' : 'idle',
             clothingImage: newUrl,
         });
-        addImagesToGallery([newUrl]);
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
     const handleGeneratedImageChange = (newUrl: string) => {
         const newHistorical = [...appState.historicalImages, newUrl];

@@ -5,10 +5,11 @@
 import { type GenerationHistoryEntry } from '../components/uiTypes';
 
 const DB_NAME = 'aPixDatabase';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const GALLERY_STORE = 'imageGallery';
 const HISTORY_STORE = 'generationHistory';
 const CANVAS_STORE = 'canvasState';
+const STORYBOARD_STORE = 'storyboardState';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -39,6 +40,9 @@ const initDB = (): Promise<IDBDatabase> => {
             }
             if (!db.objectStoreNames.contains(CANVAS_STORE)) {
                 db.createObjectStore(CANVAS_STORE);
+            }
+            if (!db.objectStoreNames.contains(STORYBOARD_STORE)) {
+                db.createObjectStore(STORYBOARD_STORE);
             }
         };
     });
@@ -227,6 +231,36 @@ export const clearCanvasState = async (): Promise<void> => {
     const db = await initDB();
     const tx = db.transaction(CANVAS_STORE, 'readwrite');
     const store = tx.objectStore(CANVAS_STORE);
+    store.clear();
+    return new Promise(resolve => tx.oncomplete = () => resolve());
+};
+
+// --- STORYBOARD OPERATIONS ---
+export const saveStoryboardState = async (state: any): Promise<void> => {
+    const db = await initDB();
+    const tx = db.transaction(STORYBOARD_STORE, 'readwrite');
+    const store = tx.objectStore(STORYBOARD_STORE);
+    store.put(state, 'currentStoryboard'); // Use a fixed key
+    return new Promise(resolve => tx.oncomplete = () => resolve());
+};
+
+export const loadStoryboardState = async (): Promise<any | null> => {
+    const db = await initDB();
+    const tx = db.transaction(STORYBOARD_STORE, 'readonly');
+    const store = tx.objectStore(STORYBOARD_STORE);
+    const request = store.get('currentStoryboard');
+    return new Promise((resolve, reject) => {
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => {
+            resolve(request.result || null);
+        };
+    });
+};
+
+export const clearStoryboardState = async (): Promise<void> => {
+    const db = await initDB();
+    const tx = db.transaction(STORYBOARD_STORE, 'readwrite');
+    const store = tx.objectStore(STORYBOARD_STORE);
     store.clear();
     return new Promise(resolve => tx.oncomplete = () => resolve());
 };
