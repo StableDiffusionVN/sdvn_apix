@@ -1271,8 +1271,10 @@ input:checked + .switch-slider:before {
 .storyboard-panel-image-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
   background-color: #171717; /* neutral-900 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .storyboard-panel-content {
   padding: 0.75rem; /* p-3 */
@@ -1285,10 +1287,9 @@ input:checked + .switch-slider:before {
   font-size: 0.75rem; /* text-xs */
   color: #d4d4d4; /* neutral-300 */
   overflow-y: auto;
-  min-height: 40px; /* Give it a minimum height to not collapse */
   padding-right: 0.25rem;
   white-space: pre-wrap;
-  flex-grow: 1; 
+  height: 120px; /* Fixed height */
 }
 /* Custom scrollbar for description */
 .storyboard-panel-description::-webkit-scrollbar { width: 4px; }
@@ -1297,8 +1298,7 @@ input:checked + .switch-slider:before {
 
 .storyboard-panel-textarea {
   width: 100%;
-  flex-grow: 1; /* Allow it to grow */
-  min-height: 80px;
+  height: 90px; /* Fixed height */
   background-color: #171717;
   border: 1px solid #404040;
   border-radius: 0.375rem;
@@ -1315,4 +1315,25 @@ input:checked + .switch-slider:before {
 
 .storyboard-panel-actions {
   padding: 0 0.75rem 0.75rem; /* px-3 pb-3 */
+}
+
+/* --- NEW: Storyboard Scene Group --- */
+.storyboard-scene-group {
+  background-color: rgba(10, 10, 10, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem; /* rounded-2xl */
+  padding: 0.5rem; /* p-2 */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* gap-4 */
+}
+
+.storyboard-scene-group-title {
+  font-family: "Be Vietnam Pro", sans-serif;
+  font-weight: 700; /* bold */
+  font-size: 1rem; /* text-lg */
+  color: #FBBF24; /* text-yellow-400 */
+  padding-bottom: 0.75rem; /* pb-3 */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.5rem; /* mb-2 */
 }

@@ -8,22 +8,17 @@ import {
     parseDataUrl, 
 } from './baseService';
 
-export async function startVideoGenerationFromImage(
-    imageDataUrl: string,
-    prompt: string
+export async function startVideoGeneration(
+    prompt: string,
+    image?: { mimeType: string; data: string }
 ): Promise<any> {
     try {
-        const { mimeType, data: base64Data } = parseDataUrl(imageDataUrl);
-
-        console.log("Starting video generation...");
+        console.log(`Starting video generation. Image provided: ${!!image}`);
         
         const operation = await ai.models.generateVideos({
             model: 'veo-2.0-generate-001',
             prompt,
-            image: {
-                imageBytes: base64Data,
-                mimeType,
-            },
+            ...(image && { image: { imageBytes: image.data, mimeType: image.mimeType } }),
             config: {
                 numberOfVideos: 1
             }

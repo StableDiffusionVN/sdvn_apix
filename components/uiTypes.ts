@@ -316,17 +316,25 @@ export interface ImageInterpolationState {
     error: string | null;
 }
 
-// FIX: Add missing SceneState type definition for the Storyboarding feature.
 // --- Storyboarding Types ---
-export interface SceneState {
-    scene: number;
+export interface FrameState {
     description: string;
-    transition?: string;
-    videoPrompt?: string;
     status: 'idle' | 'pending' | 'done' | 'error';
-    imageSource: 'reference' | string; // 'reference', scene index as string, or custom image data URL
+    imageSource: 'reference' | string; // 'reference', 'scene.frame-x.y', or custom image data URL
     imageUrl?: string;
     error?: string;
+}
+
+export interface SceneState {
+    scene: number;
+    startFrame: FrameState;
+    animationDescription: string;
+    videoPrompt?: string;
+    endFrame: FrameState;
+    videoStatus?: 'idle' | 'pending' | 'done' | 'error';
+    videoUrl?: string;
+    videoError?: string;
+    videoOperation?: any;
 }
 
 

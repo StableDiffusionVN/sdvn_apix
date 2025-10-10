@@ -149,28 +149,28 @@ const Home: React.FC<HomeProps> = ({ onSelectApp, title, subtitle, apps }) => {
               />
               <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
               >
                   <CloudUploadIcon className="h-4 w-4" />
                   {t('home_uploadJson')}
               </button>
               <button
                   onClick={openLayerComposer}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
               >
                   <LayerComposerIcon className="h-4 w-4" strokeWidth="1.5" />
                   {t('home_openCanvas')}
               </button>
               <button
                   onClick={openStoryboardingModal}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
               >
                   <StoryboardIcon className="h-4 w-4" />
                   {t('extraTools_storyboarding')}
               </button>
               <button
                   onClick={handleOpenEditor}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/20 rounded-md text-sm text-neutral-200 hover:bg-black/40 transition-colors focus:ring-2 focus:ring-yellow-400 focus:outline-none"
               >
                   <EditorIcon className="h-4 w-4" />
                   {t('home_openEditor')}

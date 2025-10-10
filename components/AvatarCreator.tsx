@@ -322,7 +322,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        // FIX: Remove 'as any' cast. Type safety is now handled by adding 'as const' during state updates.
+        // FIX: Remove 'as any' cast to fix type error on 'status' property.
         const imageToEditState = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;

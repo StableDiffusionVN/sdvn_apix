@@ -4,7 +4,8 @@
 */
 import { useState, useEffect, useCallback } from 'react';
 import { useAppControls } from './uiContexts';
-import { startVideoGenerationFromImage, pollVideoOperation } from '../services/geminiService';
+// FIX: Changed startVideoGenerationFromImage to startVideoGeneration and imported parseDataUrl.
+import { startVideoGeneration, pollVideoOperation, parseDataUrl } from '../services/geminiService';
 import { type VideoTask } from './uiTypes';
 
 /**
@@ -84,7 +85,9 @@ export const useVideoGeneration = () => {
         const finalPrompt = prompt.trim() || "Animate this image, bringing it to life with subtle, cinematic motion.";
         setVideoTasks(prev => ({ ...prev, [sourceUrl]: { status: 'pending' } }));
         try {
-            const op = await startVideoGenerationFromImage(sourceUrl, finalPrompt);
+            // FIX: Parse the sourceUrl and call startVideoGeneration with the correct arguments.
+            const image = parseDataUrl(sourceUrl);
+            const op = await startVideoGeneration(finalPrompt, image);
             setVideoTasks(prev => ({ ...prev, [sourceUrl]: { status: 'pending', operation: op } }));
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";

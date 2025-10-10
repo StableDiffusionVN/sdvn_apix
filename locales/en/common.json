@@ -1,5 +1,4 @@
 
-
 {
   "footer_theme": "Theme",
   "footer_feedback": "Feedback",
@@ -63,7 +62,7 @@
   "galleryToolbar_uploadTooltip": "Upload one or more images from your computer",
   "lightbox_download": "Download this image",
   "imageEditor_mobileWarning": "The image editor is not available on mobile devices.",
-  "imageEditor_startTitle": "Open or Create Image",
+  "imageEditor_startTitle": "Image Editor",
   "imageEditor_startSubtitle": "Start by uploading, selecting from the gallery, or creating a new image.",
   "imageEditor_uploadButton": "Upload",
   "imageEditor_galleryButton": "Gallery",
@@ -322,6 +321,8 @@
   "storyboarding_error_scenario": "Could not create script. Please try again.",
   "storyboarding_error_noImage": "The AI did not return an image.",
   "storyboarding_error_imageGen": "Error generating image for scene.",
+  "storyboarding_error_videoInputs": "To generate a video, you need at least a start image and a video prompt.",
+  "storyboarding_error_videoPromptMissing": "Please generate a video prompt before creating a video.",
   "storyboarding_prompt": "Prompt",
   "storyboarding_text": "Text",
   "storyboarding_audio": "Audio",
@@ -339,8 +340,11 @@
   "storyboarding_error_develop": "Could not develop detailed scenes.",
   "storyboarding_editInput": "Edit Input Again",
   "storyboarding_style": "Style",
-  "storyboarding_duration": "Duration",
+  "storyboarding_numberOfScenes": "Number of Scenes",
   "storyboarding_aspectRatio": "Aspect Ratio",
+  "storyboarding_keepOptions": "Preservation Options",
+  "storyboarding_keepClothing": "Keep Clothing",
+  "storyboarding_keepBackground": "Keep Background",
   "storyboarding_styleOptions": [
     {
       "group": "Cinematic Styles",
@@ -400,7 +404,6 @@
       ]
     }
   ],
-  "storyboarding_durationOptions": ["15 seconds", "30 seconds", "1 minute", "Short", "Medium", "Long", "Auto"],
   "storyboarding_aspectRatioOptions": ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "2:3", "3:2", "4:5", "5:4"],
   "storyboarding_syncImage": "Image Sync",
   "storyboarding_sync_reference": "Reference Images",
@@ -409,6 +412,7 @@
   "storyboarding_editImage": "Edit Image",
   "storyboarding_previewImage": "Preview Image",
   "storyboarding_downloadImage": "Download Image",
+  "storyboarding_uploadImage": "Upload Image",
   "storyboarding_regenerateScript": "Regenerate Script",
   "storyboarding_redevelopScenes": "Redevelop Scenes",
   "storyboarding_error_noImagesToDownload": "There are no images to download.",
@@ -418,7 +422,6 @@
   "storyboarding_import_error": "Invalid or corrupt file.",
   "storyboarding_export_disabled": "Generate a script before exporting.",
   "storyboarding_addScene": "Add New Scene",
-  "storyboarding_newScene_placeholder": "Description for Scene {0}",
   "storyboarding_dropPrompt": "Drop .json file to import",
   "storyboarding_notes_label": "Additional Notes",
   "storyboarding_notes_placeholder": "e.g., the main character always wears a black jacket, gloomy setting...",
@@ -429,5 +432,15 @@
   "storyboarding_promptMode": "Prompt Mode",
   "storyboarding_promptMode_auto": "Automatic",
   "storyboarding_promptMode_startEnd": "Start-End Frame",
-  "storyboarding_promptMode_json": "Detailed JSON"
+  "storyboarding_promptMode_json": "Detailed JSON",
+  "storyboarding_scriptType": "Script Type",
+  "storyboarding_scriptType_auto": "Automatic",
+  "storyboarding_scriptType_dialogue": "Dialogue",
+  "storyboarding_scriptType_action": "Action",
+  "storyboarding_videoPlatforms_note": "Direct video generation is not optimal, consider using these alternative platforms...",
+  "storyboarding_startFrame": "Start Frame",
+  "storyboarding_endFrame": "End Frame",
+  "storyboarding_animation_title": "Animation",
+  "storyboarding_startFrame_placeholder": "Description for Start Frame of Scene {0}",
+  "storyboarding_endFrame_placeholder": "Description for End Frame of Scene {0}"
 }

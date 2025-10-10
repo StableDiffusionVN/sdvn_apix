@@ -30,17 +30,22 @@ interface StoryboardingInputProps {
     setIsGalleryPickerOpen: (isOpen: boolean) => void;
     style: string;
     setStyle: (style: string) => void;
-    styleOptions: string[];
-    duration: string;
-    setDuration: (duration: string) => void;
-    durationOptions: string[];
+    styleOptions: any[];
     aspectRatio: string;
     setAspectRatio: (ratio: string) => void;
     aspectRatioOptions: string[];
     notes: string;
     setNotes: (notes: string) => void;
+    numberOfScenes: number;
+    setNumberOfScenes: (num: number) => void;
     storyboardLanguage: 'vi' | 'en' | 'zh';
     setStoryboardLanguage: (lang: 'vi' | 'en' | 'zh') => void;
+    scriptType: 'auto' | 'dialogue' | 'action';
+    setScriptType: (type: 'auto' | 'dialogue' | 'action') => void;
+    keepClothing: boolean;
+    setKeepClothing: (keep: boolean) => void;
+    keepBackground: boolean;
+    setKeepBackground: (keep: boolean) => void;
 }
 
 const InputMethodTab: React.FC<{ method: InputMethod, label: string, icon: React.ReactNode, activeInput: InputMethod, setActiveInput: (method: InputMethod) => void }> = ({ method, label, icon, activeInput, setActiveInput }) => (
@@ -65,8 +70,12 @@ const StoryboardingInput: React.FC<StoryboardingInputProps> = (props) => {
         activeInput, setActiveInput, idea, setIdea, scriptText, setScriptText, audioFile,
         audioInputRef, textInputRef, handleFileSelect, referenceImages, isDraggingRef,
         handleRefDragOver, handleRefDragLeave, handleRefDrop, setReferenceImages,
-        setIsGalleryPickerOpen, storyboardLanguage, setStoryboardLanguage, ...optionsProps
+        setIsGalleryPickerOpen, storyboardLanguage, setStoryboardLanguage, scriptType, setScriptType,
+        style, setStyle, styleOptions, numberOfScenes, setNumberOfScenes, aspectRatio, setAspectRatio, aspectRatioOptions,
+        notes, setNotes, keepClothing, setKeepClothing, keepBackground, setKeepBackground
     } = props;
+
+    const scriptTypeButtonClasses = "btn btn-secondary !text-xs !py-1 !px-3 flex-1 rounded-md";
 
     return (
         <div className="space-y-3">
@@ -158,7 +167,60 @@ const StoryboardingInput: React.FC<StoryboardingInputProps> = (props) => {
                     )}
                 </div>
             </div>
-            <StoryboardingOptions {...optionsProps} />
+            <div className="pt-2">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="keep-clothing-toggle"
+                            checked={keepClothing}
+                            onChange={(e) => setKeepClothing(e.target.checked)}
+                            className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800 cursor-pointer"
+                        />
+                        <label htmlFor="keep-clothing-toggle" className="ml-2 text-sm font-medium text-neutral-300 cursor-pointer">
+                            {t('storyboarding_keepClothing')}
+                        </label>
+                    </div>
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="keep-background-toggle"
+                            checked={keepBackground}
+                            onChange={(e) => setKeepBackground(e.target.checked)}
+                            className="h-4 w-4 rounded border-neutral-500 bg-neutral-700 text-yellow-400 focus:ring-yellow-400 focus:ring-offset-neutral-800 cursor-pointer"
+                        />
+                        <label htmlFor="keep-background-toggle" className="ml-2 text-sm font-medium text-neutral-300 cursor-pointer">
+                            {t('storyboarding_keepBackground')}
+                        </label>
+                    </div>
+                </div>
+            </div>
+             <div>
+                <label className="text-sm font-medium text-neutral-300">{t('storyboarding_scriptType')}</label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                    <button onClick={() => setScriptType('auto')} className={cn(scriptTypeButtonClasses, scriptType === 'auto' && '!bg-yellow-400 !text-black')}>
+                        {t('storyboarding_scriptType_auto')}
+                    </button>
+                    <button onClick={() => setScriptType('dialogue')} className={cn(scriptTypeButtonClasses, scriptType === 'dialogue' && '!bg-yellow-400 !text-black')}>
+                        {t('storyboarding_scriptType_dialogue')}
+                    </button>
+                    <button onClick={() => setScriptType('action')} className={cn(scriptTypeButtonClasses, scriptType === 'action' && '!bg-yellow-400 !text-black')}>
+                        {t('storyboarding_scriptType_action')}
+                    </button>
+                </div>
+            </div>
+            <StoryboardingOptions
+                style={style}
+                setStyle={setStyle}
+                styleOptions={styleOptions}
+                numberOfScenes={numberOfScenes}
+                setNumberOfScenes={setNumberOfScenes}
+                aspectRatio={aspectRatio}
+                setAspectRatio={setAspectRatio}
+                aspectRatioOptions={aspectRatioOptions}
+                notes={notes}
+                setNotes={setNotes}
+            />
         </div>
     );
 };

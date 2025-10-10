@@ -10,9 +10,8 @@ interface StoryboardingOptionsProps {
     style: string;
     setStyle: (style: string) => void;
     styleOptions: any[]; // Can now be strings or groups
-    duration: string;
-    setDuration: (duration: string) => void;
-    durationOptions: string[];
+    numberOfScenes: number;
+    setNumberOfScenes: (num: number) => void;
     aspectRatio: string;
     setAspectRatio: (ratio: string) => void;
     aspectRatioOptions: string[];
@@ -24,7 +23,7 @@ const StoryboardingOptions: React.FC<StoryboardingOptionsProps> = (props) => {
     const { t } = useAppControls();
     const {
         style, setStyle, styleOptions,
-        duration, setDuration, durationOptions,
+        numberOfScenes, setNumberOfScenes,
         aspectRatio, setAspectRatio, aspectRatioOptions,
         notes, setNotes
     } = props;
@@ -33,10 +32,16 @@ const StoryboardingOptions: React.FC<StoryboardingOptionsProps> = (props) => {
         <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                    <label className="text-sm font-medium text-neutral-300">{t('storyboarding_duration')}</label>
-                    <select value={duration} onChange={e => setDuration(e.target.value)} className="form-input !text-xs w-full mt-1">
-                        {durationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
+                    <label htmlFor="storyboard-num-scenes" className="text-sm font-medium text-neutral-300">{t('storyboarding_numberOfScenes')}</label>
+                    <input
+                        id="storyboard-num-scenes"
+                        type="number"
+                        min="0"
+                        value={numberOfScenes}
+                        onChange={e => setNumberOfScenes(Number(e.target.value))}
+                        className="form-input !text-xs w-full mt-1"
+                        title="0 = Tự động"
+                    />
                 </div>
                  <div>
                     <label className="text-sm font-medium text-neutral-300">{t('storyboarding_aspectRatio')}</label>

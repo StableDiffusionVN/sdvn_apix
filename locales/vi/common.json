@@ -1,5 +1,4 @@
 
-
 {
   "footer_theme": "Giao diện",
   "footer_feedback": "Góp ý",
@@ -63,7 +62,7 @@
   "galleryToolbar_uploadTooltip": "Tải lên một hoặc nhiều ảnh từ máy tính của bạn",
   "lightbox_download": "Tải ảnh này",
   "imageEditor_mobileWarning": "Chức năng chỉnh sửa ảnh không khả dụng trên thiết bị di động.",
-  "imageEditor_startTitle": "Mở hoặc tạo ảnh",
+  "imageEditor_startTitle": "Image Editor",
   "imageEditor_startSubtitle": "Bắt đầu bằng cách tải lên, chọn từ thư viện hoặc tạo một ảnh mới.",
   "imageEditor_uploadButton": "Tải lên",
   "imageEditor_galleryButton": "Thư viện",
@@ -322,6 +321,8 @@
   "storyboarding_error_scenario": "Không thể tạo kịch bản. Vui lòng thử lại.",
   "storyboarding_error_noImage": "AI không trả về hình ảnh.",
   "storyboarding_error_imageGen": "Lỗi khi tạo ảnh cho cảnh.",
+  "storyboarding_error_videoInputs": "Để tạo video, bạn cần có ít nhất ảnh bắt đầu và prompt video.",
+  "storyboarding_error_videoPromptMissing": "Vui lòng tạo prompt video trước khi tạo video.",
   "storyboarding_prompt": "Prompt",
   "storyboarding_text": "Văn bản",
   "storyboarding_audio": "Âm thanh",
@@ -339,8 +340,11 @@
   "storyboarding_error_develop": "Không thể triển khai cảnh chi tiết.",
   "storyboarding_editInput": "Chỉnh sửa lại Input",
   "storyboarding_style": "Phong cách",
-  "storyboarding_duration": "Thời lượng",
+  "storyboarding_numberOfScenes": "Số cảnh",
   "storyboarding_aspectRatio": "Tỷ lệ khung hình",
+  "storyboarding_keepOptions": "Tùy chọn giữ lại",
+  "storyboarding_keepClothing": "Giữ trang phục",
+  "storyboarding_keepBackground": "Giữ bối cảnh",
   "storyboarding_styleOptions": [
     {
       "group": "Phong cách Điện ảnh",
@@ -400,7 +404,6 @@
       ]
     }
   ],
-  "storyboarding_durationOptions": ["15 giây", "30 giây", "1 phút", "Ngắn", "Trung bình", "Dài", "Tự động"],
   "storyboarding_aspectRatioOptions": ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "2:3", "3:2", "4:5", "5:4"],
   "storyboarding_syncImage": "Ảnh đồng bộ",
   "storyboarding_sync_reference": "Ảnh tham chiếu",
@@ -409,6 +412,7 @@
   "storyboarding_editImage": "Chỉnh sửa ảnh",
   "storyboarding_previewImage": "Xem trước ảnh",
   "storyboarding_downloadImage": "Tải ảnh về",
+  "storyboarding_uploadImage": "Tải ảnh lên",
   "storyboarding_regenerateScript": "Tạo lại kịch bản",
   "storyboarding_redevelopScenes": "Triển khai lại cảnh",
   "storyboarding_error_noImagesToDownload": "Không có ảnh nào để tải về.",
@@ -418,7 +422,6 @@
   "storyboarding_import_error": "File không hợp lệ hoặc bị hỏng.",
   "storyboarding_export_disabled": "Tạo kịch bản trước khi xuất.",
   "storyboarding_addScene": "Thêm cảnh mới",
-  "storyboarding_newScene_placeholder": "Mô tả cho Cảnh {0}",
   "storyboarding_dropPrompt": "Thả tệp .json để nhập",
   "storyboarding_notes_label": "Ghi chú bổ sung",
   "storyboarding_notes_placeholder": "Ví dụ: nhân vật chính luôn mặc áo khoác đen, bối cảnh u ám...",
@@ -429,5 +432,15 @@
   "storyboarding_promptMode": "Chế độ Prompt",
   "storyboarding_promptMode_auto": "Tự động",
   "storyboarding_promptMode_startEnd": "Start-End Frame",
-  "storyboarding_promptMode_json": "JSON chi tiết"
+  "storyboarding_promptMode_json": "JSON chi tiết",
+  "storyboarding_scriptType": "Loại kịch bản",
+  "storyboarding_scriptType_auto": "Tự động",
+  "storyboarding_scriptType_dialogue": "Hội thoại",
+  "storyboarding_scriptType_action": "Hành động",
+  "storyboarding_videoPlatforms_note": "Chức năng tạo video trực tiếp không quá tốt, sử dụng các nền tảng video thay thế ...",
+  "storyboarding_startFrame": "Bắt đầu",
+  "storyboarding_endFrame": "Kết thúc",
+  "storyboarding_animation_title": "Chuyển động",
+  "storyboarding_startFrame_placeholder": "Mô tả cho Khung hình Bắt đầu của Cảnh {0}",
+  "storyboarding_endFrame_placeholder": "Mô tả cho Khung hình Kết thúc của Cảnh {0}"
 }
