@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -15,6 +16,7 @@ import {
     ResultsView,
     ImageForZip,
     type EntrepreneurCreatorState,
+    type GeneratedAvatarImage,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
@@ -316,7 +318,7 @@ const EntrepreneurCreator: React.FC<EntrepreneurCreatorProps> = (props) => {
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         // FIX: Remove 'as any' type cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea];
+        const imageToEditState = appState.generatedImages[idea] as GeneratedAvatarImage | undefined;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }

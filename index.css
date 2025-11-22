@@ -129,8 +129,8 @@ body {
   gap: 0.5rem; /* gap-2 */
   background-color: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.375rem; /* rounded-md */
-  padding: 0.25rem 0.5rem; /* py-1 px-2 */
+  border-radius: 0.5rem; /* rounded-lg - Increased radius */
+  padding: 0.375rem 0.75rem; /* py-1.5 px-3 - Increased padding */
   color: #E5E5E5; /* text-neutral-200 */
   transition: background-color 150ms;
   min-width: 150px;
@@ -153,30 +153,45 @@ body {
   margin-bottom: 0.5rem; /* mb-2, space between button and panel */
   left: 0;
   right: 0;
-  background-color: rgba(38, 38, 38, 0.8); /* bg-neutral-800 @ 80% */
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.375rem; /* rounded-md */
-  z-index: 10;
+  background-color: rgba(23, 23, 23, 0.95); /* bg-neutral-900 @ 95% */
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem; /* rounded-xl - More rounded */
+  z-index: 50;
   list-style: none;
-  padding: 0.25rem; /* p-1 */
+  padding: 0.5rem; /* p-2 */
   max-height: 20rem; /* max-h-80 */
   overflow-y: auto;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); /* Enhanced shadow */
+}
+
+/* Custom Scrollbar for Dropdown */
+.theme-dropdown-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.theme-dropdown-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.theme-dropdown-panel::-webkit-scrollbar-thumb {
+  background-color: #404040; /* neutral-700 */
+  border-radius: 10px;
 }
 
 .theme-dropdown-item {
   display: flex;
   align-items: center;
   gap: 0.75rem; /* gap-3 */
-  padding: 0.5rem; /* p-2 */
+  padding: 0.5rem 0.75rem; /* p-2 px-3 */
   cursor: pointer;
-  border-radius: 0.25rem; /* rounded-sm */
+  border-radius: 0.5rem; /* rounded-lg */
   color: #E5E5E5; /* text-neutral-200 */
   transition: background-color 150ms;
+  font-size: 0.875rem;
 }
 
 .theme-dropdown-item:hover, .theme-dropdown-item[data-headlessui-state="active"] {
   background-color: rgba(251, 191, 36, 0.2); /* bg-yellow-400/20 */
+  color: #FBBF24; /* text-yellow-400 */
 }
 
 
@@ -350,7 +365,7 @@ body {
   width: 100%;
   padding: 0.75rem; /* p-3 */
   background-color: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15); /* Increased border visibility */
   border-radius: 0.5rem; /* rounded-lg */
   color: #E5E5E5; /* text-neutral-200 */
   transition: all 150ms;
@@ -360,10 +375,29 @@ body {
   outline: 2px solid transparent;
   outline-offset: 2px;
   box-shadow: 0 0 0 2px #FBBF24; /* focus:ring-2 focus:ring-yellow-400 */
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .form-input::placeholder {
   color: #A3A3A3; /* placeholder-neutral-400 */
+}
+
+/* --- UPDATED: Custom Select Styling to fix white/white issue and visuals --- */
+select.form-input {
+  appearance: none; /* Remove default arrow */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem; /* Space for arrow */
+  cursor: pointer;
+}
+
+select.form-input option {
+  background-color: #171717; /* Dark background for options */
+  color: #E5E5E5; /* Light text */
 }
 
 /* --- Polaroid Card --- */
@@ -582,7 +616,7 @@ body {
   cursor: not-allowed;
 }
 
-/* --- NEW: Searchable Dropdown --- */
+/* --- UPDATED: Searchable Dropdown --- */
 .searchable-dropdown-container {
   position: relative;
   width: 100%;
@@ -590,32 +624,51 @@ body {
 
 .searchable-dropdown-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 0.5rem); /* Push down slightly */
   left: 0;
   right: 0;
-  z-index: 40;
-  background-color: #1f1f1f; /* Slightly lighter than pure black */
+  z-index: 60; /* Higher than standard input */
+  background-color: rgba(23, 23, 23, 0.95); /* bg-neutral-900 @ 95% */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-top: none;
-  border-radius: 0 0 0.5rem 0.5rem; /* rounded-b-lg */
-  max-height: 15rem; /* max-h-60 */
+  border-radius: 0.75rem; /* rounded-xl */
+  max-height: 18rem; /* max-h-72 */
   overflow-y: auto;
   list-style: none;
-  padding: 0;
-  margin-top: -0.5rem; /* Pull up to connect with input */
-  padding-top: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6); /* Stronger shadow */
 }
+
+/* Custom scrollbar for dropdown list */
+.searchable-dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+.searchable-dropdown-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.searchable-dropdown-list::-webkit-scrollbar-thumb {
+  background-color: #404040; /* neutral-700 */
+  border-radius: 10px;
+}
+.searchable-dropdown-list::-webkit-scrollbar-thumb:hover {
+  background-color: #525252; /* neutral-600 */
+}
+
 
 .searchable-dropdown-item {
   padding: 0.5rem 0.75rem; /* py-2 px-3 */
   cursor: pointer;
   color: #E5E5E5; /* text-neutral-200 */
-  transition: background-color 150ms;
+  transition: background-color 150ms, color 150ms;
+  border-radius: 0.5rem; /* rounded-lg */
+  font-size: 0.875rem;
+  margin-bottom: 0.125rem;
 }
 
 .searchable-dropdown-item:hover, .searchable-dropdown-item.is-highlighted {
   background-color: rgba(251, 191, 36, 0.2); /* bg-yellow-400/20 */
+  color: #FBBF24; /* text-yellow-400 */
 }
 
 /* --- NEW: Searchable Dropdown Group Header --- */
@@ -625,10 +678,11 @@ body {
   font-weight: 700;
   color: #a3a3a3; /* neutral-400 */
   text-transform: uppercase;
-  background-color: #1f1f1f; /* Same as list background to blend in */
+  /* background-color: #1f1f1f; REMOVED: Let transparency work */
   position: sticky;
   top: 0;
   z-index: 1; /* Keep it above items when scrolling */
+  pointer-events: none;
 }
 
 /* --- NEW: Slider --- */

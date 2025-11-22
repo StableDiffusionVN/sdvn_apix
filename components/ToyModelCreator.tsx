@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -252,7 +253,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     
     const isLoading = appState.stage === 'generating';
 
-    const currentConceptData = CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA] || CONCEPTS_DATA.desktop_model;
+    const currentConceptData = (CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA] || CONCEPTS_DATA.desktop_model) as any;
 
     // FIX: Add return statement to render JSX.
     return (

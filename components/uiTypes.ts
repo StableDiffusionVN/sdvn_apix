@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -110,13 +111,13 @@ export interface ArchitectureIdeatorState {
     error: string | null;
 }
 
-type ImageStatus = 'pending' | 'done' | 'error';
-interface GeneratedAvatarImage {
+export type ImageStatus = 'pending' | 'done' | 'error';
+export interface GeneratedAvatarImage {
     status: ImageStatus;
     url?: string;
     error?: string;
 }
-interface HistoricalAvatarImage {
+export interface HistoricalAvatarImage {
     idea: string;
     url: string;
 }

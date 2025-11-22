@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -560,9 +561,14 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
         if (selectedLayers.length === 0) return []; beginInteraction();
         let newLayersState = [...layers]; const newDuplicatedLayers: Layer[] = []; const newSelectedIds: string[] = [];
         const topMostLayerInSelection = selectedLayers[0]; const topMostSelectedIndex = layers.findIndex(l => l.id === topMostLayerInSelection.id);
-        // FIX: Replaced spread operator with Object.assign to resolve a "Spread types may only be created from object types" error that occurred due to a subtle type inference issue.
+        
         [...selectedLayers].reverse().forEach(layerToDup => {
-            const newLayer: Layer = Object.assign({}, layerToDup, { id: Math.random().toString(36).substring(2, 9), x: layerToDup.x, y: layerToDup.y });
+            const newLayer: Layer = {
+                ...layerToDup,
+                id: Math.random().toString(36).substring(2, 9),
+                x: layerToDup.x,
+                y: layerToDup.y
+            };
             newLayersState.splice(topMostSelectedIndex, 0, newLayer); newDuplicatedLayers.unshift(newLayer); newSelectedIds.push(newLayer.id);
         });
         setLayers(newLayersState); setSelectedLayerIds(newSelectedIds);
