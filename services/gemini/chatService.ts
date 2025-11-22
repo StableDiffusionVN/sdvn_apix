@@ -4,7 +4,7 @@
 */
 import type { Chat, GenerateContentResponse, Part } from "@google/genai";
 import ai from './client';
-import { processApiError, parseDataUrl } from './baseService';
+import { processApiError, parseDataUrl, getTextModel } from './baseService';
 
 /**
  * Sends a message to a chat session, creating one if it doesn't exist.
@@ -30,7 +30,7 @@ export async function sendChatMessage(
         const systemInstruction_en = "You are a helpful and creative AI assistant for a visual design canvas application. **MOST IMPORTANT REQUIREMENT: YOU MUST ALWAYS RESPOND IN ENGLISH.** Your answers MUST be concise and to the point. When analyzing an image, describe its style, content, composition, and color palette. When asked for prompt ideas, provide diverse and creative options. Always treat a provided image (or multiple images) as the primary context for the user's question. If multiple images are provided, you can perform comparison, combination, or style transfer analysis based on the user's prompt. You can and should use Markdown for formatting. Supported formats include: headings (#, ##), lists (* or 1.), bold (**text**), italic (*text*), links ([text](url)), and blockquotes (>). When you provide a prompt for the user to copy, you MUST format it in a Markdown code block like this: ```a beautiful landscape``` for clarity.";
 
         chat = ai.chats.create({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             config: {
                 systemInstruction: language === 'vi' ? systemInstruction_vi : systemInstruction_en,
             },

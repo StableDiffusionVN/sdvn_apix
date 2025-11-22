@@ -4,7 +4,7 @@
 */
 import { Type } from "@google/genai";
 import ai from './client';
-import { processApiError, parseDataUrl } from './baseService';
+import { processApiError, parseDataUrl, getTextModel } from './baseService';
 
 // --- TYPES ---
 interface Scene {
@@ -187,7 +187,7 @@ const generateImageDescriptions = async (referenceImages: { mimeType: string; da
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [...imageParts, { text: prompt }] },
         });
         return `\n\nVisual Reference Context: ${response.text.trim()}`;
@@ -200,7 +200,7 @@ const generateImageDescriptions = async (referenceImages: { mimeType: string; da
 // --- API FUNCTIONS ---
 const executeScriptSummaryGeneration = async (prompt: string, parts: any[] = [], language: 'vi' | 'en' | 'zh'): Promise<ScriptSummary> => {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getTextModel(),
         contents: { parts: [...parts, { text: prompt }] },
         config: {
             responseMimeType: "application/json",
@@ -338,7 +338,7 @@ export async function createScriptSummaryFromAudio(audio: { mimeType: string; da
         const audioPart = { inlineData: audio };
         const imageParts = referenceImagesData.map(img => ({ inlineData: img }));
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [audioPart, ...imageParts, { text: prompt }] },
              config: {
                 responseMimeType: "application/json",
@@ -427,7 +427,7 @@ Each shot should logically follow the previous one.${notesInstruction_en}${scrip
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -497,7 +497,7 @@ export async function refineSceneDescription(
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: prompt,
         });
 
@@ -561,7 +561,7 @@ export async function refineSceneTransition(
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: prompt,
         });
 
@@ -635,7 +635,7 @@ Generate a detailed JSON according to the schema. **IMPORTANT: All text values i
                 };
                 
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: getTextModel(),
                     contents: prompts_json[language],
                     config: {
                         responseMimeType: "application/json",
@@ -661,8 +661,8 @@ Generate a detailed JSON according to the schema. **IMPORTANT: All text values i
             case 'auto':
             default:
                  const prompts_auto = {
-                    vi: `Bạn là một AI chuyên viết prompt cho mô hình tạo video VEO. Nhiệm vụ của bạn là kết hợp mô tả của hai cảnh và một đoạn chuyển cảnh để tạo ra một prompt video duy nhất, liền mạch, đậm chất điện ảnh.\n**Cảnh Trước (Điểm bắt đầu):** "${promptBefore}"\n**Chuyển Cảnh (Hành động chính):** "${promptTransition}"\n**Cảnh Sau (Điểm kết thúc):** "${promptAfter}"${scriptTypeInstruction}\n\n**Yêu cầu:**\n1.  **Tạo một luồng kể chuyện bằng hình ảnh:** Viết một câu chuyện **hình ảnh** ngắn mô tả sự kiện diễn ra từ Cảnh Trước, qua Chuyển Cảnh, và kết thúc ở Cảnh Sau. Tập trung vào "show, don't tell".\n2.  **Mô tả chi tiết điện ảnh:** Bao gồm các chi tiết về hành động của nhân vật, **chuyển động camera** (ví dụ: "máy quay lia từ trái sang phải", "zoom cận cảnh vào khuôn mặt"), thay đổi ánh sáng, và các hiệu ứng hình ảnh (ví dụ: "chuyển cảnh mờ ảo", "hiệu ứng tua nhanh").\n3.  **Tập trung vào Chuyển Cảnh:** Hành động trong "Chuyển Cảnh" là phần quan trọng nhất của prompt.\n4.  **Định dạng:** Chỉ xuất ra văn bản prompt cuối cùng. Prompt phải là một đoạn văn duy nhất.`,
-                    en: `You are an expert prompter for the VEO video generation model. Your task is to combine the descriptions of two scenes and a transition to create a single, seamless, cinematic video prompt.\n**Scene Before (Starting Point):** "${promptBefore}"\n**Transition (Main Action):** "${promptTransition}"\n**Scene After (Ending Point):** "${promptAfter}"${scriptTypeInstruction}\n\n**Requirements:**\n1.  **Create a Visual Narrative Flow:** Write a short **visual** story describing the event that unfolds from Scene Before, through the Transition, and ends at Scene After. Focus on "show, don't tell".\n2.  **Describe Cinematic Details:** Include specifics about character actions, **camera movements** (e.g., "the camera pans from left to right," "a close-up zoom on the face"), lighting changes, and visual effects (e.g., "a dreamy cross-dissolve," "a timelapse effect").\n3.  **Focus on the Transition:** The action in the "Transition" is the most critical part of the prompt.\n4.  **Format:** Output only the final prompt text. The prompt should be a single paragraph.`,
+                    vi: `Bạn là một AI chuyên viết prompt cho mô hình tạo video VEO. Nhiệm vụ của bạn là kết hợp mô tả của hai cảnh và một đoạn chuyển cảnh để tạo ra một prompt video duy nhất, liền mạch, đậm chất điện ảnh.\n\n**Cảnh Trước (Điểm bắt đầu):** "${promptBefore}"\n**Chuyển Cảnh (Hành động chính):** "${promptTransition}"\n**Cảnh Sau (Điểm kết thúc):** "${promptAfter}"${scriptTypeInstruction}\n\n**Yêu cầu:**\n1.  **Tạo một luồng kể chuyện bằng hình ảnh:** Viết một câu chuyện **hình ảnh** ngắn mô tả sự kiện diễn ra từ Cảnh Trước, qua Chuyển Cảnh, và kết thúc ở Cảnh Sau. Tập trung vào "show, don't tell".\n2.  **Mô tả chi tiết điện ảnh:** Bao gồm các chi tiết về hành động của nhân vật, **chuyển động camera** (ví dụ: "máy quay lia từ trái sang phải", "zoom cận cảnh vào khuôn mặt"), thay đổi ánh sáng, và các hiệu ứng hình ảnh (ví dụ: "chuyển cảnh mờ ảo", "hiệu ứng tua nhanh").\n3.  **Tập trung vào Chuyển Cảnh:** Hành động trong "Chuyển Cảnh" là phần quan trọng nhất của prompt.\n4.  **Định dạng:** Chỉ xuất ra văn bản prompt cuối cùng. Prompt phải là một đoạn văn duy nhất.`,
+                    en: `You are an expert prompter for the VEO video generation model. Your task is to combine the descriptions of two scenes and a transition to create a single, seamless, cinematic video prompt.\n\n**Scene Before (Starting Point):** "${promptBefore}"\n**Transition (Main Action):** "${promptTransition}"\n**Scene After (Ending Point):** "${promptAfter}"${scriptTypeInstruction}\n\n**Requirements:**\n1.  **Create a Visual Narrative Flow:** Write a short **visual** story describing the event that unfolds from Scene Before, through the Transition, and ends at Scene After. Focus on "show, don't tell".\n2.  **Describe Cinematic Details:** Include specifics about character actions, **camera movements** (e.g., "the camera pans from left to right," "a close-up zoom on the face"), lighting changes, and visual effects (e.g., "a dreamy cross-dissolve," "a timelapse effect").\n3.  **Focus on the Transition:** The action in the "Transition" is the most critical part of the prompt.\n4.  **Format:** Output only the final prompt text. The prompt should be a single paragraph.`,
                     zh: `你是一位为VEO视频生成模型编写提示的专家。你的任务是结合两个场景和一个转场的描述，创建一个单一、无缝且具有电影感的视频提示。\n\n**前场景（起点）：** “${promptBefore}”\n**转场（主要动作）：** “${promptTransition}”\n**后场景（终点）：** “${promptAfter}”${scriptTypeInstruction}\n\n**要求：**\n1. **创建视觉叙事流：** 编写一个简短的**视觉**故事，描述从前场景开始，经过转场，到后场景结束的事件。专注于“展示，而非讲述”。\n2. **描述电影化细节：** 包括角色动作、**摄像机运动**（例如，“摄像机从左向右平移”，“面部特写变焦”）、灯光变化和视觉效果（例如，“梦幻般的交叉溶解”，“延时摄影效果”）的具体细节。\n3. **专注于转场：** “转场”中的动作是提示中最关键的部分。\n4. **格式：** 只输出最终的提示文本。提示应为单个段落。`,
                  };
                 prompt = prompts_auto[language];
@@ -670,7 +670,7 @@ Generate a detailed JSON according to the schema. **IMPORTANT: All text values i
         }
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: prompt,
         });
         const text = response.text.trim();

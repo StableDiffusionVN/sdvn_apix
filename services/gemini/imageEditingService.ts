@@ -8,7 +8,8 @@ import {
     processApiError, 
     parseDataUrl, 
     callGeminiWithRetry, 
-    processGeminiResponse 
+    processGeminiResponse,
+    getTextModel
 } from './baseService';
 
 /**
@@ -193,7 +194,7 @@ export async function refinePrompt(userPrompt: string, imageDataUrls?: string[])
     try {
         console.log("Attempting to refine prompt...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts },
         });
 
@@ -251,7 +252,7 @@ Phân tích (các) "Ảnh đính kèm", "Prompt Gốc", và "Ghi chú của ngư
   try {
     console.log("Refining prompt with image context...");
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getTextModel(),
       contents: { parts },
     });
     
@@ -288,7 +289,7 @@ export async function analyzePromptForImageGenerationParams(prompt: string): Pro
     try {
         console.log("Analyzing prompt for image generation parameters...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: metaPrompt,
             config: {
                 responseMimeType: "application/json",

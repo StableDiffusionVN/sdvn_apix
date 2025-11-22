@@ -6,6 +6,26 @@ import { Modality } from "@google/genai";
 import type { GenerateContentResponse } from "@google/genai";
 import ai from './client'; // Import the shared client instance
 
+// --- Global Configuration Store ---
+interface GlobalConfig {
+    modelVersion: 'v2' | 'v3';
+    imageResolution: '1K' | '2K' | '4K';
+}
+
+let globalConfig: GlobalConfig = {
+    modelVersion: 'v2',
+    imageResolution: '1K'
+};
+
+export const setGlobalModelConfig = (version: 'v2' | 'v3', resolution: '1K' | '2K' | '4K') => {
+    globalConfig = { modelVersion: version, imageResolution: resolution };
+};
+
+export const getModelConfig = () => globalConfig;
+
+export const getTextModel = () => globalConfig.modelVersion === 'v3' ? 'gemini-3-pro-preview' : 'gemini-2.5-flash';
+export const getImageModel = () => globalConfig.modelVersion === 'v3' ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+
 // --- Centralized Error Processor ---
 export function processApiError(error: unknown): Error {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
@@ -74,15 +94,23 @@ export async function callGeminiWithRetry(parts: object[], config: any = {}): Pr
     const initialDelay = 1000;
     let lastError: Error | null = null;
 
+    const model = getImageModel();
+    const extraConfig = globalConfig.modelVersion === 'v3' 
+        ? { imageConfig: { imageSize: globalConfig.imageResolution, ...config.imageConfig } }
+        : {};
+
+    const finalConfig = {
+        responseModalities: [Modality.IMAGE, Modality.TEXT],
+        ...config,
+        ...extraConfig
+    };
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
+                model: model,
                 contents: { parts },
-                config: {
-                    responseModalities: [Modality.IMAGE, Modality.TEXT],
-                    ...config,
-                },
+                config: finalConfig,
             });
 
             // Validate that the response contains an image.
@@ -140,7 +168,7 @@ Prompt của người dùng: "${userPrompt}"
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: metaPrompt,
         });
 

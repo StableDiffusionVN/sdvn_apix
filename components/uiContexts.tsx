@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import {
     type ImageToEdit, type ViewState, type AnyAppState, type Theme,
     type AppConfig, THEMES, getInitialStateForApp, type Settings,
-    type GenerationHistoryEntry
+    type GenerationHistoryEntry, type ModelVersion, type ImageResolution,
+    type AppControlContextType
 } from './uiTypes';
 import * as db from '../lib/db';
 
@@ -181,69 +182,7 @@ export const useImageEditor = (): ImageEditorContextType => {
     return context;
 };
 
-
 // --- App Control Context ---
-// @ts-ignore - This will be fixed by the uiTypes.ts change
-interface AppControlContextType {
-    currentView: ViewState;
-    settings: Settings | null;
-    theme: Theme;
-    imageGallery: string[];
-    historyIndex: number;
-    viewHistory: ViewState[];
-    isSearchOpen: boolean;
-    isGalleryOpen: boolean;
-    isInfoOpen: boolean;
-    isHistoryPanelOpen: boolean;
-    isExtraToolsOpen: boolean;
-    isImageLayoutModalOpen: boolean;
-    isBeforeAfterModalOpen: boolean;
-    isAppCoverCreatorModalOpen: boolean;
-    isStoryboardingModalMounted: boolean;
-    isStoryboardingModalVisible: boolean;
-    isLayerComposerMounted: boolean;
-    isLayerComposerVisible: boolean;
-    language: 'vi' | 'en';
-    generationHistory: GenerationHistoryEntry[];
-    addGenerationToHistory: (entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => void;
-    addImagesToGallery: (newImages: string[]) => void;
-    removeImageFromGallery: (imageIndex: number) => void;
-    replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
-    handleThemeChange: (newTheme: Theme) => void;
-    handleLanguageChange: (lang: 'vi' | 'en') => void;
-    navigateTo: (viewId: string) => void;
-    handleStateChange: (newAppState: AnyAppState) => void;
-    handleSelectApp: (appId: string) => void;
-    handleGoHome: () => void;
-    handleGoBack: () => void;
-    handleGoForward: () => void;
-    handleResetApp: () => void;
-    handleOpenSearch: () => void;
-    handleCloseSearch: () => void;
-    handleOpenGallery: () => void;
-    handleCloseGallery: () => void;
-    handleOpenInfo: () => void;
-    handleCloseInfo: () => void;
-    handleOpenHistoryPanel: () => void;
-    handleCloseHistoryPanel: () => void;
-    toggleExtraTools: () => void;
-    openImageLayoutModal: () => void;
-    closeImageLayoutModal: () => void;
-    openBeforeAfterModal: () => void;
-    closeBeforeAfterModal: () => void;
-    openAppCoverCreatorModal: () => void;
-    closeAppCoverCreatorModal: () => void;
-    openStoryboardingModal: () => void;
-    closeStoryboardingModal: () => void;
-    hideStoryboardingModal: () => void;
-    toggleStoryboardingModal: () => void;
-    openLayerComposer: () => void;
-    closeLayerComposer: () => void;
-    hideLayerComposer: () => void;
-    toggleLayerComposer: () => void;
-    importSettingsAndNavigate: (settings: any) => void;
-    t: (key: string, ...args: any[]) => any;
-}
 
 const AppControlContext = createContext<AppControlContextType | undefined>(undefined);
 
@@ -276,6 +215,9 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
     const [settings, setSettings] = useState<Settings | null>(null);
+    
+    const [modelVersion, setModelVersion] = useState<ModelVersion>('v2');
+    const [imageResolution, setImageResolution] = useState<ImageResolution>('1K');
 
     const currentView = viewHistory[historyIndex];
 
@@ -341,7 +283,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         loadData();
     }, []);
 
-    const t = useCallback((key: string, ...args: any[]): any => {
+    const t = useCallback((key: string, ...args: any[]) => {
         const keys = key.split('.');
         let translation = keys.reduce((obj, keyPart) => {
             if (obj && typeof obj === 'object' && keyPart in obj) {
@@ -384,6 +326,14 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const handleLanguageChange = useCallback((lang: 'vi' | 'en') => {
         setLanguage(lang);
         localStorage.setItem('app-language', lang);
+    }, []);
+    
+    const handleModelVersionChange = useCallback((version: ModelVersion) => {
+        setModelVersion(version);
+    }, []);
+
+    const handleResolutionChange = useCallback((resolution: ImageResolution) => {
+        setImageResolution(resolution);
     }, []);
     
     const addImagesToGallery = useCallback(async (newImages: string[]) => {
@@ -649,12 +599,16 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isLayerComposerVisible,
         language,
         generationHistory,
+        modelVersion,
+        imageResolution,
         addGenerationToHistory,
         addImagesToGallery,
         removeImageFromGallery,
         replaceImageInGallery,
         handleThemeChange,
         handleLanguageChange,
+        handleModelVersionChange,
+        handleResolutionChange,
         navigateTo,
         handleStateChange,
         handleSelectApp,

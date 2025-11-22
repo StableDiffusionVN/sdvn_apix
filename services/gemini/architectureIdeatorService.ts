@@ -7,7 +7,8 @@ import {
     processApiError,
     parseDataUrl, 
     callGeminiWithRetry, 
-    processGeminiResponse 
+    processGeminiResponse,
+    getTextModel
 } from './baseService';
 
 interface ArchitectureOptions {
@@ -33,7 +34,7 @@ Không mô tả hình dạng của tòa nhà, chỉ mô tả phong cách và b�
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [imagePart, {text: prompt}] },
         });
 
@@ -176,7 +177,7 @@ export async function refineArchitecturePrompt(basePrompt: string, userPrompt: s
     try {
         console.log("Attempting to refine architecture prompt...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts },
         });
 

@@ -476,6 +476,9 @@ export interface GenerationHistoryEntry {
     };
 }
 
+export type ModelVersion = 'v2' | 'v3';
+export type ImageResolution = '1K' | '2K' | '4K';
+
 // --- Context Types ---
 
 export interface AppControlContextType {
@@ -499,12 +502,16 @@ export interface AppControlContextType {
     isLayerComposerVisible: boolean;
     language: 'vi' | 'en';
     generationHistory: GenerationHistoryEntry[];
+    modelVersion: ModelVersion;
+    imageResolution: ImageResolution;
     addGenerationToHistory: (entryData: Omit<GenerationHistoryEntry, 'id' | 'timestamp'>) => void;
     addImagesToGallery: (newImages: string[]) => void;
     removeImageFromGallery: (imageIndex: number) => void;
     replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
     handleThemeChange: (newTheme: Theme) => void;
     handleLanguageChange: (lang: 'vi' | 'en') => void;
+    handleModelVersionChange: (version: ModelVersion) => void;
+    handleResolutionChange: (resolution: ImageResolution) => void;
     navigateTo: (viewId: string) => void;
     handleStateChange: (newAppState: AnyAppState) => void;
     handleSelectApp: (appId: string) => void;

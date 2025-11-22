@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React from 'react';
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { motion, useTransform } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import { type Rect, type Handle } from './LayerComposer.types';
 
 interface SelectionFrameProps {
@@ -20,14 +21,14 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({ boundingBox, rot
     const HANDLES: Handle[] = ['tl', 'tr', 'bl', 'br', 't', 'b', 'l', 'r'];
     const ROTATION_CORNERS: ('tl' | 'tr' | 'bl' | 'br')[] = ['tl', 'tr', 'bl', 'br'];
 
-    const borderWidth = useTransform(scaleMV, s => 2 / s);
-    const handleSize = useTransform(scaleMV, s => 12 / s);
-    const handleOffset = useTransform(scaleMV, s => -6 / s);
-    const handleBorderWidth = useTransform(scaleMV, s => 2 / s);
-    const centeredOffset = useTransform(handleSize, hs => `calc(50% - ${hs / 2}px)`);
-    const rotationHandleSize = useTransform(scaleMV, s => 12 / s);
-    const rotationHandleOffset = useTransform(scaleMV, s => -15 / s);
-    const rotationHandleBorderWidth = useTransform(scaleMV, s => 2 / s);
+    const borderWidth = useTransform(scaleMV, (s: number) => 2 / s);
+    const handleSize = useTransform(scaleMV, (s: number) => 12 / s);
+    const handleOffset = useTransform(scaleMV, (s: number) => -6 / s);
+    const handleBorderWidth = useTransform(scaleMV, (s: number) => 2 / s);
+    const centeredOffset = useTransform(handleSize, (hs: number) => `calc(50% - ${hs / 2}px)`);
+    const rotationHandleSize = useTransform(scaleMV, (s: number) => 12 / s);
+    const rotationHandleOffset = useTransform(scaleMV, (s: number) => -15 / s);
+    const rotationHandleBorderWidth = useTransform(scaleMV, (s: number) => 2 / s);
     
     const getHandleCursor = (handle: Handle) => {
         if (isMultiSelect) {

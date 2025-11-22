@@ -5,6 +5,7 @@
 import React, { useEffect, Suspense, lazy, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
+import { cn } from './lib/utils';
 
 import Footer from './components/Footer';
 import Home from './components/Home';
@@ -31,8 +32,10 @@ import {
     createThumbnailDataUrl,
     type AppConfig,
     type GenerationHistoryEntry,
+    type ImageResolution
 } from './components/uiUtils';
 import { LoadingSpinnerIcon } from './components/icons';
+import { setGlobalModelConfig } from './services/gemini/baseService';
 
 // Lazy load app components for code splitting
 const ArchitectureIdeator = lazy(() => import('./components/ArchitectureIdeator'));
@@ -106,10 +109,19 @@ function App() {
         closeLayerComposer,
         hideLayerComposer,
         t,
+        modelVersion,
+        imageResolution,
+        handleModelVersionChange,
+        handleResolutionChange
     } = useAppControls();
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
     const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
+
+    // Sync global service config when context changes
+    useEffect(() => {
+        setGlobalModelConfig(modelVersion, imageResolution);
+    }, [modelVersion, imageResolution]);
 
     useEffect(() => {
         const hasSeenInfoModal = localStorage.getItem('aPix_hasSeenInfoModal');
@@ -298,9 +310,56 @@ function App() {
             />
             <div className="absolute inset-0 bg-black/30 z-0" aria-hidden="true"></div>
             
-            <div className="fixed top-4 left-4 z-20 flex items-center gap-2">
+            <div className="fixed top-4 left-4 z-20 flex items-center gap-2 flex-wrap">
                 {isLoggedIn && currentUser && <UserStatus />}
                 <LanguageSwitcher />
+                
+                <div className="flex items-center gap-1 bg-black/30 rounded-full p-1 text-sm text-neutral-200 backdrop-blur-sm border border-white/10">
+                    <button 
+                        onClick={() => handleModelVersionChange('v2')} 
+                        className={cn(
+                            'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
+                            modelVersion === 'v2' 
+                                ? 'bg-yellow-400 text-black' 
+                                : 'text-neutral-300 hover:bg-white/10'
+                        )}
+                        aria-pressed={modelVersion === 'v2'}
+                    >
+                        v2
+                    </button>
+                    <button 
+                        onClick={() => handleModelVersionChange('v3')} 
+                        className={cn(
+                            'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
+                            modelVersion === 'v3' 
+                                ? 'bg-yellow-400 text-black' 
+                                : 'text-neutral-300 hover:bg-white/10'
+                        )}
+                        aria-pressed={modelVersion === 'v3'}
+                    >
+                        v3
+                    </button>
+                </div>
+
+                {modelVersion === 'v3' && (
+                    <div className="flex items-center gap-1 bg-black/30 rounded-full p-1 text-sm text-neutral-200 backdrop-blur-sm border border-white/10">
+                        {(['1K', '2K', '4K'] as ImageResolution[]).map(res => (
+                            <button 
+                                key={res}
+                                onClick={() => handleResolutionChange(res)}
+                                className={cn(
+                                    'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
+                                    imageResolution === res 
+                                        ? 'bg-blue-500 text-white' 
+                                        : 'text-neutral-300 hover:bg-white/10'
+                                )}
+                                aria-pressed={imageResolution === res}
+                            >
+                                {res}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
             <AppToolbar />
 

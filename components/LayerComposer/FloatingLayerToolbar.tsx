@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React from 'react';
-import { motion, useTransform, type MotionValue } from 'framer-motion';
+import { motion, useTransform } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { type Layer } from './LayerComposer.types';
 import { EditorIcon, BakeIcon, DownloadIcon, DuplicateIcon, DeleteIcon } from '../icons';
@@ -36,8 +37,8 @@ const ToolButton: React.FC<{
 
 export const FloatingLayerToolbar: React.FC<FloatingLayerToolbarProps> = ({ layer, onAction, scaleMV }) => {
     
-    const inverseScale = useTransform(scaleMV, s => 1 / s);
-    const yOffset = useTransform(scaleMV, s => -45 / s);
+    const inverseScale = useTransform(scaleMV, (s: number) => 1 / s);
+    const yOffset = useTransform(scaleMV, (s: number) => -45 / s);
 
     return (
         <motion.div

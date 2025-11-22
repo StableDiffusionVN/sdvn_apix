@@ -7,6 +7,7 @@ import ai from './client'; // Import the shared client instance
 import { 
     processApiError, 
     parseDataUrl,
+    getTextModel
 } from './baseService';
 
 /**
@@ -39,7 +40,7 @@ export async function analyzeImagePairForPrompt(inputImageDataUrl: string, outpu
     try {
         console.log("Attempting to analyze image pair for prompt...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
                 responseMimeType: "application/json",
@@ -99,7 +100,7 @@ export async function analyzeImagePairForPromptDeep(inputImageDataUrl: string, o
         2.  Mô tả cụ thể các hành động thay đổi về:
             *   **Phong cách:** (ví dụ: "áp dụng phong cách nghệ thuật kỹ thuật số").
             *   **Nội dung:** (ví dụ: "thêm những đám mây vào bầu trời").
-            *   **Màu sắc & Ánh sáng:** (ví dụ: "điều chỉnh sang tông màu ấm hơn và ánh sáng hoàng hôn").
+            *   **Màu sắc & Ánh sáng:** (ví dụ: "điều chỉnh sang tông màu ấm áp hơn và ánh sáng hoàng hôn").
 
         **ĐẦU RA (JSON):**
         - **mainPrompt**: Câu lệnh chi tiết mô tả phương pháp.
@@ -110,7 +111,7 @@ export async function analyzeImagePairForPromptDeep(inputImageDataUrl: string, o
     try {
         console.log("Attempting to analyze image pair for DETAILED prompt...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
                 responseMimeType: "application/json",
@@ -184,7 +185,7 @@ export async function analyzeImagePairForPromptExpert(inputImageDataUrl: string,
     try {
         console.log("Attempting to analyze image pair for EXPERT prompt...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [textPart, inputImagePart, outputImagePart] },
             config: {
                 responseMimeType: "application/json",
@@ -258,7 +259,7 @@ export async function interpolatePrompts(basePrompt: string, userNotes: string):
     try {
         console.log("Attempting to interpolate prompts with prioritization...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: prompt,
         });
 
@@ -293,7 +294,7 @@ export async function adaptPromptToContext(imageDataUrl: string, basePrompt: str
     try {
         console.log("Attempting to adapt prompt to image context...");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: getTextModel(),
             contents: { parts: [imagePart, textPart] },
         });
 

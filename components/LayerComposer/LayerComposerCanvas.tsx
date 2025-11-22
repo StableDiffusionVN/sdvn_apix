@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, MotionValue, useMotionValueEvent, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useMotionValueEvent, useTransform, AnimatePresence } from 'framer-motion';
+import type { MotionValue } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { type Layer, type CanvasSettings, type Interaction, type Handle, type Rect, type MultiLayerAction, getBoundingBoxForLayers, type Guide, type CanvasTool } from './LayerComposer.types';
 import { LayerItem } from './LayerItem';
@@ -788,9 +789,9 @@ export const LayerComposerCanvas: React.FC<LayerComposerCanvasProps> = ({
         };
     }, [isInfiniteCanvas, canvasSettings]);
     
-    const inverseScale = useTransform(scale, s => 1 / s);
-    const yOffset = useTransform(scale, s => 10 / s);
-    const xOffset = useTransform(scale, s => 10 / s);
+    const inverseScale = useTransform(scale, (s: number) => 1 / s);
+    const yOffset = useTransform(scale, (s: number) => 10 / s);
+    const xOffset = useTransform(scale, (s: number) => 10 / s);
 
     return (
         <main
