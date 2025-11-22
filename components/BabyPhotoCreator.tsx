@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -19,7 +18,6 @@ import {
     ResultsView,
     ImageForZip,
     type BabyPhotoCreatorState,
-    type GeneratedAvatarImage,
     handleFileUpload,
     useLightbox,
     useVideoGeneration,
@@ -316,7 +314,7 @@ const BabyPhotoCreator: React.FC<BabyPhotoCreatorProps> = (props) => {
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
         // FIX: Remove 'as any' type cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea] as GeneratedAvatarImage | undefined;
+        const imageToEditState = appState.generatedImages[idea];
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
