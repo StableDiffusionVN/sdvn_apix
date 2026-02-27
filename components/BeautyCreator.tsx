@@ -89,13 +89,15 @@ const BeautyCreator: React.FC<BeautyCreatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
     
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
             selectedIdeas: [],
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
     const handleOptionChange = (field: keyof BeautyCreatorState['options'], value: string | boolean) => {
@@ -276,8 +278,8 @@ const BeautyCreator: React.FC<BeautyCreatorProps> = (props) => {
     };
 
     const handleRegeneration = async (idea: string, prompt: string) => {
-        // FIX: Remove 'as any' type cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea];
+        // FIX: Cast to any to fix type error on 'status' property.
+        const imageToEditState = appState.generatedImages[idea] as any;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) return;
 
         const imageUrlToEdit = imageToEditState.url;
@@ -307,9 +309,15 @@ const BeautyCreator: React.FC<BeautyCreatorProps> = (props) => {
         }
     };
 
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ 
+            ...appState, 
+            uploadedImage: newUrl,
+            stage: newUrl ? 'configuring' : 'idle' 
+        });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleGeneratedImageChange = (idea: string) => (newUrl: string) => {

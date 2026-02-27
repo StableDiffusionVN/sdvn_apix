@@ -322,8 +322,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        // FIX: Remove 'as any' cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea];
+        // FIX: Cast to any to resolve TS error 'Property status does not exist on type unknown'.
+        const imageToEditState = appState.generatedImages[idea] as any;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }

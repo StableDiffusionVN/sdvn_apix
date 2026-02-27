@@ -110,8 +110,8 @@ export interface ArchitectureIdeatorState {
     error: string | null;
 }
 
-type ImageStatus = 'pending' | 'done' | 'error';
-interface GeneratedAvatarImage {
+export type ImageStatus = 'pending' | 'done' | 'error';
+export interface GeneratedAvatarImage {
     status: ImageStatus;
     url?: string;
     error?: string;
@@ -476,7 +476,7 @@ export interface GenerationHistoryEntry {
     };
 }
 
-export type ModelVersion = 'v2' | 'v3';
+export type ModelVersion = 'v2' | 'v3' | 'v3.1';
 export type ImageResolution = '1K' | '2K' | '4K';
 
 // --- Context Types ---

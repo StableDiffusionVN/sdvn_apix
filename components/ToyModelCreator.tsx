@@ -252,7 +252,8 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
     
     const isLoading = appState.stage === 'generating';
 
-    const currentConceptData = CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA] || CONCEPTS_DATA.desktop_model;
+    // FIX: Cast currentConceptData to any to resolve "Property name does not exist on type unknown" error.
+    const currentConceptData: any = CONCEPTS_DATA[appState.concept as keyof typeof CONCEPTS_DATA] || CONCEPTS_DATA.desktop_model;
 
     // FIX: Add return statement to render JSX.
     return (
@@ -294,7 +295,7 @@ const ToyModelCreator: React.FC<ToyModelCreatorProps> = (props) => {
                                     aria-label="Chọn concept mô hình"
                                 >
                                     {Object.entries(CONCEPTS_DATA).map(([key, value]) => (
-                                        <option key={key} value={key}>{value.name}</option>
+                                        <option key={key} value={key}>{(value as any).name}</option>
                                     ))}
                                 </select>
                             </div>

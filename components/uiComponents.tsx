@@ -226,6 +226,118 @@ export const PromptRegenerationModal: React.FC<PromptRegenerationModalProps> = (
     );
 };
 
+// --- API Key Selection Modal ---
+interface ApiKeyModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+}
+
+export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSuccess }) => {
+    const handleSelectKey = async () => {
+        try {
+            if ((window as any).aistudio) {
+                await (window as any).aistudio.openSelectKey();
+                // Assume success as per requirement to mitigate race condition
+                onSuccess();
+            }
+        } catch (error) {
+            console.error("Error selecting API key:", error);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return ReactDOM.createPortal(
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="modal-overlay z-[100]"
+            >
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="modal-content !max-w-md"
+                >
+                    <h3 className="base-font font-bold text-2xl text-yellow-400">Yêu cầu API Key</h3>
+                    <p className="text-neutral-300 my-4">
+                         Để sử dụng phiên bản <b>v3 / v3.1</b> (Banana Pro), bạn cần chọn API Key cá nhân từ Google AI Studio.
+                    </p>
+                    <div className="bg-neutral-900/50 p-3 rounded-md mb-4 text-sm text-neutral-400 border border-white/10">
+                        <p>Vui lòng đảm bảo bạn chọn một dự án có liên kết thanh toán (Billing enabled) để sử dụng đầy đủ tính năng.</p>
+                        <a 
+                            href="https://ai.google.dev/gemini-api/docs/billing" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-yellow-400 hover:underline mt-1 block"
+                        >
+                            Tìm hiểu thêm về billing &rarr;
+                        </a>
+                    </div>
+                    <div className="flex justify-end items-center gap-3">
+                        <button onClick={onClose} className="btn btn-secondary btn-sm">
+                            Hủy
+                        </button>
+                        <button onClick={handleSelectKey} className="btn btn-primary btn-sm">
+                            Chọn API Key
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>,
+        document.body
+    );
+};
+
+// --- Reset Key Modal ---
+interface ResetKeyModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}
+
+export const ResetKeyModal: React.FC<ResetKeyModalProps> = ({ isOpen, onClose, onConfirm }) => {
+    if (!isOpen) return null;
+
+    return ReactDOM.createPortal(
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="modal-overlay z-[100]"
+                onClick={onClose}
+            >
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="modal-content !max-w-md"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <h3 className="base-font font-bold text-2xl text-yellow-400">Chuyển về v2?</h3>
+                    <p className="text-neutral-300 my-4">
+                        Reset và ngắt API Key hiện tại của bạn để tránh phát sinh chi phí không mong muốn.
+                    </p>
+                    <div className="flex justify-end items-center gap-3">
+                        <button onClick={onClose} className="btn btn-secondary btn-sm">
+                            Hủy
+                        </button>
+                        <button onClick={onConfirm} className="btn btn-primary btn-sm !bg-yellow-400 !text-black border-yellow-400">
+                            Đồng ý
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>,
+        document.body
+    );
+};
+
+
 // --- Reusable UI Components ---
 
 interface AppScreenHeaderProps {

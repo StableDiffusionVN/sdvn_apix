@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -5,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppControls, PromptRegenerationModal } from '../uiUtils';
-import type { SceneState, FrameState } from '../uiTypes';
+import type { SceneState } from '../uiTypes';
 import SceneImageToolbar from './SceneImageToolbar';
 import { PencilIcon, LoadingSpinnerIcon, ErrorIcon, StoryboardPlaceholderIcon, DuplicateIcon, RegenerateIcon, CloudUploadIcon } from '../icons';
 import toast from 'react-hot-toast';
@@ -50,7 +51,7 @@ const ScenePanel: React.FC<ScenePanelProps> = (props) => {
 
     const formattedAspectRatio = useMemo(() => {
         if (!aspectRatio || aspectRatio === 'Giữ nguyên' || aspectRatio === 'Keep Original') {
-            return '16 / 9'; // fallback mặc định
+            return '16 / 9';
         }
         return aspectRatio.replace(':', ' / ');
     }, [aspectRatio]);

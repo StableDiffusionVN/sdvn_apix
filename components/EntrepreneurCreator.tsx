@@ -88,22 +88,30 @@ const EntrepreneurCreator: React.FC<EntrepreneurCreatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
 
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
             selectedIdeas: [],
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ 
+            ...appState, 
+            uploadedImage: newUrl, 
+            stage: newUrl ? 'configuring' : 'idle' 
+        });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleOptionChange = (field: keyof EntrepreneurCreatorState['options'], value: string | boolean) => {
@@ -315,8 +323,8 @@ const EntrepreneurCreator: React.FC<EntrepreneurCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        // FIX: Remove 'as any' type cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea];
+        // FIX: Cast to any to fix type error on 'status' property.
+        const imageToEditState = appState.generatedImages[idea] as any;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }

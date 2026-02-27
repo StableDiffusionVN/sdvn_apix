@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -89,22 +90,30 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
         addImagesToGallery([imageDataUrl]);
     };
     
-    const handleStyleReferenceImageChange = (imageDataUrl: string) => {
+    const handleStyleReferenceImageChange = (imageDataUrl: string | null) => {
         onStateChange({
             ...appState,
             styleReferenceImage: imageDataUrl,
             selectedIdeas: [],
         });
-        addImagesToGallery([imageDataUrl]);
+        if (imageDataUrl) {
+            addImagesToGallery([imageDataUrl]);
+        }
     };
 
     const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         handleFileUpload(e, handleImageSelectedForUploader);
     }, [appState, onStateChange]);
     
-    const handleUploadedImageChange = (newUrl: string) => {
-        onStateChange({ ...appState, uploadedImage: newUrl });
-        addImagesToGallery([newUrl]);
+    const handleUploadedImageChange = (newUrl: string | null) => {
+        onStateChange({ 
+            ...appState, 
+            uploadedImage: newUrl,
+            stage: newUrl ? 'configuring' : 'idle' 
+        });
+        if (newUrl) {
+            addImagesToGallery([newUrl]);
+        }
     };
 
     const handleOptionChange = (field: keyof MidAutumnCreatorState['options'], value: string | boolean) => {
@@ -164,7 +173,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                 onStateChange({
                     ...generatingState,
                     stage: 'results',
-                    generatedImages: { [idea]: { status: 'done' as const, url: urlWithMetadata } },
+                    // FIX: Cast generatedImages to any to resolve TS error
+                    generatedImages: { [idea]: { status: 'done' as const, url: urlWithMetadata } } as any,
                     historicalImages: [...generatingState.historicalImages, { idea, url: urlWithMetadata }],
                 });
                 addImagesToGallery([urlWithMetadata]);
@@ -174,7 +184,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                 onStateChange({
                     ...generatingState,
                     stage: 'results',
-                    generatedImages: { [idea]: { status: 'error' as const, error: errorMessage } },
+                    // FIX: Cast generatedImages to any to resolve TS error
+                    generatedImages: { [idea]: { status: 'error' as const, error: errorMessage } } as any,
                 });
             }
             return;
@@ -263,7 +274,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                     generatedImages: {
                         ...currentAppState.generatedImages,
                         // FIX: Add 'as const' to prevent type widening of 'status' to string.
-                        [idea]: { status: 'done' as const, url: urlWithMetadata },
+                        // FIX: Cast to any to resolve TS error
+                        [idea]: { status: 'done' as const, url: urlWithMetadata } as any,
                     },
                     historicalImages: [...currentAppState.historicalImages, { idea, url: urlWithMetadata }],
                 };
@@ -277,7 +289,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                     generatedImages: {
                         ...currentAppState.generatedImages,
                         // FIX: Add 'as const' to prevent type widening of 'status' to string.
-                        [idea]: { status: 'error' as const, error: errorMessage },
+                        // FIX: Cast to any to resolve TS error
+                        [idea]: { status: 'error' as const, error: errorMessage } as any,
                     },
                 };
                 onStateChange(currentAppState);
@@ -316,8 +329,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
     };
 
     const handleRegenerateIdea = async (idea: string, customPrompt: string) => {
-        // FIX: Remove 'as any' type cast to fix type error on 'status' property.
-        const imageToEditState = appState.generatedImages[idea];
+        // FIX: Cast to any to fix type error on 'status' property.
+        const imageToEditState = appState.generatedImages[idea] as any;
         if (!imageToEditState || imageToEditState.status !== 'done' || !imageToEditState.url) {
             return;
         }
@@ -328,7 +341,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
         onStateChange({
             ...appState,
             // FIX: Add 'as const' to prevent type widening of 'status' to string.
-            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' as const } }
+            generatedImages: { ...appState.generatedImages, [idea]: { status: 'pending' as const } } as any
         });
 
         try {
@@ -342,7 +355,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
             onStateChange({
                 ...appState,
                 // FIX: Add 'as const' to prevent type widening of 'status' to string.
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done' as const, url: urlWithMetadata } },
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'done' as const, url: urlWithMetadata } } as any,
                 historicalImages: [...appState.historicalImages, { idea: `${idea}-edit`, url: urlWithMetadata }],
             });
             addImagesToGallery([urlWithMetadata]);
@@ -351,7 +364,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
              onStateChange({
                 ...appState,
                 // FIX: Add 'as const' to prevent type widening of 'status' to string.
-                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error' as const, error: errorMessage } }
+                generatedImages: { ...appState.generatedImages, [idea]: { status: 'error' as const, error: errorMessage } } as any
             });
             console.error(`Failed to regenerate image for ${idea}:`, err);
         }
@@ -360,7 +373,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
      const handleGeneratedImageChange = (idea: string) => (newUrl: string) => {
         const newGeneratedImages = { ...appState.generatedImages, [idea]: { status: 'done' as 'done', url: newUrl } };
         const newHistorical = [...appState.historicalImages, { idea: `${idea}-edit`, url: newUrl }];
-        onStateChange({ ...appState, generatedImages: newGeneratedImages, historicalImages: newHistorical });
+        onStateChange({ ...appState, generatedImages: newGeneratedImages as any, historicalImages: newHistorical });
         addImagesToGallery([newUrl]);
     };
     
@@ -591,7 +604,8 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
                     }
                 >
                     {appState.selectedIdeas.map((idea, index) => {
-                        const imageState = appState.generatedImages[idea];
+                        // FIX: Cast generatedImages to any to resolve TS error 'Property status does not exist on type unknown'
+                        const imageState = (appState.generatedImages as any)[idea];
                         const currentImageIndexInLightbox = imageState?.url ? lightboxImages.indexOf(imageState.url) : -1;
                         return (
                             <motion.div

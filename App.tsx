@@ -2,10 +2,11 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useEffect, Suspense, lazy, useCallback } from 'react';
+import React, { useEffect, Suspense, lazy, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { cn } from './lib/utils';
+import toast from 'react-hot-toast';
 
 import Footer from './components/Footer';
 import Home from './components/Home';
@@ -32,7 +33,9 @@ import {
     createThumbnailDataUrl,
     type AppConfig,
     type GenerationHistoryEntry,
-    type ImageResolution
+    type ImageResolution,
+    ApiKeyModal,
+    ResetKeyModal
 } from './components/uiUtils';
 import { LoadingSpinnerIcon } from './components/icons';
 import { setGlobalModelConfig } from './services/gemini/baseService';
@@ -117,6 +120,11 @@ function App() {
     
     const { imageToEdit, closeImageEditor } = useImageEditor();
     const { loginSettings, isLoggedIn, isLoading, currentUser } = useAuth();
+    
+    // NEW: State for API Key Modal and Reset Key Modal
+    const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+    const [isResetKeyModalOpen, setIsResetKeyModalOpen] = useState(false);
+    const [pendingVersion, setPendingVersion] = useState<ModelVersion | null>(null);
 
     // Sync global service config when context changes
     useEffect(() => {
@@ -142,7 +150,9 @@ function App() {
                                isAppCoverCreatorModalOpen ||
                                isStoryboardingModalVisible ||
                                isLayerComposerVisible || 
-                               !!imageToEdit;
+                               !!imageToEdit ||
+                               isApiKeyModalOpen ||
+                               isResetKeyModalOpen;
 
         if (isAnyModalOpen) {
             document.body.style.overflow = 'hidden';
@@ -154,7 +164,7 @@ function App() {
         return () => {
             document.body.style.overflow = 'auto';
         };
-    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isAppCoverCreatorModalOpen, isStoryboardingModalVisible, isLayerComposerVisible, imageToEdit]);
+    }, [isSearchOpen, isGalleryOpen, isInfoOpen, isHistoryPanelOpen, isImageLayoutModalOpen, isBeforeAfterModalOpen, isAppCoverCreatorModalOpen, isStoryboardingModalVisible, isLayerComposerVisible, imageToEdit, isApiKeyModalOpen, isResetKeyModalOpen]);
 
     const getExportableState = useCallback((appState: any, appId: string): any => {
         const exportableState = JSON.parse(JSON.stringify(appState));
@@ -211,6 +221,53 @@ function App() {
         };
         addGenerationToHistory(entry);
     }, [addGenerationToHistory, settings, t, getExportableState]);
+    
+    // Logic to handle v3 switch with API Key check
+    const handleV3Select = async () => {
+        if ((window as any).aistudio) {
+            const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+            if (!hasKey) {
+                setPendingVersion('v3');
+                setIsApiKeyModalOpen(true);
+                return;
+            }
+        }
+        handleModelVersionChange('v3');
+    };
+
+    // Logic to handle v3.1 switch with API Key check
+    const handleV31Select = async () => {
+        if ((window as any).aistudio) {
+            const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+            if (!hasKey) {
+                setPendingVersion('v3.1');
+                setIsApiKeyModalOpen(true);
+                return;
+            }
+        }
+        handleModelVersionChange('v3.1');
+    };
+
+    // Logic to handle v2 switch with Reset Key check
+    const handleV2Select = () => {
+        if (modelVersion === 'v3' || modelVersion === 'v3.1') {
+            setIsResetKeyModalOpen(true);
+        } else {
+            handleModelVersionChange('v2');
+        }
+    };
+
+    const confirmSwitchToV2 = async () => {
+        if ((window as any).aistudio && typeof (window as any).aistudio.openSelectKey === 'function') {
+            try {
+                await (window as any).aistudio.openSelectKey();
+            } catch (e) {
+                console.error("Lỗi khi mở popup API Key:", e);
+            }
+        }
+        handleModelVersionChange('v2');
+        setIsResetKeyModalOpen(false);
+    };
 
     const renderContent = () => {
         if (!settings) return null; // Wait for settings to load
@@ -316,7 +373,7 @@ function App() {
                 
                 <div className="flex items-center gap-1 bg-black/30 rounded-full p-1 text-sm text-neutral-200 backdrop-blur-sm border border-white/10">
                     <button 
-                        onClick={() => handleModelVersionChange('v2')} 
+                        onClick={handleV2Select} 
                         className={cn(
                             'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
                             modelVersion === 'v2' 
@@ -328,7 +385,7 @@ function App() {
                         v2
                     </button>
                     <button 
-                        onClick={() => handleModelVersionChange('v3')} 
+                        onClick={handleV3Select} 
                         className={cn(
                             'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
                             modelVersion === 'v3' 
@@ -339,9 +396,21 @@ function App() {
                     >
                         v3
                     </button>
+                    <button 
+                        onClick={handleV31Select} 
+                        className={cn(
+                            'px-3 py-0.5 rounded-full text-xs font-bold transition-colors duration-200', 
+                            modelVersion === 'v3.1' 
+                                ? 'bg-yellow-400 text-black' 
+                                : 'text-neutral-300 hover:bg-white/10'
+                        )}
+                        aria-pressed={modelVersion === 'v3.1'}
+                    >
+                        v3.1
+                    </button>
                 </div>
 
-                {modelVersion === 'v3' && (
+                {(modelVersion === 'v3' || modelVersion === 'v3.1') && (
                     <div className="flex items-center gap-1 bg-black/30 rounded-full p-1 text-sm text-neutral-200 backdrop-blur-sm border border-white/10">
                         {(['1K', '2K', '4K'] as ImageResolution[]).map(res => (
                             <button 
@@ -421,6 +490,27 @@ function App() {
                     onHide={hideLayerComposer}
                 />
             )}
+             <ApiKeyModal
+                isOpen={isApiKeyModalOpen}
+                onClose={() => {
+                    setIsApiKeyModalOpen(false);
+                    setPendingVersion(null);
+                }}
+                onSuccess={() => {
+                    setIsApiKeyModalOpen(false);
+                    if (pendingVersion) {
+                        handleModelVersionChange(pendingVersion);
+                        setPendingVersion(null);
+                    } else {
+                        handleModelVersionChange('v3');
+                    }
+                }}
+            />
+             <ResetKeyModal
+                isOpen={isResetKeyModalOpen}
+                onClose={() => setIsResetKeyModalOpen(false)}
+                onConfirm={confirmSwitchToV2}
+            />
             <Footer />
         </main>
     );

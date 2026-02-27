@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -878,16 +879,23 @@ export const useImageEditorState = (
             sourceImageRef.current = image;
             const containerRect = container.getBoundingClientRect();
             if (containerRect.width <= 0 || containerRect.height <= 0) return;
-            const imageAspectRatio = image.naturalWidth / image.naturalHeight;
-            const containerAspectRatio = containerRect.width / containerRect.height;
-            let canvasWidth, canvasHeight;
-            if (imageAspectRatio > containerAspectRatio) {
-                canvasWidth = containerRect.width;
-                canvasHeight = containerRect.width / imageAspectRatio;
-            } else {
-                canvasHeight = containerRect.height;
-                canvasWidth = containerRect.height * imageAspectRatio;
+
+            // Use a high max dimension for good quality on current screens (4K screens etc)
+            const maxDimension = 5056; // Updated from 2500
+            let canvasWidth = image.naturalWidth;
+            let canvasHeight = image.naturalHeight;
+
+            if (canvasWidth > maxDimension || canvasHeight > maxDimension) {
+                const ratio = canvasWidth / canvasHeight;
+                if (canvasWidth > canvasHeight) {
+                    canvasWidth = maxDimension;
+                    canvasHeight = Math.round(maxDimension / ratio);
+                } else {
+                    canvasHeight = maxDimension;
+                    canvasWidth = Math.round(maxDimension * ratio);
+                }
             }
+
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
             drawingCanvas.width = canvasWidth;

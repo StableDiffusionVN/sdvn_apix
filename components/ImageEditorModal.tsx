@@ -1,8 +1,9 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-import React, { useState, useCallback, ChangeEvent, useRef } from 'react';
+import React, { useState, useCallback, ChangeEvent, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type ImageToEdit, useAppControls, handleFileUpload, GalleryPicker, WebcamCaptureModal } from './uiUtils';
 import { ImageEditorToolbar } from './ImageEditor/ImageEditorToolbar';
@@ -44,6 +45,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
         getFinalImage,
         panX, panY, scale, zoomDisplay,
         history, historyIndex, handleUndo, handleRedo,
+        canvasDimensions
     } = editorState;
     
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -138,6 +140,14 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
            panY.set(0);
        }
    }, [scale, panX, panY, canvasViewRef, editorState.previewCanvasRef]);
+   
+   // Auto-fit canvas when image loads or dimensions change
+   useEffect(() => {
+       if (canvasDimensions.width > 0 && canvasDimensions.height > 0) {
+           // Use a small timeout to ensure the layout has updated
+           setTimeout(handleFitCanvas, 10);
+       }
+   }, [canvasDimensions, handleFitCanvas]);
 
     const handleZoomChange = useCallback((direction: 'in' | 'out') => {
         const currentZoom = scale.get();
@@ -213,7 +223,7 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({ imageToEdit,
                                 <ImageEditorToolbar {...editorState} showTooltip={showTooltip} hideTooltip={hideTooltip} />
 
                                 {/* Column 2: Preview Canvas */}
-                                <div className="flex-1 flex items-center justify-center min-h-0 relative">
+                                <div className="flex-1 flex items-center justify-center min-h-0 min-w-0 relative">
                                     <ImageEditorCanvas
                                         {...editorState}
                                         isLoading={isLoading}

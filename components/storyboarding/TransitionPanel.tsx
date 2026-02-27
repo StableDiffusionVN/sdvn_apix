@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -42,7 +43,7 @@ const TransitionPanel: React.FC<TransitionPanelProps> = ({ scene, index, onEditA
 
     const formattedAspectRatio = useMemo(() => {
         if (!aspectRatio || aspectRatio === 'Giữ nguyên' || aspectRatio === 'Keep Original') {
-            return '16 / 9'; // fallback mặc định
+            return '16 / 9';
         }
         return aspectRatio.replace(':', ' / ');
     }, [aspectRatio]);

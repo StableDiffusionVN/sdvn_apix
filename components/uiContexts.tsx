@@ -11,6 +11,7 @@ import {
     type AppControlContextType
 } from './uiTypes';
 import * as db from '../lib/db';
+import defaultLoginSettingsData from '../public/setting-login.json';
 
 // --- Auth Context ---
 interface Account {
@@ -42,13 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         const initializeAuth = async () => {
-            const defaultSettingsOnError: LoginSettings = {
-                enabled: true,
-                accounts: [
-                    { username: "aPix", password: "sdvn" },
-                    { username: "guest", password: "123" }
-                ]
-            };
+            // Use imported JSON as default fallback to ensure correct settings if fetch fails
+            const defaultSettingsOnError: LoginSettings = defaultLoginSettingsData as LoginSettings;
             
             const handleEnabledLogin = (settings: LoginSettings) => {
                 const storedUser = sessionStorage.getItem('currentUser');
@@ -214,6 +210,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const [language, setLanguage] = useState<'vi' | 'en'>(() => (localStorage.getItem('app-language') as 'vi' | 'en') || 'vi');
     const [translations, setTranslations] = useState<Record<string, any>>({});
+    const [isTranslationsLoaded, setIsTranslationsLoaded] = useState(false);
     const [settings, setSettings] = useState<Settings | null>(null);
     
     const [modelVersion, setModelVersion] = useState<ModelVersion>('v2');
@@ -261,8 +258,12 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     {}
                 );
                 setTranslations(mergedTranslations);
+                setIsTranslationsLoaded(true);
             } catch (error) {
                 console.error(`Could not load translations for ${language}`, error);
+                // Even on error, we set loaded to true to avoid infinite loading, 
+                // though UI might be broken or show keys.
+                setIsTranslationsLoaded(true);
             }
         };
         fetchTranslations();
@@ -598,6 +599,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isLayerComposerMounted,
         isLayerComposerVisible,
         language,
+        isTranslationsLoaded,
         generationHistory,
         modelVersion,
         imageResolution,
