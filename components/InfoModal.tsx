@@ -57,7 +57,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen) {
             setIsLoading(true);
-            fetch('/info.json')
+            fetch(`${import.meta.env.BASE_URL}info.json`)
                 .then(res => {
                     if (!res.ok) {
                         throw new Error('Network response was not ok');

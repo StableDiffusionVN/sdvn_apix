@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             try {
-                const response = await fetch('/setting-login.json');
+                const response = await fetch(`${import.meta.env.BASE_URL}setting-login.json`);
                 if (response.ok) {
                     const settings: LoginSettings = await response.json();
                     setLoginSettings(settings);
@@ -241,7 +241,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             ];
             try {
                 const fetchPromises = modules.map(module =>
-                    fetch(`/locales/${language}/${module}.json`)
+                    fetch(`${import.meta.env.BASE_URL}locales/${language}/${module}.json`)
                         .then(res => {
                             if (!res.ok) {
                                 console.warn(`Could not fetch ${module}.json for ${language}`);
@@ -369,7 +369,7 @@ export const AppControlProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const response = await fetch('/setting.json');
+                const response = await fetch(`${import.meta.env.BASE_URL}setting.json`);
                  if (!response.ok) {
                     console.warn('Could not load setting.json, using built-in settings.');
                     return;

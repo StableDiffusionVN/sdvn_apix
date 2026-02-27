@@ -326,7 +326,7 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
     useEffect(() => {
         const fetchPresets = async () => {
             try {
-                const response = await fetch('/presets.json');
+                const response = await fetch(`${import.meta.env.BASE_URL}presets.json`);
                 if (!response.ok) { throw new Error('Could not load presets.json'); }
                 const data = await response.json();
                 setPresets(data.presets);
