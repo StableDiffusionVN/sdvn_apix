@@ -406,7 +406,7 @@ const MidAutumnCreator: React.FC<MidAutumnCreatorProps> = (props) => {
         if (isLoading) return t('common_creating');
         return t('midAutumnCreator_createButton');
     };
-    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
+    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some((img: any) => img.status === 'error');
 
     const inputImagesForResults = [];
     if (appState.uploadedImage) {

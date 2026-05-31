@@ -509,6 +509,7 @@ export interface AppControlContextType {
     removeImageFromGallery: (imageIndex: number) => void;
     replaceImageInGallery: (imageIndex: number, newImageUrl: string) => void;
     handleThemeChange: (newTheme: Theme) => void;
+    isTranslationsLoaded: boolean;
     handleLanguageChange: (lang: 'vi' | 'en') => void;
     handleModelVersionChange: (version: ModelVersion) => void;
     handleResolutionChange: (resolution: ImageResolution) => void;

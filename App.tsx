@@ -34,6 +34,7 @@ import {
     type AppConfig,
     type GenerationHistoryEntry,
     type ImageResolution,
+    type ModelVersion,
     ApiKeyModal,
     ResetKeyModal
 } from './components/uiUtils';

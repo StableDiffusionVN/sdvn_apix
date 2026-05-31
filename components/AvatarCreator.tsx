@@ -400,7 +400,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = (props) => {
         return t('avatarCreator_createButton');
     };
     
-    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
+    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some((img: any) => img.status === 'error');
 
     const inputImagesForResults = [];
     if (appState.uploadedImage) {

@@ -370,7 +370,7 @@ export const useLayerComposerState = ({ isOpen, onClose, onHide }: { isOpen: boo
             const layerMap = new Map(prevLayers.map(l => [l.id, l]));
             updates.forEach(({ id, props }) => {
                 const currentLayer = layerMap.get(id);
-                if (currentLayer) { layerMap.set(id, { ...currentLayer, ...props }); }
+                if (currentLayer) { layerMap.set(id, Object.assign({}, currentLayer, props) as any); }
             });
             const newLayers = prevLayers.map(l => layerMap.get(l.id) || l);
             if (isFinalChange) {

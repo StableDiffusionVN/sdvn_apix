@@ -350,7 +350,7 @@ const BeautyCreator: React.FC<BeautyCreatorProps> = (props) => {
         return t('beautyCreator_createButton');
     };
     
-    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some(img => img.status === 'error');
+    const hasPartialError = appState.stage === 'results' && Object.values(appState.generatedImages).some((img: any) => img.status === 'error');
     const inputImagesForResults = [];
     if (appState.uploadedImage) inputImagesForResults.push({ url: appState.uploadedImage, caption: t('common_originalImage'), onClick: () => openLightbox(lightboxImages.indexOf(appState.uploadedImage!)) });
     if (appState.styleReferenceImage) inputImagesForResults.push({ url: appState.styleReferenceImage, caption: t('common_referenceImage'), onClick: () => openLightbox(lightboxImages.indexOf(appState.styleReferenceImage!)) });

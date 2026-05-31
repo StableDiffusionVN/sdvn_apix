@@ -624,10 +624,10 @@ export const StoryboardingModal: React.FC<StoryboardingModalProps> = ({ isOpen, 
     const handleRefDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault(); e.stopPropagation(); setIsDraggingRef(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+            const files = Array.from(e.dataTransfer.files).filter((file: any) => file.type.startsWith('image/'));
             const remainingSlots = 4 - referenceImages.length;
             const filesToAdd = files.slice(0, remainingSlots);
-            filesToAdd.forEach(file => {
+            filesToAdd.forEach((file: any) => {
                 const reader = new FileReader();
                 reader.onloadend = () => { setReferenceImages(prev => [...prev, reader.result as string]); };
                 reader.readAsDataURL(file);
